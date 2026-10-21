@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { cycles, recoveries, sleeps, syncState, whoopConnection } from "@/db/schema";
+import { getWeightTrend } from "@/lib/log/body";
 
 export type TodaySummary = {
   connection: "none" | "connected" | "needs_reconnect";
@@ -10,6 +11,7 @@ export type TodaySummary = {
   sleep: { asleepMin: number | null; needMin: number | null; endedAt: Date } | null;
   dayStrain: number | null;
   lastSyncedAt: Date | null;
+  weight: Awaited<ReturnType<typeof getWeightTrend>>;
 };
 
 const SCORED = "SCORED";
@@ -148,5 +150,6 @@ export async function getTodaySummary(db: Db, now: Date, tz: string): Promise<To
       : null,
     dayStrain: cycle && cycle.scoreState === SCORED ? cycle.strain : null,
     lastSyncedAt: sync?.lastSyncedAt ?? null,
+    weight: await getWeightTrend(db, now, tz),
   };
 }

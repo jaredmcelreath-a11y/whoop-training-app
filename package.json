@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "whoop:backfill": "tsx scripts/whoop-backfill.ts"
+    "whoop:backfill": "tsx scripts/whoop-backfill.ts",
+    "seed:baseline": "tsx scripts/seed-baseline.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.10",

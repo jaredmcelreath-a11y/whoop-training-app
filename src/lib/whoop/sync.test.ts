@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, and } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
-import { cycles, recoveries, sleeps, syncState, whoopRaw, workouts } from "@/db/schema";
+import { cardioEntries, cycles, recoveries, sleeps, syncState, whoopRaw, workouts } from "@/db/schema";
 import cycleScored from "./fixtures/cycle-scored.json";
 import cyclePending from "./fixtures/cycle-pending.json";
 import recoveryScored from "./fixtures/recovery-scored.json";
@@ -19,7 +19,7 @@ beforeAll(async () => {
   db = await createTestDb();
 });
 afterEach(async () => {
-  for (const t of [whoopRaw, cycles, recoveries, sleeps, workouts, syncState]) await db.delete(t);
+  for (const t of [cardioEntries, whoopRaw, cycles, recoveries, sleeps, workouts, syncState]) await db.delete(t);
   vi.mocked(listAll).mockReset();
   vi.mocked(whoopGet).mockReset();
 });
@@ -117,5 +117,23 @@ describe("syncRecent", () => {
     expect(raw.payload).toEqual(body);
     const [st] = await db.select().from(syncState).where(eq(syncState.key, "whoop"));
     expect(st.lastSyncedAt).toEqual(now);
+  });
+
+  it("links a manual entry to its workout after syncing", async () => {
+    mockLists();
+    vi.mocked(whoopGet).mockResolvedValue(body);
+    const w = workoutScored;
+    const start = new Date(w.start);
+    await db.insert(cardioEntries).values({
+      kind: "run",
+      startedAt: start,
+      localDate: "2026-10-20",
+      durationS: Math.round((new Date(w.end).getTime() - start.getTime()) / 1000),
+      indoor: false,
+    });
+    await syncRecent(db, 7, () => new Date(start.getTime() + 3_600_000));
+    const [entry] = await db.select().from(cardioEntries);
+    expect(entry.whoopWorkoutId).toBe(w.id);
+    await db.delete(cardioEntries);
   });
 });

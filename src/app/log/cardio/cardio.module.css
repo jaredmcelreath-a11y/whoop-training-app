@@ -1,0 +1,168 @@
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card2);
+  margin: 0;
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.segment:has(input:checked) {
+  background: var(--card);
+  color: var(--text);
+}
+
+.segment:has(input:focus-visible) {
+  outline: 2px solid var(--blue);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--green);
+}
+
+.saved {
+  font-size: 13px;
+  color: var(--green);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+
+.itemText {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.itemForm {
+  flex: none;
+}
+
+.prompt {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.promptTitle {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.areaRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.areaName {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.slider input {
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--green);
+}
+
+.sliderValue {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.painArea {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.painHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trend {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

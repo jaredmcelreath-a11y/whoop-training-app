@@ -2,6 +2,7 @@ import { and, eq, or } from "drizzle-orm";
 import type { PgTable, PgColumn } from "drizzle-orm/pg-core";
 import type { Db } from "@/db/client";
 import { cycles, recoveries, sleeps, syncState, whoopRaw, workouts } from "@/db/schema";
+import { relinkRecent } from "@/lib/log/link-whoop";
 import { listAll, whoopGet } from "@/lib/whoop/client";
 import {
   normalizeCycle,
@@ -127,5 +128,10 @@ export async function syncRecent(db: Db, days = 7, now: () => Date = () => new D
     .insert(syncState)
     .values({ key: "whoop", lastSyncedAt: at })
     .onConflictDoUpdate({ target: syncState.key, set: { lastSyncedAt: at } });
+  try {
+    await relinkRecent(db, new Date(at.getTime() - days * 86_400_000));
+  } catch (err) {
+    console.error("relinkRecent failed", err);
+  }
   return counts;
 }

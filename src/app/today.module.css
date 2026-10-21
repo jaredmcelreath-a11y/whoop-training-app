@@ -59,9 +59,24 @@
   gap: 10px;
 }
 
+/* Five tiles: 2 columns on a phone with the odd last tile spanning the row,
+   3 columns on a tablet, 5 across on a wide screen. */
+.grid > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 560px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grid > :last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+
 @media (min-width: 720px) {
   .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -130,38 +145,23 @@
   color: var(--yellow);
 }
 
-.tabs {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.tabsInner {
-  max-width: 760px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-around;
-}
-
-.tab,
-.tabActive {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
-  padding: 12px 0 14px;
+.tileLink {
+  display: block;
   text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.tab {
+.tileLink:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.tileDate {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--sub);
-  opacity: 0.6;
-}
-
-.tabActive {
-  color: var(--text);
-  font-weight: 700;
+  margin-left: 6px;
 }

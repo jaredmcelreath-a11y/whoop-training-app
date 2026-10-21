@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  date,
   doublePrecision,
   integer,
   jsonb,
@@ -8,6 +9,8 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
@@ -120,3 +123,117 @@ export const syncState = pgTable("sync_state", {
   key: text("key").primaryKey(),
   lastSyncedAt: ts("last_synced_at").notNull(),
 });
+
+const id = () => uuid("id").primaryKey().defaultRandom();
+const day = (name: string) => date(name, { mode: "string" });
+
+export const exercises = pgTable("exercises", {
+  id: id(),
+  name: text("name").notNull().unique(),
+  category: text("category", {
+    enum: ["strength", "bodyweight", "plyo", "core", "mobility"],
+  }).notNull(),
+  archived: boolean("archived").notNull().default(false),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const strengthSessions = pgTable("strength_sessions", {
+  id: id(),
+  startedAt: ts("started_at").notNull(),
+  endedAt: ts("ended_at"),
+  localDate: day("local_date").notNull(),
+  notes: text("notes"),
+  whoopWorkoutId: text("whoop_workout_id"),
+});
+
+export const strengthSets = pgTable("strength_sets", {
+  id: id(),
+  clientId: uuid("client_id").notNull().unique(),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => strengthSessions.id, { onDelete: "cascade" }),
+  exerciseId: uuid("exercise_id")
+    .notNull()
+    .references(() => exercises.id, { onDelete: "restrict" }),
+  setIndex: integer("set_index").notNull(),
+  reps: integer("reps").notNull(),
+  weightLb: doublePrecision("weight_lb"),
+  completedAt: ts("completed_at").notNull(),
+});
+
+export const cardioEntries = pgTable("cardio_entries", {
+  id: id(),
+  kind: text("kind", { enum: ["run", "bike", "swim"] }).notNull(),
+  startedAt: ts("started_at").notNull(),
+  localDate: day("local_date").notNull(),
+  durationS: integer("duration_s").notNull(),
+  distanceM: doublePrecision("distance_m"),
+  avgWatts: integer("avg_watts"),
+  inclinePct: doublePrecision("incline_pct"),
+  poolLengthM: doublePrecision("pool_length_m"),
+  indoor: boolean("indoor").notNull().default(false),
+  notes: text("notes"),
+  whoopWorkoutId: text("whoop_workout_id"),
+});
+
+export const weightEntries = pgTable("weight_entries", {
+  localDate: day("local_date").primaryKey(),
+  weightLb: doublePrecision("weight_lb").notNull(),
+  loggedAt: ts("logged_at").notNull().defaultNow(),
+});
+
+export const painEntries = pgTable("pain_entries", {
+  id: id(),
+  loggedAt: ts("logged_at").notNull().defaultNow(),
+  localDate: day("local_date").notNull(),
+  area: text("area").notNull(),
+  side: text("side", { enum: ["left", "right", "both"] }).notNull(),
+  score: integer("score").notNull(),
+  context: text("context", { enum: ["before_run", "after_run", "daily"] }).notNull(),
+  cardioEntryId: uuid("cardio_entry_id").references(() => cardioEntries.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const weeklyMetrics = pgTable("weekly_metrics", {
+  weekStart: day("week_start").primaryKey(),
+  vo2max: doublePrecision("vo2max"),
+  whoopAge: doublePrecision("whoop_age"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const bodyScans = pgTable("body_scans", {
+  id: id(),
+  scannedOn: day("scanned_on").notNull(),
+  weightLb: doublePrecision("weight_lb"),
+  leanMassLb: doublePrecision("lean_mass_lb"),
+  skeletalMuscleLb: doublePrecision("skeletal_muscle_lb"),
+  fatMassLb: doublePrecision("fat_mass_lb"),
+  bodyFatPct: doublePrecision("body_fat_pct"),
+  bmrKcal: doublePrecision("bmr_kcal"),
+  teeKcal: doublePrecision("tee_kcal"),
+  visceralFatLevel: integer("visceral_fat_level"),
+  extras: jsonb("extras"),
+  source: text("source").notNull(),
+});
+
+export const labPanels = pgTable("lab_panels", {
+  id: id(),
+  drawnOn: day("drawn_on").notNull(),
+  source: text("source").notNull(),
+});
+
+export const labResults = pgTable(
+  "lab_results",
+  {
+    id: id(),
+    panelId: uuid("panel_id")
+      .notNull()
+      .references(() => labPanels.id, { onDelete: "cascade" }),
+    marker: text("marker").notNull(),
+    value: doublePrecision("value").notNull(),
+    unit: text("unit").notNull(),
+    flag: text("flag"),
+  },
+  (t) => [unique("lab_results_panel_marker_unique").on(t.panelId, t.marker)],
+);

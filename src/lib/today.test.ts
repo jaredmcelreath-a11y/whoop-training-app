@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
-import { cycles, recoveries, sleeps, syncState, whoopConnection } from "@/db/schema";
+import { cycles, recoveries, sleeps, syncState, weightEntries, whoopConnection } from "@/db/schema";
 import { getTodaySummary, unscoredLabel } from "./today";
 
 const TZ = "America/Chicago";
@@ -18,6 +18,7 @@ afterEach(async () => {
   await db.delete(sleeps);
   await db.delete(syncState);
   await db.delete(whoopConnection);
+  await db.delete(weightEntries);
 });
 
 // The connection row stores encrypted blobs; getTodaySummary only reads status.
@@ -171,7 +172,17 @@ describe("getTodaySummary", () => {
       sleep: null,
       dayStrain: null,
       lastSyncedAt: null,
+      weight: { latest: null, avg7: null, avg7Prev: null },
     });
+  });
+
+  it("includes the weight trend", async () => {
+    await db.insert(weightEntries).values([
+      { localDate: "2026-10-20", weightLb: 165.2 },
+      { localDate: "2026-10-12", weightLb: 164.8 },
+    ]);
+    const t = await getTodaySummary(db, new Date("2026-10-20T13:00:00Z"), TZ);
+    expect(t.weight).toEqual({ latest: { date: "2026-10-20", lb: 165.2 }, avg7: 165.2, avg7Prev: 164.8 });
   });
 
   it("reports needs_reconnect and the last sync time", async () => {

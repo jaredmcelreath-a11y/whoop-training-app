@@ -1,0 +1,91 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--line);
+}
+
+.itemMain {
+  min-width: 0;
+  flex: 1;
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+  overflow-wrap: anywhere;
+}
+
+.itemTitle {
+  font-weight: 600;
+}
+
+.itemSub {
+  font-size: 13px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.nudge {
+  background: var(--card2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  margin: 12px 0;
+}
+
+.labRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.labRow .wide {
+  grid-column: 1 / -1;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 96px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--card2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  text-align: left;
+  color: var(--sub);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 4px;
+}
+
+.table td {
+  padding: 8px 4px;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}

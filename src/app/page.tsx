@@ -6,9 +6,8 @@ import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { getTodaySummary, unscoredLabel, type TodaySummary } from "@/lib/today";
 import { ensureFresh } from "@/lib/whoop/ensure-fresh";
+import { TabBar } from "@/components/tab-bar";
 import styles from "./today.module.css";
-
-const PLACEHOLDER_TABS = ["Day", "Plan", "Log", "Progress"];
 
 /** The page shell is static; everything that reads the session or the DB streams in. */
 export default function TodayPage() {
@@ -25,18 +24,7 @@ export default function TodayPage() {
           <TodayContent />
         </Suspense>
       </main>
-      <nav className={styles.tabs} aria-label="Main">
-        <div className={styles.tabsInner}>
-          <Link href="/" className={styles.tabActive} aria-current="page">
-            Today
-          </Link>
-          {PLACEHOLDER_TABS.map((t) => (
-            <span key={t} className={styles.tab} aria-disabled="true" title="Coming soon">
-              {t}
-            </span>
-          ))}
-        </div>
-      </nav>
+      <TabBar active="today" />
     </>
   );
 }
@@ -66,6 +54,7 @@ async function TodayContent() {
         <SleepTile t={t} />
         <HrvTile t={t} />
         <StrainTile t={t} />
+        <WeightTile t={t} />
       </div>
       <p className={styles.sync}>
         {t.lastSyncedAt ? `Last synced ${formatDateTime(t.lastSyncedAt, tz)}` : "Not synced yet"}
@@ -97,18 +86,29 @@ function Tile(props: {
   value: string;
   unit?: string;
   valueClass?: string;
-  sub: React.ReactNode;
+  extra?: React.ReactNode;
+  sub?: React.ReactNode;
+  href?: string;
 }) {
-  return (
-    <section className={styles.tile}>
+  const body = (
+    <>
       <h2 className={styles.tileLabel}>{props.label}</h2>
       <p className={`${styles.tileNum} ${props.valueClass ?? ""}`}>
         {props.value}
         {props.unit ? <span className={styles.unit}>{props.unit}</span> : null}
+        {props.extra}
       </p>
-      <p className={styles.small}>{props.sub}</p>
-    </section>
+      {props.sub === undefined ? null : <p className={styles.small}>{props.sub}</p>}
+    </>
   );
+  if (props.href) {
+    return (
+      <Link href={props.href} className={`${styles.tile} ${styles.tileLink}`}>
+        {body}
+      </Link>
+    );
+  }
+  return <section className={styles.tile}>{body}</section>;
 }
 
 const NO_DATA = "—";
@@ -179,12 +179,36 @@ function StrainTile({ t }: { t: TodaySummary }) {
   return <Tile label="Day strain" value={t.dayStrain.toFixed(1)} valueClass={styles.blue} sub={rhr ?? "RHR —"} />;
 }
 
+function WeightTile({ t }: { t: TodaySummary }) {
+  const w = t.weight;
+  if (!w.latest) {
+    return <Tile label="Weight" value="Log weight" valueClass={styles.pending} href="/log#weight" />;
+  }
+  // The trend line needs both weeks; otherwise it is left out.
+  let sub: string | undefined;
+  if (w.avg7 !== null && w.avg7Prev !== null) {
+    const d = Math.round((w.avg7 - w.avg7Prev) * 10) / 10;
+    const sign = d > 0 ? "+" : d < 0 ? "-" : "±";
+    sub = `7-day avg ${w.avg7.toFixed(1)} (${sign}${Math.abs(d).toFixed(1)} vs prior week)`;
+  }
+  return (
+    <Tile
+      label="Weight"
+      value={w.latest.lb.toFixed(1)}
+      unit="lb"
+      extra={<span className={styles.tileDate}>{formatShortDate(w.latest.date)}</span>}
+      sub={sub}
+      href="/log#weight"
+    />
+  );
+}
+
 function TodaySkeleton() {
   return (
     <>
       <p className={styles.meta}>&nbsp;</p>
       <div className={styles.grid} aria-busy="true">
-        {["Recovery", "Sleep", "HRV", "Day strain"].map((l) => (
+        {["Recovery", "Sleep", "HRV", "Day strain", "Weight"].map((l) => (
           <Tile key={l} label={l} value={NO_DATA} sub="Loading…" />
         ))}
       </div>
@@ -205,6 +229,13 @@ function formatDate(d: Date, tz: string): string {
     month: "short",
     day: "numeric",
   }).format(d);
+}
+
+/** "2026-10-20" → "Oct 20". The string is already a local date, so format it as UTC. */
+function formatShortDate(dateStr: string): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" }).format(
+    new Date(`${dateStr}T00:00:00Z`),
+  );
 }
 
 function formatDateTime(d: Date, tz: string): string {
