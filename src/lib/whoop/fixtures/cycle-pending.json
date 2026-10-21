@@ -1,0 +1,10 @@
+{
+  "id": 93846,
+  "user_id": 99999,
+  "created_at": "2026-10-19T12:00:00.000Z",
+  "updated_at": "2026-10-19T13:00:00.000Z",
+  "timezone_offset": "-05:00",
+  "start": "2026-10-19T23:05:00.000Z",
+  "end": null,
+  "score_state": "PENDING_SCORE"
+}

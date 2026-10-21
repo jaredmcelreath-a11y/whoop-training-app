@@ -1,0 +1,12 @@
+{
+  "id": "66666666-4661-442f-a9a4-f160dd7afae9",
+  "user_id": 99999,
+  "created_at": "2026-10-19T18:00:00.000Z",
+  "updated_at": "2026-10-19T19:00:00.000Z",
+  "timezone_offset": "-05:00",
+  "sport_name": "running",
+  "sport_id": 0,
+  "start": "2026-10-18T17:00:00.000Z",
+  "end": "2026-10-18T18:00:00.000Z",
+  "score_state": "UNSCORABLE"
+}

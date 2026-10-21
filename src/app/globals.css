@@ -1,0 +1,43 @@
+:root {
+  --bg: #12161b;
+  --card: #1d232b;
+  --card2: #252c35;
+  --line: #313a45;
+  --text: #e9edf2;
+  --sub: #9aa5b3;
+  --green: #2fd08a;
+  --yellow: #f2c14e;
+  --red: #f0646a;
+  --blue: #5aa9ff;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}

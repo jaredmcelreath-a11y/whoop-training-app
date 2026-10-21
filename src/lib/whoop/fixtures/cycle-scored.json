@@ -1,0 +1,16 @@
+{
+  "id": 93845,
+  "user_id": 99999,
+  "created_at": "2026-10-19T12:00:00.000Z",
+  "updated_at": "2026-10-19T13:00:00.000Z",
+  "timezone_offset": "-05:00",
+  "start": "2026-10-18T23:10:00.000Z",
+  "end": "2026-10-19T23:05:00.000Z",
+  "score_state": "SCORED",
+  "score": {
+    "strain": 12.4,
+    "kilojoule": 8368.0,
+    "average_heart_rate": 71,
+    "max_heart_rate": 165
+  }
+}

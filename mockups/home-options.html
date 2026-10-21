@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Screen Options</title>
+<style>
+  :root {
+    --page: #eef0f3; --ink: #1b1f24; --muted: #5d6673;
+    --phone: #12161b; --card: #1d232b; --card2: #252c35; --line: #313a45;
+    --text: #e9edf2; --sub: #9aa5b3;
+    --green: #2fd08a; --yellow: #f2c14e; --red: #f0646a; --blue: #5aa9ff; --teal: #22c3c3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { max-width: 1150px; margin: 0 auto; padding: 28px 16px 8px; }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; color: var(--muted); max-width: 760px; }
+  .row { max-width: 1150px; margin: 0 auto; padding: 20px 16px 48px;
+    display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+  .option { width: 340px; max-width: 100%; }
+  .label { font-weight: 700; font-size: 17px; margin: 0 0 2px; }
+  .desc { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; min-height: 40px; }
+  .phone { background: var(--phone); color: var(--text); border-radius: 34px; padding: 18px 14px 22px;
+    border: 6px solid #0a0c0f; box-shadow: 0 10px 30px rgba(0,0,0,.18); min-height: 640px; }
+  .status { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); padding: 0 8px 10px; }
+  .h { font-size: 22px; font-weight: 700; margin: 2px 6px 0; }
+  .meta { font-size: 12.5px; color: var(--sub); margin: 0 6px 12px; }
+  .card { background: var(--card); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+  .card h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--sub); font-weight: 600; }
+  .big { font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--card2); color: var(--sub); }
+  .g { color: var(--green); } .y { color: var(--yellow); } .r { color: var(--red); } .b { color: var(--blue); }
+  .why { font-size: 12px; color: var(--teal); margin-top: 6px; }
+  .why::before { content: "ⓘ "; }
+  .flex { display: flex; gap: 10px; align-items: center; }
+  .spread { display: flex; justify-content: space-between; align-items: baseline; }
+  .dots { display: flex; gap: 4px; margin-top: 6px; }
+  .dots span { width: 22px; height: 8px; border-radius: 4px; }
+  .bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; margin: 3px 0 7px; }
+  .bar i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+  .small { font-size: 12.5px; color: var(--sub); }
+  .wk { font-size: 14px; margin: 3px 0; }
+  .btn { display: block; text-align: center; background: var(--green); color: #06291a; font-weight: 700;
+    border-radius: 12px; padding: 10px; margin-top: 8px; font-size: 14px; }
+  .tabs { display: flex; justify-content: space-around; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--sub); }
+  .tabs b { color: var(--text); }
+  .tl { position: relative; padding-left: 18px; margin-bottom: 12px; }
+  .tl::before { content: ""; position: absolute; left: 4px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--sub); }
+  .tl.now::before { background: var(--green); box-shadow: 0 0 0 4px rgba(47,208,138,.2); }
+  .tl.done { opacity: .55; }
+  .tl .t { font-size: 11.5px; color: var(--sub); }
+  .tl .w { font-weight: 600; font-size: 14.5px; }
+  .tline { position: relative; }
+  .tline::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 8px; width: 1px; background: var(--line); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid .card { margin: 0; }
+  .tile-num { font-size: 22px; font-weight: 700; }
+  .notes { max-width: 1150px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Your morning screen: three ways it could look</h1>
+  <p>The numbers are made up but realistic, just to show layout. Each one answers "what do I do today, how much do I eat, and why?" Tell me which feels closest, or what you'd mix and match.</p>
+</header>
+
+<div class="row">
+
+  <!-- A -->
+  <div class="option">
+    <p class="label">A · Coach's note</p>
+    <p class="desc">One clear verdict at the top, then today's workout and fuel. Reads like a coach texting you.</p>
+    <div class="phone">
+      <div class="status"><span>6:45</span><span>Week 1 of 52 · Base</span></div>
+      <div class="h">Good to go 💪</div>
+      <div class="meta">Tue, Oct 21 · Gaining phase</div>
+
+      <div class="card">
+        <h4>Readiness</h4>
+        <div class="spread"><span class="big g">72%</span><span class="small">HRV 98 · RHR 48 · Sleep 7h 40m</span></div>
+        <div class="dots"><span style="background:var(--yellow)"></span><span style="background:var(--green)"></span><span style="background:var(--green)"></span><span style="background:var(--green)"></span><span style="background:var(--green)"></span></div>
+        <div class="small" style="margin-top:4px">4 green days in a row → full session today</div>
+        <div class="why">Why: 3–5 day trend beats one night (ref)</div>
+      </div>
+
+      <div class="card">
+        <h4>Today's training</h4>
+        <div class="wk">🏊 Swim · 1,500 yd technique, easy (Zone 2)</div>
+        <div class="wk">🏋️ Upper body strength · 45 min</div>
+        <div class="small">Swim AM, lift PM, at least 6 h apart</div>
+        <div class="why">Why: spacing cardio and lifting reduces interference (ref)</div>
+        <span class="btn">Start workout</span>
+      </div>
+
+      <div class="card">
+        <h4>Fuel</h4>
+        <div class="spread"><span class="big">3,050</span><span class="small">kcal target</span></div>
+        <div class="small">Protein 135 g · Carbs 400 g · Fat 85 g</div>
+        <div class="why">Why: +300 kcal surplus for ~0.4 lb/week gain (ref)</div>
+      </div>
+
+      <div class="tabs"><b>Today</b><span>Plan</span><span>Log</span><span>Progress</span><span>Ask</span></div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="option">
+    <p class="label">B · Day timeline</p>
+    <p class="desc">Your day as a checklist in time order: wake, supplements, swim, meals, lift, bedtime.</p>
+    <div class="phone">
+      <div class="status"><span>6:45</span><span>Recovery 72% <span class="g">●</span></span></div>
+      <div class="h">Tuesday</div>
+      <div class="meta">Week 1 of 52 · 3,050 kcal · 135 g protein</div>
+
+      <div class="tline">
+        <div class="tl done"><div class="t">6:30 AM</div><div class="w">Wake + supplements ✓</div><div class="small">Morning supplements</div></div>
+        <div class="tl now"><div class="t">7:00 AM · NOW</div><div class="w">🏊 Swim: 1,500 yd technique</div><div class="small">Easy Zone 2 · drills: catch-up, 6-kick</div><div class="why">Why this workout</div></div>
+        <div class="tl"><div class="t">8:15 AM</div><div class="w">🍳 Breakfast · ~40 g protein</div><div class="small">Carbs to refill after swim</div></div>
+        <div class="tl"><div class="t">12:30 PM</div><div class="w">🥗 Lunch · ~35 g protein</div></div>
+        <div class="tl"><div class="t">5:30 PM</div><div class="w">🏋️ Upper body strength</div><div class="small">Bench 3×8 @ 135 · Rows 3×10 · +3</div></div>
+        <div class="tl"><div class="t">7:00 PM</div><div class="w">🍝 Dinner · ~40 g protein</div></div>
+        <div class="tl"><div class="t">10:15 PM</div><div class="w">😴 Lights out</div><div class="small">Sleep needed tonight: 8h 10m</div><div class="why">Why: WHOOP sleep need + strain</div></div>
+      </div>
+
+      <div class="tabs"><b>Today</b><span>Plan</span><span>Log</span><span>Progress</span><span>Ask</span></div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="option">
+    <p class="label">C · Dashboard tiles</p>
+    <p class="desc">Everything at a glance in tiles. Tap any tile for details and sources. Most data on one screen.</p>
+    <div class="phone">
+      <div class="status"><span>6:45</span><span>Race in 52 wks</span></div>
+      <div class="h">Today</div>
+      <div class="meta">Base · Week 1 · Gaining phase</div>
+
+      <div class="grid">
+        <div class="card"><h4>Recovery</h4><div class="tile-num g">72%</div><div class="small">7-day avg 66%</div></div>
+        <div class="card"><h4>Sleep</h4><div class="tile-num">7:40</div><div class="small">need 8:10 tonight</div></div>
+        <div class="card"><h4>HRV</h4><div class="tile-num">98</div><div class="small g">↑ vs 30-day</div></div>
+        <div class="card"><h4>Weight</h4><div class="tile-num">165.0</div><div class="small">goal pace on track</div></div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <h4>Training</h4>
+        <div class="wk">🏊 Swim 1,500 yd easy · 🏋️ Upper</div>
+        <div class="small">Week: 2 of 5 sessions done</div>
+        <div class="bar"><i style="width:40%"></i></div>
+      </div>
+
+      <div class="card">
+        <h4>Fuel so far</h4>
+        <div class="small">Calories 820 / 3,050</div><div class="bar"><i style="width:27%"></i></div>
+        <div class="small">Protein 42 / 135 g</div><div class="bar"><i style="width:31%; background:var(--green)"></i></div>
+        <div class="small">Carbs 110 / 400 g</div><div class="bar"><i style="width:27%; background:var(--yellow)"></i></div>
+      </div>
+
+      <div class="tabs"><b>Today</b><span>Plan</span><span>Log</span><span>Progress</span><span>Ask</span></div>
+    </div>
+  </div>
+
+</div>
+<p class="notes">The bottom tabs are the same in all three: <b>Today</b> (this screen), <b>Plan</b> (the week, the month, and the full-year phases), <b>Log</b> (sets, meals, pool distance, weekly VO2 max and WHOOP Age), <b>Progress</b> (weight, scans, labs, fitness over time), <b>Ask</b> (questions answered with sources).</p>
+</body>
+</html>

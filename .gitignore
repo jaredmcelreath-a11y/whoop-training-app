@@ -1,0 +1,20 @@
+# Personal health data: never commit
+*.local.md
+docs/baseline.local.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+.next/
+dist/
+.DS_Store
+.superpowers/
+
+# Local data
+.data/
+*.tsbuildinfo
+next-env.d.ts
