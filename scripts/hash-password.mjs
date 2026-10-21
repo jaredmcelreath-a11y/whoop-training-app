@@ -39,6 +39,14 @@ if (!password) {
   console.error("Empty password");
   process.exit(1);
 }
+// Typing blind makes typos easy, so ask twice when interactive.
+if (process.stdin.isTTY) {
+  process.stderr.write("Again, to confirm. ");
+  if ((await readPassword()) !== password) {
+    console.error("Passwords didn't match. Nothing was saved; run it again.");
+    process.exit(1);
+  }
+}
 const hash = await bcrypt.hash(password, 12);
 
 if (process.argv.includes("--write-env")) {
