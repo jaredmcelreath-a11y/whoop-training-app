@@ -165,3 +165,104 @@
   color: var(--sub);
   margin-left: 6px;
 }
+
+.training {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.session {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.session:first-of-type {
+  border-top: 0;
+}
+
+.sessionTitle {
+  font-size: 17px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.adjusted {
+  font-size: 13px;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.adjBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--yellow);
+  border: 1px solid var(--yellow);
+  border-radius: 99px;
+  padding: 1px 8px;
+  margin-right: 4px;
+}
+
+.logLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.why {
+  margin-top: 4px;
+}
+
+.whySummary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.whyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.whyItem {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.whyText {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.evBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 1px 8px;
+  margin-right: 8px;
+}
+
+.whyLink {
+  color: var(--blue);
+  display: inline-block;
+  padding: 10px 0;
+}

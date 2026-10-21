@@ -35,9 +35,9 @@ function Status({ state, pending }: { state: { ok?: true; error?: string }; pend
 }
 
 /** `defaultStart` is "now" in OWNER_TZ as a datetime-local value, minted by the server page. */
-export function CardioForm({ defaultStart }: { defaultStart: string }) {
-  const [kind, setKind] = useState<Kind>("run");
-  const [unit, setUnit] = useState("mi");
+export function CardioForm({ defaultStart, initialKind = "run" }: { defaultStart: string; initialKind?: Kind }) {
+  const [kind, setKind] = useState<Kind>(initialKind);
+  const [unit, setUnit] = useState(UNITS[initialKind][0]);
   const [state, action, pending] = useActionState<CardioState, FormData>(logCardio, {});
 
   return (

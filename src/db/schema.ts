@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   date,
   doublePrecision,
   integer,
@@ -236,4 +238,92 @@ export const labResults = pgTable(
     flag: text("flag"),
   },
   (t) => [unique("lab_results_panel_marker_unique").on(t.panelId, t.marker)],
+);
+
+export type PlanWindow = { start: string; end: string };
+export type SessionKind =
+  | "swim"
+  | "bike"
+  | "run"
+  | "strength"
+  | "lower_leg"
+  | "core"
+  | "mobility"
+  | "rest";
+export type SessionIntensity =
+  | "z1"
+  | "z2"
+  | "tempo"
+  | "threshold"
+  | "intervals"
+  | "strength"
+  | "easy";
+
+export const planSettings = pgTable(
+  "plan_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    raceDate: day("race_date").notNull(),
+    seasonStart: day("season_start").notNull(),
+    windows: jsonb("windows").$type<PlanWindow[]>().notNull(),
+    longRideDow: integer("long_ride_dow").notNull(),
+    longRunDow: integer("long_run_dow").notNull(),
+    restDow: integer("rest_dow").notNull(),
+    jointStatus: text("joint_status", {
+      enum: ["unrestricted", "caution", "restricted"],
+    }).notNull(),
+    poolLengthM: doublePrecision("pool_length_m").notNull(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],
+);
+
+export const plannedSessions = pgTable(
+  "planned_sessions",
+  {
+    id: id(),
+    localDate: day("local_date").notNull(),
+    slot: integer("slot").notNull(),
+    kind: text("kind", {
+      enum: ["swim", "bike", "run", "strength", "lower_leg", "core", "mobility", "rest"],
+    })
+      .$type<SessionKind>()
+      .notNull(),
+    title: text("title").notNull(),
+    durationMin: integer("duration_min").notNull(),
+    intensity: text("intensity", {
+      enum: ["z1", "z2", "tempo", "threshold", "intervals", "strength", "easy"],
+    })
+      .$type<SessionIntensity>()
+      .notNull(),
+    details: jsonb("details").notNull(),
+    ruleIds: text("rule_ids").array().notNull(),
+    weekStart: day("week_start").notNull(),
+    generatedAt: ts("generated_at").notNull().defaultNow(),
+    status: text("status", { enum: ["planned", "done", "skipped"] })
+      .notNull()
+      .default("planned"),
+    completedRef: text("completed_ref"),
+  },
+  (t) => [unique("planned_sessions_date_slot_unique").on(t.localDate, t.slot)],
+);
+
+export const recommendationLog = pgTable(
+  "recommendation_log",
+  {
+    id: id(),
+    localDate: day("local_date").notNull(),
+    plannedSessionId: uuid("planned_session_id").references(() => plannedSessions.id, {
+      onDelete: "set null",
+    }),
+    ruleId: text("rule_id").notNull(),
+    inputs: jsonb("inputs").notNull(),
+    effect: text("effect").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("recommendation_log_date_session_rule_unique")
+      .on(t.localDate, t.plannedSessionId, t.ruleId)
+      .nullsNotDistinct(),
+  ],
 );

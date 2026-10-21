@@ -15,6 +15,13 @@
       "when": 1792552942328,
       "tag": "0001_bored_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792592535737,
+      "tag": "0002_absurd_anthem",
+      "breakpoints": true
     }
   ]
 }

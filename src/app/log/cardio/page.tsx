@@ -9,13 +9,14 @@ import { formatCardio, recentCardio } from "@/lib/log/cardio";
 import { toZonedLocal } from "@/lib/log/dates";
 import { formatWhoop } from "@/lib/log/link-whoop";
 import { shortDate } from "@/lib/log/strength-view";
+import { parseCardioKind } from "@/lib/plan/today-view";
 import base from "../strength/strength.module.css";
 import { deleteCardioAction } from "./actions";
 import { CardioForm, DeleteCardioButton } from "./cardio-form";
 import styles from "./cardio.module.css";
 
 /** Static shell; the form's default time and the recent list stream in. */
-export default function CardioPage() {
+export default function CardioPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
   return (
     <>
       <main className={base.page}>
@@ -26,7 +27,7 @@ export default function CardioPage() {
           <h1 className={base.title}>Cardio</h1>
         </header>
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
-          <CardioContent />
+          <CardioContent searchParams={searchParams} />
         </Suspense>
       </main>
       <TabBar active="log" />
@@ -34,15 +35,16 @@ export default function CardioPage() {
   );
 }
 
-async function CardioContent() {
+async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
   if (!(await requireSession())) redirect("/login");
+  const kind = parseCardioKind((await searchParams).kind);
   const entries = await recentCardio(getDb(), 10);
 
   return (
     <>
       <section className={base.card}>
         <h2 className={base.cardTitle}>Log cardio</h2>
-        <CardioForm defaultStart={toZonedLocal(new Date(), getEnv().OWNER_TZ)} />
+        <CardioForm initialKind={kind} defaultStart={toZonedLocal(new Date(), getEnv().OWNER_TZ)} />
       </section>
       <section className={base.card}>
         <h2 className={base.cardTitle}>Recent</h2>
