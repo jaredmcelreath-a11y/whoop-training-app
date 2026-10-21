@@ -46,11 +46,12 @@ Every number and every change comes from a written rule with a verified citation
 - **Local dates.** Dates are local to `getEnv().OWNER_TZ`. Weeks start on Monday (`weekStart`).
 - **Engine purity.** Nothing under `src/lib/engine/` imports `@/db`, `next/*`, or calls `Date.now()` or `new Date()` without arguments. Time and data are always parameters.
 - **No magic numbers in engine logic.** Thresholds, caps, percentages and set counts come from `RULES[id].params`. A test enforces this for the catalog. Review checks it in engine code.
-- **Evidence honesty.** Each rule has an `evidence` level of `"consensus" | "meta-analysis" | "trial" | "expert" | "practice"`:
+- **Evidence honesty.** Each rule has an `evidence` level of `"consensus" | "meta-analysis" | "trial" | "expert" | "n-of-1" | "practice"`:
   - **consensus:** a position stand or consensus statement.
   - **meta-analysis:** a meta-analysis.
   - **trial:** a single study.
   - **expert:** an expert explainer such as Attia, Huberman or Galpin.
+  - **n-of-1:** one person's self-experiment, such as Bryan Johnson's Blueprint data.
   - **practice:** common coaching practice with no direct study.
 
   The UI shows this level next to each rule. The source hierarchy follows spec §9.
@@ -157,7 +158,7 @@ Every number and every change comes from a written rule with a verified citation
 
 **Interfaces (Produces):**
 - **Types:**
-  - `type Evidence = "consensus" | "meta-analysis" | "trial" | "expert" | "practice"`
+  - `type Evidence = "consensus" | "meta-analysis" | "trial" | "expert" | "n-of-1" | "practice"`
   - `type Citation = { authors: string; year: number; title: string; venue: string; url: string; doi?: string }`
   - `type Rule<P> = { id: string; area: "season" | "volume" | "intensity" | "strength" | "recovery" | "pain" | "concurrent" | "lower_leg"; statement: string; why: string /* ≤120 chars, shown in UI */; params: P; evidence: Evidence; citations: Citation[] /* ≥1 unless evidence==="practice" */; caveat?: string }`
 - **`RULES`** is a typed record holding at least the rule ids below. Each param is the planner's starting value. The researcher must verify every citation and may adjust a param to match the source, recording why in `docs/rules-sources.md`. The ids and param *names* are fixed, because Tasks 3–6 depend on them.
@@ -191,6 +192,11 @@ Every number and every change comes from a written rule with a verified citation
   | `pain.jointStatus` | `{ caution: { plyo: false, runIncreaseFactor: 0.5 }, restricted: { run: false, plyo: false } }` | practice, plus the spec's doctor-follow-up rule |
   | `lower_leg.block` | `{ sessionsPerWeek: 2, tibialisSets: 2, soleusSets: 2, gastrocSets: 2 }` | the evidence is weak and mechanistic. Label it honestly, with graded load as the main measure (spec §8) |
 
+- **Owner request (2026-10-21): add Andy Galpin and Bryan Johnson where relevant.**
+  - **Andy Galpin:** an exercise physiologist with peer-reviewed research, e.g. on muscle fiber types and concurrent training adaptations. His own studies count at their study type (trial or meta-analysis). His public guidance (the Huberman Lab "Guest Series" on fitness, his books and talks) counts as `expert`. Look especially for volume, rep ranges, proximity to failure, recovery, hydration and concurrent training.
+  - **Bryan Johnson:** his Blueprint protocol and published self-measurements count as `n-of-1`, ranked below studies. Use them only as added context on the relevant rules (sleep consistency, recovery, bedtime), never as the sole support for a threshold or param.
+  - Add each to the relevant rule's `citations` with an accurate evidence label. A rule's own `evidence` stays the level of its strongest source.
+  - Add a "Galpin & Johnson" section to `docs/rules-sources.md` listing what was used and where, and what was considered but left out (and why).
 - [ ] **Step 1: Research.** Use the web.
   - For each starting source, confirm the authors, year, title, venue and a working URL or DOI.
   - Confirm that the source actually supports the statement. If it doesn't, find a better one or downgrade the `evidence` level.
@@ -203,6 +209,7 @@ Every number and every change comes from a written rule with a verified citation
   - `recovery.color.green > recovery.color.yellow`.
   - The `volume.split` shares sum to 1 (±0.001).
   - No two rules share an id.
+  - At least one rule cites Galpin. Any citation of Bryan Johnson's work is on a rule whose `evidence` is stronger than `n-of-1`, so that source is never the only support.
 - [ ] **Step 3: Implement the catalog.** Run the tests. Expected: PASS.
 - [ ] **Step 4:** Commit: `feat(engine): rules catalog with verified sources`.
 
