@@ -8,6 +8,7 @@ export const PUBLIC_PATHS = [
   "/auth/whoop/callback",
   "/api/webhooks/whoop",
   "/api/cron/sync",
+  "/api/ingest/health",
   "/manifest.webmanifest",
   "/icons/",
 ];

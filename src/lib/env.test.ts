@@ -9,6 +9,7 @@ const valid = {
   SESSION_SECRET: "x".repeat(32),
   TOKEN_ENC_KEY: Buffer.alloc(32, 1).toString("base64"),
   CRON_SECRET: "cron",
+  INGEST_TOKEN: "i".repeat(32),
 };
 
 describe("env", () => {
@@ -31,6 +32,14 @@ describe("env", () => {
     expect(() => parseEnv({ ...valid, APP_PASSWORD_HASH: "hash" })).toThrowError(
       /APP_PASSWORD_HASH/,
     );
+  });
+
+  it("requires INGEST_TOKEN of at least 32 characters", () => {
+    expect(() => parseEnv({ ...valid, INGEST_TOKEN: undefined })).toThrowError(/INGEST_TOKEN/);
+    expect(() => parseEnv({ ...valid, INGEST_TOKEN: "i".repeat(31) })).toThrowError(
+      /INGEST_TOKEN/,
+    );
+    expect(() => parseEnv({ ...valid, INGEST_TOKEN: "i".repeat(32) })).not.toThrow();
   });
 
   it("defaults OWNER_TZ to America/Chicago", () => {

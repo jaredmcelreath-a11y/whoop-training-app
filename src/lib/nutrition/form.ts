@@ -1,0 +1,79 @@
+import { MAX_SUPPLEMENTS, NutritionSettingsInput, type NutritionSettings } from "./settings";
+
+/** Pure helpers for the nutrition settings form. No DB, no Next. */
+
+export const MIN_MEALS = 3;
+export const MAX_MEALS = 6;
+export const MAX_SUPPLEMENT_ROWS = MAX_SUPPLEMENTS;
+const TOKEN_TAIL = 4;
+const MASK = "••••";
+
+export const REF_PROFILES: readonly { value: NonNullable<NutritionSettings["refProfile"]>; label: string }[] = [
+  { value: "male_19_30", label: "Adult male, 19–30 (DRI reference)" },
+  { value: "female_19_30", label: "Adult female, 19–30 (DRI reference)" },
+  { value: "male_31_50", label: "Adult male, 31–50 (DRI reference)" },
+  { value: "female_31_50", label: "Adult female, 31–50 (DRI reference)" },
+];
+
+export const TIMINGS: readonly { value: NutritionSettings["supplements"][number]["timing"]; label: string }[] = [
+  { value: "morning", label: "Morning" },
+  { value: "with_meal", label: "With a meal" },
+  { value: "pre_workout", label: "Before a workout" },
+  { value: "post_workout", label: "After a workout" },
+  { value: "evening", label: "Evening" },
+];
+
+/** "••••abcd": only the last four characters are ever shown. */
+export function maskToken(token: string): string {
+  if (token.length <= TOKEN_TAIL) return MASK;
+  return MASK + token.slice(-TOKEN_TAIL);
+}
+
+export type FormParse = { ok: true; patch: Partial<NutritionSettings> } | { ok: false; error: string };
+
+function text(fd: FormData, name: string): string {
+  const v = fd.get(name);
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function number(raw: string): number {
+  // Number("") is 0 and Number("1e3") passes; accept plain decimals only.
+  return /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : NaN;
+}
+
+/** Turns the submitted form into a settings patch, or one readable error. */
+export function nutritionPatchFromForm(fd: FormData): FormParse {
+  const names = fd.getAll("supplementName");
+  const timings = fd.getAll("supplementTiming");
+  const supplements: NutritionSettings["supplements"] = [];
+  names.forEach((n, i) => {
+    const name = typeof n === "string" ? n.trim() : "";
+    if (!name) return; // empty rows are dropped
+    supplements.push({ name, timing: String(timings[i] ?? "") as NutritionSettings["supplements"][number]["timing"] });
+  });
+
+  const meals = number(text(fd, "mealsPerDay"));
+  if (!Number.isInteger(meals) || meals < MIN_MEALS || meals > MAX_MEALS) {
+    return { ok: false, error: `Meals per day must be a whole number from ${MIN_MEALS} to ${MAX_MEALS}` };
+  }
+  const goal = number(text(fd, "gainGoalLb"));
+  if (!(goal > 0)) return { ok: false, error: "Gain goal must be a number of pounds above zero" };
+  const startRaw = text(fd, "gainStartWeightLb");
+  const start = startRaw === "" ? null : number(startRaw);
+  if (start !== null && !(start > 0)) {
+    return { ok: false, error: "Start weight must be a number of pounds above zero, or left blank" };
+  }
+  const profileRaw = text(fd, "refProfile");
+
+  const patch = {
+    refProfile: profileRaw === "" ? null : profileRaw,
+    mealsPerDay: meals,
+    waterSource: text(fd, "waterSource"),
+    supplements,
+    gainGoalLb: goal,
+    gainStartWeightLb: start,
+  };
+  const parsed = NutritionSettingsInput.safeParse(patch);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  return { ok: true, patch: parsed.data };
+}

@@ -600,3 +600,204 @@ Added in Task 4 (weekly session template) so `buildWeek` never inlines a number.
 - **Silbernagel 2007 model details.** The full text is paywalled. The study, the authors and the RCT result were verified on PubMed, but the "<5/10, settles by morning, not increasing week to week" rules come from a published secondary summary. They match the model as it is usually described.
 - **Javaloyes 2019, "0.5 SD" band.** The abstract doesn't state it. The 0.5 band is instead supported by Buchheit 2014's description of Le Meur's 0.5× CV. `swcSd` is therefore not attributed to Javaloyes; only the 4-week baseline is.
 - **Bompa & Buzzichelli 2019.** Verified as a real book (publisher page, ©2019, ISBN 9781492544807), but the text wasn't read. It is cited only for the general periodization structure.
+
+---
+
+# Nutrition, hydration and supplements (Plan 4, Task 2)
+
+Checked on 2026-10-21. Bibliographic details (authors, year, title, journal, volume, pages, DOI) were confirmed through PubMed E-utilities or Crossref. Claims were checked against abstracts, Europe PMC full text where open, the Dietitians of Canada copy of the joint position paper (Thomas 2016), the FAO report pages, the Compendium site (pacompendium.com) and the Huberman Lab episode page. The NIH ODS fact sheets block automated reading, so ODS values were confirmed through search-indexed copies of those same ODS pages (listed under "Could not verify" below). The same evidence-label policy applies as above.
+
+**Additive params** (names beyond the plan's table, so later tasks never inline a number):
+
+| Param | Value | Label | Why |
+|---|---|---|---|
+| `nutrition.energyAvailability.ffmFallbackFraction` | 0.85 | practice | Task 5: fat-free mass when there is no scan (assumes ~15% body fat) |
+| `nutrition.initialTdee.whoopWindowDays` | 14 | practice | Task 5: "WHOOP cycle kcal average over the last 14 days" |
+| `nutrition.initialTdee.mifflin` | 10 / 6.25 / 5 / +5 / −161 | trial | Mifflin 1990's simplified per-sex equation, from the abstract |
+| `nutrition.timeline` (new rule) | `wakeBeforeWindowMin` 45, `snackAfterWakeMin` 10 | practice | Task 8 wake time and the "wake + 10 min" snack edge case |
+| `nutrition.exerciseKcal` (new rule) | MET per sport, `kcalPerMetKgHour` 1, `historyMinWorkouts` 3, `historyLookbackDays` 90 | expert / practice | Task 7: planned exercise kcal; WHOOP history preferred |
+| `hydration.sweatTest` (new rule) | `minDurationMin` 20, `maxGainLb` 2, `litersPerKgLost` 1 | consensus (method) / practice (checks) | Task 6 sweat-test validation |
+| `supplements.evidence.caffeine.minutesBefore` | 60 | consensus | Guest 2021: most common timing |
+| `supplements.evidence.vitaminD.rdaUg` / `ulUg` | 15 / 100 | consensus | ODS; lets the UI show "never above the upper limit" |
+
+**Values changed from the planner's starting points:**
+- `nutrition.carbsByLoad` third tier `maxMin` 180 → **240**. Thomas 2016's "high" tier is 1–3 h/day and "very high" is over 4–5 h/day. With 180, a 3–4 h day jumped to 8–12 g/kg, which the source doesn't support. With 240 it stays at 6–10.
+- `nutrition.initialTdee.fallbackActivityFactor` 1.6 → **1.7**. In FAO/WHO/UNU 2004, 1.6 is "sedentary or light activity" (1.40–1.69). One hour a day of exercise moves a person to about 1.75, and 1.70 is the bottom of the "active" band. The app is for a person training 5+ h a week plus lifting.
+
+## nutrition.protein
+
+**Params:** `{ gPerKg: 1.8, minGPerKg: 1.6, maxGPerKg: 2.2 }`. **Evidence:** consensus.
+
+- **Jäger R, Kerksick CM, Campbell BI, et al. (2017).** ISSN Position Stand: protein and exercise. *J Int Soc Sports Nutr* 14:20. https://doi.org/10.1186/s12970-017-0177-8 (consensus). Says 1.4–2.0 g/kg/day is "sufficient for most exercising individuals".
+- **Thomas DT, Erdman KA, Burke LM (2016).** ACSM/AND/DC joint position statement: Nutrition and Athletic Performance. *Med Sci Sports Exerc* 48(3):543-68. https://doi.org/10.1249/MSS.0000000000000852 (consensus; also *J Acad Nutr Diet* 116(3):501-528, doi 10.1016/j.jand.2015.12.006). Gives 1.2–2.0 g/kg/day for athletes.
+- **Morton RW, Murphy KT, McKellar SR, et al. (2018).** *Br J Sports Med* 52(6):376-384. https://doi.org/10.1136/bjsports-2017-097608 (meta-analysis; 49 RCTs, 1863 people). Gains in fat-free mass plateau at **1.62 g/kg/day (95% CI 1.03–2.20)**, per the full text in Europe PMC. Supports: the population (healthy adults doing resistance training) matches a typical lifting program.
+
+**Param choice:** 1.6 is Morton's breakpoint; 2.2 is the top of its CI. 1.8 is a choice inside the consensus ranges.
+
+## nutrition.proteinPerMeal
+
+**Params:** `{ gPerKgPerMeal: 0.4, minMeals: 4 }`. **Evidence:** expert.
+
+- **Schoenfeld BJ, Aragon AA (2018).** *J Int Soc Sports Nutr* 15:10. https://doi.org/10.1186/s12970-018-0215-1 (narrative review → expert). The abstract concludes "0.4 g/kg/meal across a minimum of four meals". **Supports** both params.
+- **Jäger 2017**, **context**: 0.25 g/kg or 20–40 g per dose, every 3–4 h. It backs even distribution, but not the 0.4 number, so it doesn't raise the label.
+- **Areta JL, Burke LM, et al. (2013).** *J Physiol* 591(9):2319-31. https://doi.org/10.1113/jphysiol.2012.244897 (trial, **context**). An acute protein-synthesis study, so the mechanism only.
+
+## nutrition.carbsByLoad
+
+**Params:** tiers `≤30 → 3–5`, `≤75 → 5–7`, `≤240 → 6–10`, else `8–12` g/kg/day, keyed by the day's planned endurance minutes. **Evidence:** consensus.
+
+- **Thomas 2016**, Table "daily needs for fuel and recovery": light (low-intensity or skill-based) 3–5; moderate (~1 h/day) 5–7; high (1–3 h/day of moderate-to-high intensity) 6–10; very high (>4–5 h/day) 8–12 g/kg/day.
+
+**Caveat:** Thomas sets the tiers by load, not exact minutes. The minute cut-offs are the app's mapping (practice). See the 180 → 240 change above.
+
+## nutrition.fatMin
+
+**Params:** `{ pctKcalMin: 20 }`. **Evidence:** consensus. **Thomas 2016:** "Athletes should be discouraged from chronic implementation of fat intakes below 20% of energy intake". Typical intakes are 20–35%.
+
+## nutrition.energyAvailability
+
+**Params:** `{ floorKcalPerKgFfm: 30, targetKcalPerKgFfm: 45, ffmFallbackFraction: 0.85 }`. **Evidence:** consensus.
+
+- **Thomas 2016** (supports). "The concept was first studied in females, where an EA of 45 kcal/kg FFM/d was found to be associated with energy balance and optimal health; meanwhile, a chronic reduction in EA (particularly below 30 kcal/kg FFM/d) was associated with impairments of a variety of body functions."
+- **Mountjoy M, Ackerman KE, Bailey DM, et al. (2023).** 2023 IOC consensus statement on REDs. *Br J Sports Med* 57(17):1073-1097. https://doi.org/10.1136/bjsports-2023-106994. **Context.** The abstract covers LEA in women and men and separates "problematic" from "adaptable" LEA. I could **not** open the full text (BMJ and the IOC PDF blocked automated access), so I could not check what it says about the 30/45 numbers. It is not counted as support.
+- **Loucks AB, Thuma JR (2003).** *J Clin Endocrinol Metab* 88(1):297-311. https://doi.org/10.1210/jc.2002-020369 (trial, **context**). 29 regularly menstruating, habitually **sedentary young women**, over 5 days. LH pulsatility was unaffected at 30 kcal/kg LBM/day but disrupted below it. This is a mechanism in a different population.
+- **Loucks AB, Kiens B, Wright HH (2011).** *J Sports Sci* 29 Suppl 1:S7-15. https://doi.org/10.1080/02640414.2011.588958 (review → expert, **context**).
+
+**Population, stated honestly:** the thresholds come from short lab studies in women. Evidence in men is thinner, and men may tolerate lower EA before harm, so for adult men this floor is cautious rather than proven. `ffmFallbackFraction` 0.85 is practice.
+
+## nutrition.gainRate
+
+**Params:** `{ pctBodyweightPerWeek: 0.5, minPct: 0.25 }`. **Evidence:** practice.
+
+- **Iraki 2019**, as above. Recommends "a target weight gain of ~0.25–0.5% of bodyweight/week for novice/intermediate bodybuilders" (Europe PMC full text). It is **context**, not support, because it is a different population (competitive bodybuilders, not a triathlete who lifts). So the rule is `practice`, which is stricter than labelling it expert. Applying 0.25% outside the gain phase is the owner's decision.
+
+## nutrition.calibration
+
+**Params:** `{ windowDays: 14, minDaysWithData: 10, kcalPerLbChange: 3500, maxWeeklyStepKcal: 150, highConfidenceDays: 21 }`. **Evidence:** practice.
+
+- **Hall KD (2008).** What is the required energy deficit per unit weight loss? *Int J Obes* 32(3):573-6. https://doi.org/10.1038/sj.ijo.0803720 (modelling → trial label, **context**). The 3500 kcal/lb rule roughly fits obese people with >30 kg of fat, but overestimates for leaner people, because more of their weight change is lean tissue with low energy density.
+- **Thomas DM, Martin CK, Lettieri S, et al. (2013).** *Int J Obes* 37(12):1611-3. https://doi.org/10.1038/ijo.2013.51 (commentary → expert, **context**). The rule "grossly overestimates" long-term weight loss compared with seven controlled experiments.
+
+**Honest framing:** the 3500 factor is used only to turn a short, smoothed weight trend into kcal/day. That is the adaptive-TDEE-app practice. The estimate will be biased for lean people and during muscle gain, which is part of why each weekly step is capped at 150 kcal. Every number in this rule is practice.
+
+## nutrition.initialTdee
+
+**Params:** `{ whoopDaysMin: 7, whoopWindowDays: 14, fallbackActivityFactor: 1.7, mifflin: { kgCoef: 10, cmCoef: 6.25, ageCoef: 5, maleConst: 5, femaleConst: -161 } }`. **Evidence:** consensus.
+
+- **FAO/WHO/UNU (2004).** *Human energy requirements: Report of a Joint FAO/WHO/UNU Expert Consultation.* FAO Food and Nutrition Technical Report Series No. 1, Rome. https://www.fao.org/4/y5686e/y5686e00.htm (consensus). Table 5.3: sedentary 1.40–1.69, active 1.70–1.99, vigorous 2.00–2.40. Section 5.3.2: an hour a day of moderate-to-vigorous exercise raises PAL from 1.55 to 1.75. Supports the BMR × PAL method and 1.7.
+- **Mifflin MD, St Jeor ST, Hill LA, et al. (1990).** *Am J Clin Nutr* 51(2):241-7. https://doi.org/10.1093/ajcn/51.2.241 (trial; 498 adults aged 19–78). The abstract gives REE (men) = 10·kg + 6.25·cm − 5·age + 5, and REE (women) = … − 161.
+- **Shcherbina A, et al. (2017).** *J Pers Med* 7(2):3. https://doi.org/10.3390/jpm7020003 (trial, **context**). Across 7 wrist devices, median energy-expenditure error was 27.4%–92.6%. WHOOP was not among them.
+
+**Caveat:** the WHOOP-first order and the 7-day minimum are practice. Task 5 should apply the factor to Mifflin's resting estimate, as the statement says.
+
+## nutrition.dayDistribution
+
+**Params:** `{ maxDailySwingPct: 25 }`. **Evidence:** practice. Thomas 2016 (**context**) says nutrition should be periodized to daily training needs. The 25% cap is practice.
+
+## nutrition.preWorkout
+
+**Params:** `{ minSessionMin: 60, carbsGPerKg: [1, 2], hoursBefore: [1, 3], swimNoHeavyMealMin: 90 }`. **Evidence:** consensus. Thomas 2016's table: "Before exercise >60 min: 1–4 g/kg consumed 1–4 h before exercise". The app uses the lower part of both ranges for training days. The 90-min swim rule is practice.
+
+## nutrition.postWorkout
+
+**Params:** `{ withinHours: 2, carbsGPerKg: 1.0, proteinGPerKg: 0.3 }`. **Evidence:** consensus.
+- Thomas 2016: protein of "0.25–0.3 g/kg BW … in the early recovery phase (0 to 2 hours after exercise)".
+- Thomas 2016 also gives "speedy refuelling" for <8 h between sessions: "1–1.2 g/kg/h for first 4 h". The single 1 g/kg serving is a simplification (practice, stated in the caveat).
+- Jäger 2017 is **context**.
+
+## nutrition.micros
+
+**Params:** four profiles (`male_19_30`, `female_19_30`, `male_31_50`, `female_31_50`). Each maps a micro key (plus `fiber_g`) to `{ value, unit, kind }`, using the units from `src/lib/engine/nutrients.ts`. **Evidence:** consensus.
+
+| Key | Men 19–30 / 31–50 | Women 19–30 / 31–50 | Kind | Source |
+|---|---|---|---|---|
+| fiber_g | 38 | 25 | AI | IOM 2005 macronutrients (10.17226/10490) |
+| calcium_mg | 1000 | 1000 | RDA | IOM 2011 (10.17226/13050); ODS |
+| iron_mg | 8 | 18 | RDA | IOM 2001 (10.17226/10026); ODS |
+| magnesium_mg | 400 / 420 | 310 / 320 | RDA | IOM 1997 (10.17226/5776); ODS |
+| potassium_mg | 3400 | 2600 | AI | NASEM 2019 (10.17226/25353); ODS |
+| sodium_mg | 2300 | 2300 | **upper** (CDRR) | NASEM 2019 |
+| zinc_mg | 11 | 8 | RDA | IOM 2001; ODS |
+| vitamin_a_ug (RAE) | 900 | 700 | RDA | IOM 2001; ODS |
+| vitamin_c_mg | 90 | 75 | RDA | IOM 2000 (10.17226/9810); ODS |
+| vitamin_d_ug | 15 | 15 | RDA | IOM 2011; ODS |
+| vitamin_e_mg | 15 | 15 | RDA | IOM 2000; ODS |
+| vitamin_k_ug | 120 | 90 | AI | IOM 2001; ODS |
+| vitamin_b12_ug | 2.4 | 2.4 | RDA | IOM 1998 (10.17226/6015); ODS |
+| folate_ug (DFE) | 400 | 400 | RDA | IOM 1998; ODS |
+
+**Notes:**
+- Sodium's `kind: "upper"` lets the UI say "stay under". The sodium AI is 1500 mg.
+- Smokers need 35 mg more vitamin C. People who train hard may need more iron (ODS sports fact sheet). Neither is modelled.
+- Health/Cronometer may not report vitamin A as RAE or folate as DFE.
+
+## nutrition.timeline
+
+**Params:** `{ wakeBeforeWindowMin: 45, snackAfterWakeMin: 10 }`. **Evidence:** practice, no citation. Scheduling defaults for Task 8.
+
+## nutrition.exerciseKcal
+
+**Params:** `{ defaultMet: { swim: 5.8, bike: 7.0, run: 7.5, strength: 3.5, lower_leg: 3.0, core: 2.8, mobility: 2.3 }, kcalPerMetKgHour: 1, historyMinWorkouts: 3, historyLookbackDays: 90 }`. **Evidence:** expert.
+
+- **Herrmann SD, Willis EA, Ainsworth BE, et al. (2024).** 2024 Adult Compendium of Physical Activities. *J Sport Health Sci* 13(1):6-12. https://doi.org/10.1016/j.jshs.2023.10.010.
+  - Codes checked on pacompendium.com: 18240 swimming laps, freestyle, slow, recreational = 5.8; 01014 bicycling, general = 7.0; 12020 jogging, general, self-selected pace = 7.5; 02054 resistance training, multiple exercises, 8–15 reps = 3.5; 02056 body-weight resistance, general = 3.0; 02024 calisthenics, light (plank, crunches) = 2.8; 02101 stretching, mild = 2.3.
+  - Labelled **expert**: it is a curated table of measured averages, not a single trial or meta-analysis.
+- Shcherbina 2017, **context** (device error in WHOOP history).
+
+**Use:** kcal/min = MET × weightKg × `kcalPerMetKgHour` / 60. The brief asked for "kcal/min per sport". METs were chosen instead because they scale with bodyweight and have a published source; a fixed kcal/min default would have been unsourced practice. The values are gross METs, which slightly overstate exercise kcal and so raise the energy floor (the safe direction). WHOOP history, when present, is preferred (`historyMinWorkouts`, `historyLookbackDays`: practice).
+
+## hydration.daily
+
+**Params:** `{ totalWaterL: { male: 3.7, female: 2.7 }, beverageShare: 0.8 }`. **Evidence:** consensus.
+
+- **Institute of Medicine (2005).** *Dietary Reference Intakes for Water, Potassium, Sodium, Chloride, and Sulfate.* National Academies Press. https://doi.org/10.17226/10925.
+  - The AI for **total water**, which **includes water from food**, is 3.7 L (men) and 2.7 L (women). It is the median intake of adequately hydrated US adults, not a minimum requirement.
+  - About 80% comes from drinks and 20% from food. This split is confirmed by secondary summaries of the report (Mayo Clinic; the 2004 LSU AgCenter release). I could not open the report text itself.
+
+The app's drink baseline is `totalWaterL × beverageShare`.
+
+## hydration.exercise
+
+**Params:** `{ maxBodyMassLossPct: 2, defaultLph: 0.6, minLph: 0.4, maxLph: 1.0, minSessionMin: 60 }`. **Evidence:** consensus.
+
+- **ACSM; Sawka MN, Burke LM, Eichner ER, Maughan RJ, Montain SJ, Stachenfeld NS (2007).** Exercise and fluid replacement. *Med Sci Sports Exerc* 39(2):377-90. https://doi.org/10.1249/mss.0b013e31802ca597. The abstract sets the goal of preventing ">2% body weight loss from water deficit" and calls for customized plans using pre/post weights.
+- **Thomas 2016:** "The fluid plan that suits most athletes … will typically achieve an intake of 0.4 to 0.8 L/h", citing Sawka 2007. Sweat rates range 0.3–2.4 L/h.
+- **Galpin (2023), context.** On the Huberman Lab Guest Series episode "Optimal Nutrition & Supplementation for Fitness" (22 Feb 2023), Galpin gives his equation: bodyweight (lb) / 30 = fl oz every 15–20 min, about 2 mL/kg. https://www.hubermanlab.com/episode/dr-andy-galpin-optimal-nutrition-and-supplementation-for-fitness
+
+**Param choices:**
+- 0.6 is the middle of 0.4–0.8.
+- `maxLph` 1.0 and `minSessionMin` 60 are practice. `maxLph` caps only the during-session drinking target. The daily target adds the measured sweat loss uncapped (floored at `minLph`), times `replacePctOfLoss`/100, so very heavy sweaters are not under-counted.
+
+## hydration.sweatTest
+
+**Params:** `{ minDurationMin: 20, maxGainLb: 2, litersPerKgLost: 1 }`. **Evidence:** consensus. The method comes from Sawka 2007 (body weight before and after). The 1 kg ≈ 1 L conversion is from Thomas 2016. The 20-min and 2-lb input checks are practice.
+
+## hydration.rehydrate
+
+**Params:** `{ replacePctOfLoss: 125 }`. **Evidence:** consensus.
+- **Thomas 2016:** "drinking a volume of fluid that is equivalent to ~125 to 150% of the remaining fluid deficit (e.g., 1.25 to 1.5 L fluid for every 1 kg BW lost)".
+- **Galpin 2023** (expert, supports): "about 125%".
+- **Shirreffs SM, Taylor AJ, Leiper JB, Maughan RJ (1996).** *Med Sci Sports Exerc* 28(10):1260-71. https://doi.org/10.1097/00005768-199610000-00009 (trial, 12 men, **context**). A drink volume larger than the sweat loss restores balance only if it contains enough sodium.
+
+## supplements.evidence
+
+**Params:** `{ creatine: { gPerDay: [3, 5] }, caffeine: { mgPerKg: [3, 6], minutesBefore: 60 }, vitaminD: { labGuided: true, rdaUg: 15, ulUg: 100 } }`. **Evidence:** consensus.
+
+- **Kreider RB, Kalman DS, Antonio J, et al. (2017).** ISSN position stand on creatine. *J Int Soc Sports Nutr* 14:18. https://doi.org/10.1186/s12970-017-0173-z. Stores "can generally be maintained by ingesting 3–5 g/day". Larger athletes may need 5–10 g/day; the app stays at 3–5.
+- **Guest NS, VanDusseldorp TA, Nelson MT, et al. (2021).** ISSN position stand on caffeine. *J Int Soc Sports Nutr* 18(1):1. https://doi.org/10.1186/s12970-020-00383-4. Effective at "3–6 mg/kg"; "the most commonly used timing … is 60 min pre-exercise".
+- **NIH ODS, Vitamin D fact sheet**, and **IOM 2011**. The RDA is 15 µg (600 IU) for ages 19–70. The UL is 100 µg (4000 IU) from all sources, and does not apply under physician treatment. `labGuided: true` is practice: the app does not dose vitamin D; it says to test and ask a doctor.
+- **Galpin 2023** (expert): creatine 3–5 g/day.
+
+The caveat carries the "talk to your doctor or a registered dietitian" line, per the global constraints.
+
+## Bryan Johnson
+
+Not cited in these rules. None of the nutrition or hydration numbers depend on his protocol, and adding him as decoration would add nothing.
+
+## Could not verify (left out or labelled context)
+
+- **IOC REDs 2023 full text.** bjsm.bmj.com returned 403, and the IOC PDF timed out or reset. The abstract and metadata are verified. Whether it endorses 30/45 kcal/kg FFM is **not** verified, so it is context only.
+- **Shirreffs & Sawka 2011** (*J Sports Sci* 29 Suppl 1:S39-46, doi 10.1080/02640414.2011.614269). The metadata is verified, but the abstract gives no replacement percentage and the full text was not accessible. **Not cited.**
+- **NIH ODS fact-sheet pages.** Direct fetches were blocked (403/bot check). The values in the micros table were confirmed through search-engine readings of those ODS pages (Magnesium, Potassium, Vitamin K, Iron, Vitamin D, Zinc, Calcium, Vitamin A, Vitamin C, Vitamin E, B12, Folate). They match the National Academies values I know. The NCBI Bookshelf DRI tables were behind a reCAPTCHA, which I did not attempt.
+- **IOM 2005 water report text**, for the 80/20 drinks/food split. Confirmed only through secondary summaries.
+- **Apple Shortcuts "Find Health Samples" type names** in `nutrients.ts`. Apple publishes no list, so they are best-known Health app display names. Check them in the Shortcuts picker (Task 4).

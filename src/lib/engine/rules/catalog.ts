@@ -3,6 +3,7 @@
  * Each citation was checked against PubMed / the publisher; see docs/rules-sources.md
  * for what each source says, why each param was chosen, and the caveats.
  */
+import type { MicroKey, NutrientUnit } from "../nutrients";
 import type { Citation, DeepReadonly, Rule } from "./types";
 
 /** Mark a shared source as context for one rule (not counted toward `evidence`). */
@@ -192,6 +193,135 @@ const WHOOP_ZONES: Citation = {
   evidence: "practice",
 };
 
+// ----- nutrition and hydration sources (Plan 4) -------------------------------
+
+const THOMAS_2016: Citation = {
+  authors: "Thomas DT, Erdman KA, Burke LM",
+  year: 2016,
+  title: "American College of Sports Medicine Joint Position Statement. Nutrition and Athletic Performance",
+  venue: "Med Sci Sports Exerc 48(3):543-68 (also J Acad Nutr Diet 116(3):501-528)",
+  url: "https://doi.org/10.1249/MSS.0000000000000852",
+  doi: "10.1249/MSS.0000000000000852",
+  evidence: "consensus",
+};
+
+const JAGER_2017: Citation = {
+  authors:
+    "Jäger R, Kerksick CM, Campbell BI, Cribb PJ, Wells SD, Skwiat TM, Purpura M, Ziegenfuss TN, Ferrando AA, Arent SM, Smith-Ryan AE, Stout JR, Arciero PJ, Ormsbee MJ, Taylor LW, Wilborn CD, Kalman DS, Kreider RB, Willoughby DS, Hoffman JR, Krzykowski JL, Antonio J",
+  year: 2017,
+  title: "International Society of Sports Nutrition Position Stand: protein and exercise",
+  venue: "J Int Soc Sports Nutr 14:20",
+  url: "https://doi.org/10.1186/s12970-017-0177-8",
+  doi: "10.1186/s12970-017-0177-8",
+  evidence: "consensus",
+};
+
+const MORTON_2018: Citation = {
+  authors:
+    "Morton RW, Murphy KT, McKellar SR, Schoenfeld BJ, Henselmans M, Helms E, Aragon AA, Devries MC, Banfield L, Krieger JW, Phillips SM",
+  year: 2018,
+  title:
+    "A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults",
+  venue: "Br J Sports Med 52(6):376-384",
+  url: "https://doi.org/10.1136/bjsports-2017-097608",
+  doi: "10.1136/bjsports-2017-097608",
+  evidence: "meta-analysis",
+};
+
+const IRAKI_2019: Citation = {
+  authors: "Iraki J, Fitschen P, Espinar S, Helms E",
+  year: 2019,
+  title: "Nutrition Recommendations for Bodybuilders in the Off-Season: A Narrative Review",
+  venue: "Sports (Basel) 7(7):154",
+  url: "https://doi.org/10.3390/sports7070154",
+  doi: "10.3390/sports7070154",
+  evidence: "expert",
+};
+
+const SHCHERBINA_2017: Citation = {
+  authors: "Shcherbina A, Mattsson CM, Waggott D, Salisbury H, Christle JW, Hastie T, Wheeler MT, Ashley EA",
+  year: 2017,
+  title: "Accuracy in Wrist-Worn, Sensor-Based Measurements of Heart Rate and Energy Expenditure in a Diverse Cohort",
+  venue: "J Pers Med 7(2):3",
+  url: "https://doi.org/10.3390/jpm7020003",
+  doi: "10.3390/jpm7020003",
+  evidence: "trial",
+};
+
+const SAWKA_2007: Citation = {
+  authors: "American College of Sports Medicine; Sawka MN, Burke LM, Eichner ER, Maughan RJ, Montain SJ, Stachenfeld NS",
+  year: 2007,
+  title: "American College of Sports Medicine position stand. Exercise and fluid replacement",
+  venue: "Med Sci Sports Exerc 39(2):377-90",
+  url: "https://doi.org/10.1249/mss.0b013e31802ca597",
+  doi: "10.1249/mss.0b013e31802ca597",
+  evidence: "consensus",
+};
+
+const GALPIN_NUTRITION_2023: Citation = {
+  authors: "Galpin A (guest), Huberman A (host)",
+  year: 2023,
+  title: "Guest Series | Dr. Andy Galpin: Optimal Nutrition & Supplementation for Fitness",
+  venue: "Huberman Lab podcast (episode page and transcript)",
+  url: "https://www.hubermanlab.com/episode/dr-andy-galpin-optimal-nutrition-and-supplementation-for-fitness",
+  evidence: "expert",
+};
+
+const ODS_RECOMMENDATIONS: Citation = {
+  authors: "NIH Office of Dietary Supplements",
+  year: 2026,
+  title: "Nutrient Recommendations and Databases (Dietary Reference Intakes) and the Health Professional fact sheets",
+  venue: "ods.od.nih.gov (accessed 2026-10-21)",
+  url: "https://ods.od.nih.gov/HealthInformation/nutrientrecommendations.aspx",
+  evidence: "consensus",
+};
+
+const ODS_VITAMIN_D: Citation = {
+  authors: "NIH Office of Dietary Supplements",
+  year: 2026,
+  title: "Vitamin D: Fact Sheet for Health Professionals",
+  venue: "ods.od.nih.gov (accessed 2026-10-21)",
+  url: "https://ods.od.nih.gov/factsheets/VitaminD-HealthProfessional/",
+  evidence: "consensus",
+};
+
+/** A National Academies (IOM / NASEM) Dietary Reference Intakes report. */
+const dri = (year: number, title: string, doi: string, authors = "Institute of Medicine, Food and Nutrition Board"): Citation => ({
+  authors,
+  year,
+  title,
+  venue: "National Academies Press (Washington, DC)",
+  url: `https://doi.org/${doi}`,
+  doi,
+  evidence: "consensus",
+});
+
+const DRI_1997 = dri(1997, "Dietary Reference Intakes for Calcium, Phosphorus, Magnesium, Vitamin D, and Fluoride", "10.17226/5776");
+const DRI_1998 = dri(
+  1998,
+  "Dietary Reference Intakes for Thiamin, Riboflavin, Niacin, Vitamin B6, Folate, Vitamin B12, Pantothenic Acid, Biotin, and Choline",
+  "10.17226/6015",
+);
+const DRI_2000 = dri(2000, "Dietary Reference Intakes for Vitamin C, Vitamin E, Selenium, and Carotenoids", "10.17226/9810");
+const DRI_2001 = dri(
+  2001,
+  "Dietary Reference Intakes for Vitamin A, Vitamin K, Arsenic, Boron, Chromium, Copper, Iodine, Iron, Manganese, Molybdenum, Nickel, Silicon, Vanadium, and Zinc",
+  "10.17226/10026",
+);
+const DRI_2005_MACRO = dri(
+  2005,
+  "Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat, Fatty Acids, Cholesterol, Protein, and Amino Acids",
+  "10.17226/10490",
+);
+const DRI_2005_WATER = dri(2005, "Dietary Reference Intakes for Water, Potassium, Sodium, Chloride, and Sulfate", "10.17226/10925");
+const DRI_2011 = dri(2011, "Dietary Reference Intakes for Calcium and Vitamin D", "10.17226/13050");
+const DRI_2019 = dri(
+  2019,
+  "Dietary Reference Intakes for Sodium and Potassium",
+  "10.17226/25353",
+  "National Academies of Sciences, Engineering, and Medicine",
+);
+
 // ---------------------------------------------------------------------------
 // Param types
 // ---------------------------------------------------------------------------
@@ -268,6 +398,86 @@ type WeekTemplateParams = {
   walkRun: { startRunMin: number; walkMin: number; stepRunMin: number; everyWeeks: number };
   strides: { reps: number; seconds: number };
 };
+
+// ----- nutrition and hydration (Plan 4) -----
+type ProteinParams = { gPerKg: number; minGPerKg: number; maxGPerKg: number };
+type ProteinPerMealParams = { gPerKgPerMeal: number; minMeals: number };
+/** `maxMin`: the tier applies while the day's planned endurance minutes are ≤ maxMin. */
+type CarbTier = { maxMin: number; gPerKg: Range };
+type CarbsByLoadParams = { tiers: CarbTier[] };
+type FatMinParams = { pctKcalMin: number };
+type EnergyAvailabilityParams = { floorKcalPerKgFfm: number; targetKcalPerKgFfm: number; ffmFallbackFraction: number };
+type GainRateParams = { pctBodyweightPerWeek: number; minPct: number };
+type CalibrationParams = {
+  windowDays: number;
+  minDaysWithData: number;
+  kcalPerLbChange: number;
+  maxWeeklyStepKcal: number;
+  highConfidenceDays: number;
+};
+/** Mifflin-St Jeor REE = kgCoef×kg + cmCoef×cm − ageCoef×years + (maleConst | femaleConst). */
+type MifflinParams = { kgCoef: number; cmCoef: number; ageCoef: number; maleConst: number; femaleConst: number };
+type InitialTdeeParams = {
+  whoopDaysMin: number;
+  whoopWindowDays: number;
+  fallbackActivityFactor: number;
+  mifflin: MifflinParams;
+};
+type DayDistributionParams = { maxDailySwingPct: number };
+type PreWorkoutParams = { minSessionMin: number; carbsGPerKg: Range; hoursBefore: Range; swimNoHeavyMealMin: number };
+type PostWorkoutParams = { withinHours: number; carbsGPerKg: number; proteinGPerKg: number };
+export type MicroTarget = { value: number; unit: NutrientUnit; kind: "rda" | "ai" | "upper" };
+export type MicroProfileName = "male_19_30" | "female_19_30" | "male_31_50" | "female_31_50";
+type MicroProfile = Record<MicroKey | "fiber_g", MicroTarget>;
+type MicrosParams = { profiles: Record<MicroProfileName, MicroProfile> };
+type TimelineParams = { wakeBeforeWindowMin: number; snackAfterWakeMin: number; fallbackAwakeMin: number };
+type ExerciseKind = "swim" | "bike" | "run" | "strength" | "lower_leg" | "core" | "mobility";
+type ExerciseKcalParams = {
+  defaultMet: Record<ExerciseKind, number>;
+  kcalPerMetKgHour: number;
+  historyMinWorkouts: number;
+  historyLookbackDays: number;
+};
+type HydrationDailyParams = { totalWaterL: { male: number; female: number }; beverageShare: number };
+type HydrationExerciseParams = {
+  maxBodyMassLossPct: number;
+  defaultLph: number;
+  minLph: number;
+  maxLph: number;
+  minSessionMin: number;
+};
+type SweatTestParams = { minDurationMin: number; maxGainLb: number; litersPerKgLost: number };
+type RehydrateParams = { replacePctOfLoss: number };
+type SupplementsParams = {
+  creatine: { gPerDay: Range };
+  caffeine: { mgPerKg: Range; minutesBefore: number };
+  vitaminD: { labGuided: boolean; rdaUg: number; ulUg: number };
+};
+
+/**
+ * DRI values (NIH ODS fact sheets / National Academies), non-pregnant adults.
+ * Units match src/lib/engine/nutrients.ts. Sodium is the 2019 CDRR, an upper target.
+ */
+function microProfile(sex: "male" | "female", band: "19_30" | "31_50"): MicroProfile {
+  const m = sex === "male";
+  const t = (value: number, unit: NutrientUnit, kind: MicroTarget["kind"]): MicroTarget => ({ value, unit, kind });
+  return {
+    fiber_g: t(m ? 38 : 25, "g", "ai"),
+    calcium_mg: t(1000, "mg", "rda"),
+    iron_mg: t(m ? 8 : 18, "mg", "rda"),
+    magnesium_mg: t(m ? (band === "19_30" ? 400 : 420) : band === "19_30" ? 310 : 320, "mg", "rda"),
+    potassium_mg: t(m ? 3400 : 2600, "mg", "ai"),
+    sodium_mg: t(2300, "mg", "upper"),
+    zinc_mg: t(m ? 11 : 8, "mg", "rda"),
+    vitamin_a_ug: t(m ? 900 : 700, "ug", "rda"),
+    vitamin_c_mg: t(m ? 90 : 75, "mg", "rda"),
+    vitamin_d_ug: t(15, "ug", "rda"),
+    vitamin_e_mg: t(15, "mg", "rda"),
+    vitamin_k_ug: t(m ? 120 : 90, "ug", "ai"),
+    vitamin_b12_ug: t(2.4, "ug", "rda"),
+    folate_ug: t(400, "ug", "rda"),
+  };
+}
 
 function rule<P>(r: Rule<P>): Rule<P> {
   return r;
@@ -989,6 +1199,420 @@ export const RULES = deepFreeze({
     citations: [],
     caveat:
       "Every value here is coaching practice, not a tested number: the session counts, the 40% long-session share, typical session lengths, the shortest worthwhile quality block, the minimum warm-up and cool-down and the cap on a session's hard share, strength, lower-leg and core durations, the walk-run progression and the strides. The volume caps (volume.*) and intensity.distribution still bound the week.",
+  }),
+  // ----- nutrition (Plan 4) -------------------------------------------------
+  "nutrition.protein": rule<ProteinParams>({
+    id: "nutrition.protein",
+    area: "nutrition",
+    statement: "Eat about 1.8 g of protein per kg of bodyweight a day, never below 1.6 g/kg. Up to 2.2 g/kg is fine.",
+    why: "Muscle gains from lifting level off near 1.6 g/kg a day in pooled trials; a bit more covers endurance work.",
+    params: { gPerKg: 1.8, minGPerKg: 1.6, maxGPerKg: 2.2 },
+    evidence: "consensus",
+    citations: [JAGER_2017, THOMAS_2016, MORTON_2018],
+    caveat:
+      "Jäger 2017 gives 1.4-2.0 g/kg/day for most exercising people and Thomas 2016 gives 1.2-2.0 for athletes. Morton 2018 found muscle gains plateau at 1.62 g/kg/day (95% CI 1.03-2.20) in resistance-training trials; 2.2 is that interval's top. 1.8 is a choice inside these ranges, not a tested optimum.",
+  }),
+
+  "nutrition.proteinPerMeal": rule<ProteinPerMealParams>({
+    id: "nutrition.proteinPerMeal",
+    area: "nutrition",
+    statement: "Spread protein over at least 4 meals, each with about 0.4 g per kg of bodyweight.",
+    why: "Even doses through the day keep muscle repair going; one huge serving is used less well.",
+    params: { gPerKgPerMeal: 0.4, minMeals: 4 },
+    evidence: "expert",
+    citations: [
+      {
+        authors: "Schoenfeld BJ, Aragon AA",
+        year: 2018,
+        title: "How much protein can the body use in a single meal for muscle-building? Implications for daily protein distribution",
+        venue: "J Int Soc Sports Nutr 15:10",
+        url: "https://doi.org/10.1186/s12970-018-0215-1",
+        doi: "10.1186/s12970-018-0215-1",
+        evidence: "expert",
+      },
+      ctx(JAGER_2017),
+      {
+        authors:
+          "Areta JL, Burke LM, Ross ML, Camera DM, West DW, Broad EM, Jeacocke NA, Moore DR, Stellingwerff T, Phillips SM, Hawley JA, Coffey VG",
+        year: 2013,
+        title:
+          "Timing and distribution of protein ingestion during prolonged recovery from resistance exercise alters myofibrillar protein synthesis",
+        venue: "J Physiol 591(9):2319-31",
+        url: "https://doi.org/10.1113/jphysiol.2012.244897",
+        doi: "10.1113/jphysiol.2012.244897",
+        evidence: "trial",
+        role: "context",
+      },
+    ],
+    caveat:
+      "The 0.4 g/kg x 4 meals figure comes from a narrative review (Schoenfeld & Aragon 2018). The ISSN stand (context) suggests 0.25 g/kg or 20-40 g every 3-4 h, so this target is on the generous side. Areta 2013 (context) is a short protein-synthesis study, not a muscle-growth trial.",
+  }),
+
+  "nutrition.carbsByLoad": rule<CarbsByLoadParams>({
+    id: "nutrition.carbsByLoad",
+    area: "nutrition",
+    statement:
+      "Daily carbs follow the day's planned endurance minutes: up to 30 min, 3-5 g/kg; up to 75 min, 5-7 g/kg; up to 240 min, 6-10 g/kg; longer days, 8-12 g/kg. The middle of the range is the target.",
+    why: "Carbs fuel endurance training, so they rise and fall with each day's load instead of staying fixed.",
+    params: {
+      tiers: [
+        { maxMin: 30, gPerKg: [3, 5] },
+        { maxMin: 75, gPerKg: [5, 7] },
+        { maxMin: 240, gPerKg: [6, 10] },
+        { maxMin: 9999, gPerKg: [8, 12] },
+      ],
+    },
+    evidence: "consensus",
+    citations: [THOMAS_2016],
+    caveat:
+      "Thomas 2016 sets these ranges by load (light or skill work; about 1 h/day; 1-3 h/day of moderate-high intensity; over 4-5 h/day), not by exact minutes. The minute cut-offs are the app's mapping (practice). Days of 3-4 h stay in the 6-10 tier because the statement gives no range for them; the planner's 180-min cut-off was moved to 240 for that reason.",
+  }),
+
+  "nutrition.fatMin": rule<FatMinParams>({
+    id: "nutrition.fatMin",
+    area: "nutrition",
+    statement: "Fat never drops below 20% of the day's calories.",
+    why: "Very low-fat eating cuts fat-soluble vitamins and essential fats, so athletes are advised to stay above this.",
+    params: { pctKcalMin: 20 },
+    evidence: "consensus",
+    citations: [THOMAS_2016],
+    caveat: "Thomas 2016 discourages chronic fat intakes below 20% of energy and says typical intakes run 20-35%.",
+  }),
+
+  "nutrition.energyAvailability": rule<EnergyAvailabilityParams>({
+    id: "nutrition.energyAvailability",
+    area: "nutrition",
+    statement:
+      "Calories eaten minus exercise calories must stay at or above 30 kcal per kg of fat-free mass a day; about 45 is the healthy target. Without a body scan, fat-free mass is assumed to be 85% of bodyweight. This floor overrides every other calorie rule.",
+    why: "Too little energy left after training harms hormones, bone and recovery, so this floor always wins.",
+    params: { floorKcalPerKgFfm: 30, targetKcalPerKgFfm: 45, ffmFallbackFraction: 0.85 },
+    evidence: "consensus",
+    citations: [
+      THOMAS_2016,
+      {
+        authors:
+          "Mountjoy M, Ackerman KE, Bailey DM, Burke LM, Constantini N, Hackney AC, Heikura IA, Melin A, Pensgaard AM, Stellingwerff T, Sundgot-Borgen JK, Torstveit MK, Jacobsen AU, Verhagen E, Budgett R, Engebretsen L, Erdener U",
+        year: 2023,
+        title: "2023 International Olympic Committee's (IOC) consensus statement on Relative Energy Deficiency in Sport (REDs)",
+        venue: "Br J Sports Med 57(17):1073-1097",
+        url: "https://doi.org/10.1136/bjsports-2023-106994",
+        doi: "10.1136/bjsports-2023-106994",
+        evidence: "consensus",
+        role: "context",
+      },
+      {
+        authors: "Loucks AB, Thuma JR",
+        year: 2003,
+        title: "Luteinizing hormone pulsatility is disrupted at a threshold of energy availability in regularly menstruating women",
+        venue: "J Clin Endocrinol Metab 88(1):297-311",
+        url: "https://doi.org/10.1210/jc.2002-020369",
+        doi: "10.1210/jc.2002-020369",
+        evidence: "trial",
+        role: "context",
+      },
+      {
+        authors: "Loucks AB, Kiens B, Wright HH",
+        year: 2011,
+        title: "Energy availability in athletes",
+        venue: "J Sports Sci 29 Suppl 1:S7-15",
+        url: "https://doi.org/10.1080/02640414.2011.588958",
+        doi: "10.1080/02640414.2011.588958",
+        evidence: "expert",
+        role: "context",
+      },
+    ],
+    caveat:
+      "Thomas 2016 states the 45 (energy balance) and below-30 (impaired function) values and notes the concept was first studied in women. They come from short lab studies of young, mostly sedentary women (Loucks & Thuma 2003: 29 women, 5 days). Evidence in men is thinner, so for a man this floor is a cautious choice, not a proven threshold. The IOC 2023 REDs consensus (context) covers low energy availability in women and men; its full text could not be checked for these exact numbers. The 85% fat-free-mass fallback (about 15% body fat) is practice; a scan replaces it. Not medical advice.",
+  }),
+
+  "nutrition.gainRate": rule<GainRateParams>({
+    id: "nutrition.gainRate",
+    area: "nutrition",
+    statement:
+      "In the muscle-gain phase, aim to gain about 0.5% of bodyweight a week. After it, base and build weeks use 0.25% while some of the goal remains. Peak, taper and race weeks get no surplus.",
+    why: "Slow gains favour muscle over fat. Race preparation always comes before gaining.",
+    params: { pctBodyweightPerWeek: 0.5, minPct: 0.25 },
+    evidence: "practice",
+    citations: [ctx(IRAKI_2019)],
+    caveat:
+      "Iraki 2019 (a narrative review for bodybuilders, a different population; context) suggests about 0.25-0.5% of bodyweight a week for novice and intermediate lifters, with a 10-20% energy surplus. Using it for a triathlete who lifts, and the 0.25% rate outside the gain phase, are the owner's decisions (practice).",
+  }),
+
+  "nutrition.calibration": rule<CalibrationParams>({
+    id: "nutrition.calibration",
+    area: "nutrition",
+    statement:
+      "Each week the calorie burn estimate is recalculated from the last 14 days: average intake minus the weight trend's daily change x 3500 kcal per lb. It needs 10 days with both intake and weight, moves at most 150 kcal a week, and counts as high confidence after 21 days of data.",
+    why: "What you ate and how your weight moved show your real burn better than a formula or a wristband.",
+    params: { windowDays: 14, minDaysWithData: 10, kcalPerLbChange: 3500, maxWeeklyStepKcal: 150, highConfidenceDays: 21 },
+    evidence: "practice",
+    citations: [
+      {
+        authors: "Hall KD",
+        year: 2008,
+        title: "What is the required energy deficit per unit weight loss?",
+        venue: "Int J Obes (Lond) 32(3):573-6",
+        url: "https://doi.org/10.1038/sj.ijo.0803720",
+        doi: "10.1038/sj.ijo.0803720",
+        evidence: "trial",
+        role: "context",
+      },
+      {
+        authors: "Thomas DM, Martin CK, Lettieri S, Bredlau C, Kaiser K, Church T, Bouchard C, Heymsfield SB",
+        year: 2013,
+        title: "Can a weight loss of one pound a week be achieved with a 3500-kcal deficit? Commentary on a commonly accepted rule",
+        venue: "Int J Obes (Lond) 37(12):1611-3",
+        url: "https://doi.org/10.1038/ijo.2013.51",
+        doi: "10.1038/ijo.2013.51",
+        evidence: "expert",
+        role: "context",
+      },
+    ],
+    caveat:
+      "Practice, as used by adaptive calorie apps. The 3500 kcal/lb rule is a known oversimplification: Hall 2008 (a model) shows the energy in a pound of weight change depends on body fat and on how much of it is lean tissue, so a lean person's change, or a gain with muscle, holds less than 3500 kcal per lb. Thomas 2013 shows the rule badly over-predicts long-term loss. Here it only converts a short, smoothed trend; water swings add noise, which is why the weekly step is capped. The window, data minimum, cap and confidence days are practice.",
+  }),
+
+  "nutrition.initialTdee": rule<InitialTdeeParams>({
+    id: "nutrition.initialTdee",
+    area: "nutrition",
+    statement:
+      "The first calorie burn estimate is the average WHOOP daily burn over the last 14 days when at least 7 days exist; otherwise the body scan's BMR x 1.7; otherwise the Mifflin-St Jeor resting estimate x 1.7. Weekly calibration then takes over.",
+    why: "Start from the best data available, then let your real intake and weight correct it.",
+    params: {
+      whoopDaysMin: 7,
+      whoopWindowDays: 14,
+      fallbackActivityFactor: 1.7,
+      mifflin: { kgCoef: 10, cmCoef: 6.25, ageCoef: 5, maleConst: 5, femaleConst: -161 },
+    },
+    evidence: "consensus",
+    citations: [
+      {
+        authors: "FAO, WHO, UNU",
+        year: 2004,
+        title: "Human energy requirements: Report of a Joint FAO/WHO/UNU Expert Consultation (Rome, 17-24 October 2001)",
+        venue: "FAO Food and Nutrition Technical Report Series No. 1 (Rome)",
+        url: "https://www.fao.org/4/y5686e/y5686e00.htm",
+        evidence: "consensus",
+      },
+      {
+        authors: "Mifflin MD, St Jeor ST, Hill LA, Scott BJ, Daugherty SA, Koh YO",
+        year: 1990,
+        title: "A new predictive equation for resting energy expenditure in healthy individuals",
+        venue: "Am J Clin Nutr 51(2):241-7",
+        url: "https://doi.org/10.1093/ajcn/51.2.241",
+        doi: "10.1093/ajcn/51.2.241",
+        evidence: "trial",
+      },
+      ctx(SHCHERBINA_2017),
+    ],
+    caveat:
+      "1.7 is the bottom of the FAO/WHO/UNU 'active or moderately active' band (1.70-1.99; about an hour of daily exercise moves a person from 1.55 to 1.75); the planner's 1.6 was raised to match. Mifflin's simplified per-sex equation (498 adults aged 19-78) estimates resting burn. Wrist devices misjudge energy burn (Shcherbina 2017: median errors of 27-93% across seven devices; WHOOP was not tested), so WHOOP is only a starting point. The WHOOP-first order and the 7-day minimum are practice.",
+  }),
+
+  "nutrition.dayDistribution": rule<DayDistributionParams>({
+    id: "nutrition.dayDistribution",
+    area: "nutrition",
+    statement: "Daily calories move above or below the weekly average with that day's planned load, by at most 25%.",
+    why: "Eat more on big training days and less on rest days, while the weekly total stays on target.",
+    params: { maxDailySwingPct: 25 },
+    evidence: "practice",
+    citations: [ctx(THOMAS_2016)],
+    caveat:
+      "Thomas 2016 (context) says nutrition should be periodized to each day's training, mainly through carbohydrate. The 25% cap is practice, not a tested value.",
+  }),
+
+  "nutrition.preWorkout": rule<PreWorkoutParams>({
+    id: "nutrition.preWorkout",
+    area: "nutrition",
+    statement:
+      "Before a session of 60 min or more, eat a carb snack of 1-2 g/kg, 1-3 h before. Before a swim, no heavy meal in the last 90 min.",
+    why: "Carbs before longer sessions top up fuel. A full stomach makes swimming uncomfortable.",
+    params: { minSessionMin: 60, carbsGPerKg: [1, 2], hoursBefore: [1, 3], swimNoHeavyMealMin: 90 },
+    evidence: "consensus",
+    citations: [THOMAS_2016],
+    caveat:
+      "Thomas 2016 gives 1-4 g/kg, 1-4 h before exercise lasting over 60 min, mainly for competition. The app uses the lower part of that range for training days. The 90-min swim rule is practice.",
+  }),
+
+  "nutrition.postWorkout": rule<PostWorkoutParams>({
+    id: "nutrition.postWorkout",
+    area: "nutrition",
+    statement: "Within 2 h after a session, eat about 1 g/kg of carbs and 0.3 g/kg of protein.",
+    why: "Carbs refill muscle fuel and protein starts repair; both help most soon after training.",
+    params: { withinHours: 2, carbsGPerKg: 1.0, proteinGPerKg: 0.3 },
+    evidence: "consensus",
+    citations: [THOMAS_2016, ctx(JAGER_2017)],
+    caveat:
+      "Thomas 2016 gives 0.25-0.3 g/kg of protein in the first 0-2 h, and, when the next hard session is under 8 h away, 1.0-1.2 g/kg of carbs per hour for 4 h. One 1 g/kg serving is a simplification for normal days (practice). Jäger 2017 (context) says pre- or post-workout protein both work.",
+  }),
+
+  "nutrition.micros": rule<MicrosParams>({
+    id: "nutrition.micros",
+    area: "nutrition",
+    statement:
+      "Daily fiber, vitamin and mineral targets come from the US Dietary Reference Intakes for your sex and age band. Sodium is a stay-under limit of 2300 mg; the rest are amounts to reach.",
+    why: "These official amounts cover nearly all healthy adults. Set your profile to pick the right row.",
+    params: {
+      profiles: {
+        male_19_30: microProfile("male", "19_30"),
+        female_19_30: microProfile("female", "19_30"),
+        male_31_50: microProfile("male", "31_50"),
+        female_31_50: microProfile("female", "31_50"),
+      },
+    },
+    evidence: "consensus",
+    citations: [ODS_RECOMMENDATIONS, DRI_1997, DRI_1998, DRI_2000, DRI_2001, DRI_2005_MACRO, DRI_2011, DRI_2019],
+    caveat:
+      "An RDA covers 97-98% of healthy people; an AI (fiber, potassium, vitamin K) is a best estimate where no RDA could be set. Sodium uses the 2019 Chronic Disease Risk Reduction level; its AI is lower (1500 mg), and heavy sweaters lose more in training. Vitamin A is in µg RAE and folate in µg DFE, which Health and Cronometer totals may not match exactly. Hard training can raise iron needs. Not medical advice: talk to your doctor or a registered dietitian.",
+  }),
+
+  "nutrition.timeline": rule<TimelineParams>({
+    id: "nutrition.timeline",
+    area: "nutrition",
+    statement:
+      "Wake time defaults to 45 min before the first training window. A pre-session snack is never placed earlier than 10 min after waking; if it would be, it moves there and shrinks to the low end of its carb range. Without a WHOOP sleep need, meals are spread over an assumed 960-min awake day.",
+    why: "Leaves time to wake up and eat before training, without planning food before you are up.",
+    params: { wakeBeforeWindowMin: 45, snackAfterWakeMin: 10, fallbackAwakeMin: 960 },
+    evidence: "practice",
+    citations: [],
+    caveat:
+      "All three values are scheduling practice, not studied numbers. The 960-min awake day only spaces meals when no bedtime can be shown; it is not a sleep recommendation.",
+  }),
+
+  "nutrition.exerciseKcal": rule<ExerciseKcalParams>({
+    id: "nutrition.exerciseKcal",
+    area: "nutrition",
+    statement:
+      "Planned exercise calories = planned minutes x your median WHOOP kcal per minute for that sport, from at least 3 workouts in the last 90 days. Without that history, a standard MET value is used (1 MET is about 1 kcal per kg per hour).",
+    why: "Your own workout history fits you best; standard tables cover sports with no history yet.",
+    params: {
+      defaultMet: { swim: 5.8, bike: 7.0, run: 7.5, strength: 3.5, lower_leg: 3.0, core: 2.8, mobility: 2.3 },
+      kcalPerMetKgHour: 1,
+      historyMinWorkouts: 3,
+      historyLookbackDays: 90,
+    },
+    evidence: "expert",
+    citations: [
+      {
+        authors: "Herrmann SD, Willis EA, Ainsworth BE, Barreira TV, Hastert M, Kracht CL, Schuna JM Jr, Cai Z, et al.",
+        year: 2024,
+        title: "2024 Adult Compendium of Physical Activities: A third update of the energy costs of human activities",
+        venue: "J Sport Health Sci 13(1):6-12 (codes at pacompendium.com)",
+        url: "https://doi.org/10.1016/j.jshs.2023.10.010",
+        doi: "10.1016/j.jshs.2023.10.010",
+        evidence: "expert",
+      },
+      ctx(SHCHERBINA_2017),
+    ],
+    caveat:
+      "Defaults are 2024 Compendium codes for easy-to-moderate effort: swim 18240 (freestyle laps, slow), bike 01014 (general), run 12020 (jogging, self-selected pace), strength 02054 (multiple exercises, 8-15 reps), lower leg 02056 (body-weight resistance, general), core 02024 (light calisthenics, plank), mobility 02101 (mild stretching). The Compendium is a curated table of measured averages (labelled expert), not a trial. METs are gross (they include resting burn), so they slightly overstate exercise calories, which keeps the energy floor on the safe side. Hard sessions burn more. WHOOP history has device error too (Shcherbina 2017, context). The 3-workout and 90-day limits are practice.",
+  }),
+
+  // ----- hydration ------------------------------------------------------------
+  "hydration.daily": rule<HydrationDailyParams>({
+    id: "hydration.daily",
+    area: "hydration",
+    statement:
+      "Baseline drinking target: 80% of the daily total-water intake (3.7 L for men, 2.7 L for women), because food supplies the rest. Training sweat is added on top.",
+    why: "The official water figure includes water in food; drinks supply most of it.",
+    params: { totalWaterL: { male: 3.7, female: 2.7 }, beverageShare: 0.8 },
+    evidence: "consensus",
+    citations: [DRI_2005_WATER],
+    caveat:
+      "The Adequate Intake is the median total-water intake of healthy, adequately hydrated US adults, not a minimum requirement, and it already includes water from food (about a fifth). Heat and training raise needs (hydration.exercise). Without a profile the app uses the lower value.",
+  }),
+
+  "hydration.exercise": rule<HydrationExerciseParams>({
+    id: "hydration.exercise",
+    area: "hydration",
+    statement:
+      "For sessions of 60 min or more, drink to keep sweat loss under 2% of bodyweight. Use your measured sweat rate, else 0.6 L/h (never below 0.4 L/h), to size the day's water. During the session, drink at that rate but no more than 1 L/h.",
+    why: "Losing more than 2% of bodyweight as sweat hurts endurance; drinking far more than you sweat is risky too.",
+    params: { maxBodyMassLossPct: 2, defaultLph: 0.6, minLph: 0.4, maxLph: 1.0, minSessionMin: 60 },
+    evidence: "consensus",
+    citations: [SAWKA_2007, THOMAS_2016, ctx(GALPIN_NUTRITION_2023)],
+    caveat:
+      "Sawka 2007 and Thomas 2016 back the 2% limit and a personal plan; Thomas says most athletes drink 0.4-0.8 L/h, and 0.6 is the middle. The 1 L/h cap is practice (gut tolerance, avoiding over-drinking) and limits only what you drink during a session. The daily target adds your full measured sweat loss, uncapped, so a heavy sweater is not under-counted; the gap between a rate above 1 L/h and what you drink during the session is made up afterwards. The 60-min cut-off is practice. Galpin's rule of thumb (bodyweight in lb / 30 = oz every 15-20 min, about 0.6 L/h at 154 lb) is shown as context.",
+  }),
+
+  "hydration.sweatTest": rule<SweatTestParams>({
+    id: "hydration.sweatTest",
+    area: "hydration",
+    statement:
+      "Sweat rate = (weight before - weight after + fluid drunk) / hours, counting 1 kg lost as 1 L. A test shorter than 20 min, or one showing a gain of more than 2 lb, is rejected.",
+    why: "Weighing before and after a session is the standard way to learn your own sweat rate.",
+    params: { minDurationMin: 20, maxGainLb: 2, litersPerKgLost: 1 },
+    evidence: "consensus",
+    citations: [SAWKA_2007, THOMAS_2016],
+    caveat:
+      "Sawka 2007 recommends estimating sweat rate from body weight before and after exercise; Thomas 2016 says 1 kg lost is about 1 L of sweat. The 20-min and 2-lb input checks are practice, to catch typos. Weigh without clothes after towelling off, and avoid passing urine between weigh-ins.",
+  }),
+
+  "hydration.rehydrate": rule<RehydrateParams>({
+    id: "hydration.rehydrate",
+    area: "hydration",
+    statement: "After training, drink about 125% of the sweat you lost.",
+    why: "You keep losing fluid as urine after exercise, so replacing only what you sweated leaves you short.",
+    params: { replacePctOfLoss: 125 },
+    evidence: "consensus",
+    citations: [
+      THOMAS_2016,
+      GALPIN_NUTRITION_2023,
+      {
+        authors: "Shirreffs SM, Taylor AJ, Leiper JB, Maughan RJ",
+        year: 1996,
+        title: "Post-exercise rehydration in man: effects of volume consumed and drink sodium content",
+        venue: "Med Sci Sports Exerc 28(10):1260-71",
+        url: "https://doi.org/10.1097/00005768-199610000-00009",
+        doi: "10.1097/00005768-199610000-00009",
+        evidence: "trial",
+        role: "context",
+      },
+    ],
+    caveat:
+      "Thomas 2016 gives 125-150% of the remaining deficit; the app uses the low end, as does Galpin. Shirreffs 1996 (12 men, context) showed that drinking more than was lost only restores balance when the drink holds enough sodium, so pair it with a salty meal or a sodium drink after heavy sweating.",
+  }),
+
+  // ----- supplements ----------------------------------------------------------
+  "supplements.evidence": rule<SupplementsParams>({
+    id: "supplements.evidence",
+    area: "supplements",
+    statement:
+      "Creatine monohydrate: 3-5 g a day. Caffeine, if you use it: 3-6 mg/kg about 60 min before key sessions. Vitamin D: dose only from a blood test with your doctor; the RDA is 15 µg and the upper limit 100 µg a day.",
+    why: "These are the doses the evidence backs, and the app never suggests more. Check with your doctor or dietitian.",
+    params: {
+      creatine: { gPerDay: [3, 5] },
+      caffeine: { mgPerKg: [3, 6], minutesBefore: 60 },
+      vitaminD: { labGuided: true, rdaUg: 15, ulUg: 100 },
+    },
+    evidence: "consensus",
+    citations: [
+      {
+        authors: "Kreider RB, Kalman DS, Antonio J, Ziegenfuss TN, Wildman R, Collins R, Candow DG, Kleiner SM, Almada AL, Lopez HL",
+        year: 2017,
+        title:
+          "International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation in exercise, sport, and medicine",
+        venue: "J Int Soc Sports Nutr 14:18",
+        url: "https://doi.org/10.1186/s12970-017-0173-z",
+        doi: "10.1186/s12970-017-0173-z",
+        evidence: "consensus",
+      },
+      {
+        authors:
+          "Guest NS, VanDusseldorp TA, Nelson MT, Grgic J, Schoenfeld BJ, Jenkins NDM, Arent SM, Antonio J, Stout JR, Trexler ET, Smith-Ryan AE, Goldstein ER, Kalman DS, Campbell BI",
+        year: 2021,
+        title: "International society of sports nutrition position stand: caffeine and exercise performance",
+        venue: "J Int Soc Sports Nutr 18(1):1",
+        url: "https://doi.org/10.1186/s12970-020-00383-4",
+        doi: "10.1186/s12970-020-00383-4",
+        evidence: "consensus",
+      },
+      ODS_VITAMIN_D,
+      DRI_2011,
+      GALPIN_NUTRITION_2023,
+    ],
+    caveat:
+      "Not medical advice: talk to your doctor or a registered dietitian before starting any supplement, especially with kidney problems (creatine), heart or sleep problems (caffeine, which can disturb sleep if taken late), or regular medications. Kreider 2017 notes larger athletes may need 5-10 g/day of creatine to maintain stores; the app stays at 3-5. The vitamin D RDA assumes little sun, and the upper limit does not apply to treatment under a physician.",
   }),
 });
 

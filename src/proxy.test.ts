@@ -12,6 +12,7 @@ const ENV = {
   SESSION_SECRET: "a".repeat(32),
   TOKEN_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
   CRON_SECRET: "cron",
+  INGEST_TOKEN: "i".repeat(32),
 };
 
 describe("proxy (auth gate)", () => {
@@ -62,5 +63,7 @@ describe("proxy (auth gate)", () => {
     expect(isPublicPath("/login")).toBe(true);
     expect(isPublicPath("/loginx")).toBe(false);
     expect(isPublicPath("/")).toBe(false);
+    expect(isPublicPath("/api/ingest/health")).toBe(true);
+    expect(isPublicPath("/api/ingest/healthx")).toBe(false);
   });
 });

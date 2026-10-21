@@ -5,7 +5,7 @@ type TabKey = "today" | "day" | "plan" | "log" | "progress";
 
 const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: "today", label: "Today", href: "/" },
-  { key: "day", label: "Day" },
+  { key: "day", label: "Day", href: "/day" },
   { key: "plan", label: "Plan", href: "/plan" },
   { key: "log", label: "Log", href: "/log" },
   { key: "progress", label: "Progress" },

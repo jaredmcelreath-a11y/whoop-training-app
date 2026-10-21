@@ -1,0 +1,268 @@
+.page {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom));
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.small {
+  font-size: 13px;
+  color: var(--sub);
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- day navigation ------------------------------------------------------ */
+
+.dayNav {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.arrow {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--card);
+  text-decoration: none;
+  font-size: 20px;
+}
+
+.dayLabel {
+  text-align: center;
+  min-width: 0;
+}
+
+.dayName {
+  font-weight: 700;
+}
+
+.todayLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--blue);
+}
+
+/* ---- cards --------------------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sub);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ---- targets ------------------------------------------------------------- */
+
+.targets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.target {
+  background: var(--card2);
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.targetLabel {
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.targetValue {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--sub);
+}
+
+.needs {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--yellow);
+  overflow-wrap: anywhere;
+}
+
+/* ---- timeline ------------------------------------------------------------ */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding-top: 1px;
+}
+
+.body {
+  min-width: 0;
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  font-size: 14px;
+  color: var(--sub);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.kind {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--card2);
+  color: var(--sub);
+}
+
+.kWake {
+  composes: kind;
+}
+
+.kBed {
+  composes: kind;
+  color: var(--blue);
+}
+
+.kSession {
+  composes: kind;
+  color: var(--green);
+}
+
+.kMeal {
+  composes: kind;
+  color: var(--text);
+}
+
+.kSnack {
+  composes: kind;
+  color: var(--yellow);
+}
+
+.kSupp {
+  composes: kind;
+  color: var(--sub);
+}
+
+.badge {
+  composes: kind;
+}
+
+/* ---- why ------------------------------------------------------------------ */
+
+.why {
+  margin-top: 2px;
+}
+
+.whySummary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.whyList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.whyList li {
+  margin-bottom: 6px;
+}
+
+.whyLink {
+  display: inline-block;
+  min-height: 24px;
+  color: var(--blue);
+  overflow-wrap: anywhere;
+}
+
+/* ---- supplements ---------------------------------------------------------- */
+
+.supps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.supp {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.supp:first-child {
+  border-top: 0;
+  padding-top: 0;
+}

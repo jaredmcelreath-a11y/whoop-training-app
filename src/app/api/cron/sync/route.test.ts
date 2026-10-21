@@ -20,6 +20,7 @@ const ENV = {
   SESSION_SECRET: "x".repeat(32),
   TOKEN_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
   CRON_SECRET: "cron-secret",
+  INGEST_TOKEN: "i".repeat(32),
 };
 const originalEnv = process.env;
 const req = (auth?: string) =>

@@ -64,7 +64,10 @@ export type RuleArea =
   | "pain"
   | "concurrent"
   | "lower_leg"
-  | "week";
+  | "week"
+  | "nutrition"
+  | "hydration"
+  | "supplements";
 
 export type Rule<P> = {
   id: string;

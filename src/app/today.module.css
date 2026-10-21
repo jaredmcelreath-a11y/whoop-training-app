@@ -266,3 +266,50 @@
   display: inline-block;
   padding: 10px 0;
 }
+
+.barRow {
+  padding: 6px 0;
+}
+
+.barHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--card2);
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 99px;
+}
+
+.waterButton {
+  min-height: 44px;
+  margin: 6px 0;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: inherit;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.waterButton:disabled {
+  opacity: 0.6;
+}
+
+.needs {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+}

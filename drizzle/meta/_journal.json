@@ -22,6 +22,20 @@
       "when": 1792592535737,
       "tag": "0002_absurd_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792605035151,
+      "tag": "0003_whole_albert_cleary",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792610712000,
+      "tag": "0004_supreme_mordo",
+      "breakpoints": true
     }
   ]
 }

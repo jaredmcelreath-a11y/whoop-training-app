@@ -137,6 +137,22 @@ describe("humanizeParams", () => {
   });
 });
 
+describe("humanizeParams with lists of objects", () => {
+  it("numbers each object in a list instead of printing [object Object]", () => {
+    const out = humanizeParams({ tiers: [{ maxMin: 30 }, { maxMin: 75 }] });
+    expect(JSON.stringify(out)).not.toContain("[object Object]");
+    expect(out).toEqual([
+      {
+        label: "Tiers",
+        children: [
+          { label: "1", children: humanizeParams({ maxMin: 30 }) },
+          { label: "2", children: humanizeParams({ maxMin: 75 }) },
+        ],
+      },
+    ]);
+  });
+});
+
 describe("humanizeParams labels", () => {
   it("uses friendlier labels for terse keys and passes a parent's unit to its children", () => {
     expect(

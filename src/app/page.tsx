@@ -8,6 +8,7 @@ import { getTodaySummary, unscoredLabel, type TodaySummary } from "@/lib/today";
 import { ensureFresh } from "@/lib/whoop/ensure-fresh";
 import { TabBar } from "@/components/tab-bar";
 import styles from "./today.module.css";
+import { TodayFuel } from "./today-fuel";
 import { TodayTraining } from "./today-training";
 
 /** The page shell is static; everything that reads the session or the DB streams in. */
@@ -51,6 +52,7 @@ async function TodayContent() {
       <p className={styles.meta}>{formatDate(now, tz)}</p>
       <Banner connection={t.connection} />
       <TodayTraining db={db} now={now} tz={tz} />
+      <TodayFuel db={db} now={now} tz={tz} />
       <div className={styles.grid}>
         <RecoveryTile t={t} />
         <SleepTile t={t} />

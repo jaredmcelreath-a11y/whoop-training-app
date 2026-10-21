@@ -173,6 +173,36 @@ const KEY_LABEL: Record<string, { label: string; unit?: string }> = {
   reentryBelowFraction: { label: "Restart if a week falls below" },
   absoluteCapWeeklyIncreasePct: { label: "Hard cap on weekly increase", unit: "%" },
   noLowerDayWithinHoursBeforeKeyRun: { label: "No leg day this many hours before a key run", unit: " h" },
+  // Nutrition and hydration (Plan 4)
+  gPerKg: { label: "Per kg of bodyweight", unit: " g" },
+  minGPerKg: { label: "Minimum per kg", unit: " g" },
+  maxGPerKg: { label: "Maximum per kg", unit: " g" },
+  gPerKgPerMeal: { label: "Per meal, per kg", unit: " g" },
+  carbsGPerKg: { label: "Carbs per kg", unit: " g" },
+  proteinGPerKg: { label: "Protein per kg", unit: " g" },
+  maxMin: { label: "Planned endurance up to", unit: " min" },
+  pctKcalMin: { label: "Minimum share of calories", unit: "%" },
+  pctBodyweightPerWeek: { label: "Gain per week (of bodyweight)", unit: "%" },
+  floorKcalPerKgFfm: { label: "Floor per kg fat-free mass", unit: " kcal" },
+  targetKcalPerKgFfm: { label: "Target per kg fat-free mass", unit: " kcal" },
+  ffmFallbackFraction: { label: "Fat-free mass if no scan (share of weight)" },
+  whoopDaysMin: { label: "Minimum WHOOP days", unit: " days" },
+  fallbackActivityFactor: { label: "Activity factor (x resting burn)", unit: "" },
+  kcalPerLbChange: { label: "Energy per lb of weight change", unit: " kcal" },
+  maxWeeklyStepKcal: { label: "Largest weekly change", unit: " kcal" },
+  replacePctOfLoss: { label: "Replace of sweat lost", unit: "%" },
+  defaultLph: { label: "Default sweat rate", unit: " L/h" },
+  minLph: { label: "Lowest rate used", unit: " L/h" },
+  maxLph: { label: "Highest rate used", unit: " L/h" },
+  maxGainLb: { label: "Largest weight gain accepted", unit: " lb" },
+  litersPerKgLost: { label: "Litres per kg lost", unit: " L" },
+  totalWaterL: { label: "Total water (food + drinks)", unit: " L" },
+  mgPerKg: { label: "Per kg of bodyweight", unit: " mg" },
+  gPerDay: { label: "Per day", unit: " g" },
+  rdaUg: { label: "RDA", unit: " µg" },
+  ulUg: { label: "Upper limit", unit: " µg" },
+  defaultMet: { label: "Default MET by sport" },
+  kcalPerMetKgHour: { label: "kcal per MET per kg per hour", unit: "" },
 };
 
 /** Rule params as readable label/value pairs (nested objects become nested lists). */
@@ -190,6 +220,9 @@ export function humanizeParams(params: unknown, inherited?: UnitFn): ParamItem[]
     const first = Array.isArray(v) ? v[0] : v;
     const pct = PERCENT_KEYS.test(key) && typeof first === "number" && own === undefined;
     const unit = unitFn && typeof first === "number" ? unitFn(Array.isArray(v) ? 2 : first) : "";
+    if (Array.isArray(v) && v.some((x) => x && typeof x === "object")) {
+      return { label, children: v.map((x, i) => ({ label: `${i + 1}`, children: humanizeParams(x, sfx?.unit) })) };
+    }
     if (Array.isArray(v)) {
       const parts = v.map((x) => scalar(x, "", pct));
       const joined = v.length === 2 && v.every((x) => typeof x === "number") ? `${parts[0]}–${parts[1]}` : parts.join(", ");
@@ -229,6 +262,9 @@ export const AREA_LABEL: Record<string, string> = {
   concurrent: "Mixing cardio and lifting",
   lower_leg: "Lower leg",
   week: "Weekly template",
+  nutrition: "Nutrition",
+  hydration: "Hydration",
+  supplements: "Supplements",
 };
 
 // ---------------------------------------------------------------------------

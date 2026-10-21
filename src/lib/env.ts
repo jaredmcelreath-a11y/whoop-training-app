@@ -15,6 +15,7 @@ const schema = z.object({
       message: "must be base64 encoding of exactly 32 bytes",
     }),
   CRON_SECRET: z.string().min(1),
+  INGEST_TOKEN: z.string().min(32),
   DATABASE_URL: z.string().min(1).optional(),
   OWNER_TZ: z.string().min(1).default("America/Chicago"),
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { RULES, RULE_IDS, getRule } from "@/lib/engine/rules/catalog";
+import { MICRO_KEYS, NUTRIENTS } from "@/lib/engine/nutrients";
 import { evidenceRank, type DeepReadonly, type Evidence, type Rule } from "@/lib/engine/rules/types";
 
 type AnyRule = DeepReadonly<Rule<Record<string, unknown>>>;
@@ -37,6 +38,26 @@ const REQUIRED: Record<string, string[]> = {
   "pain.jointStatus": ["caution", "restricted"],
   "lower_leg.block": ["sessionsPerWeek", "tibialisSets", "soleusSets", "gastrocSets"],
   "week.template": ["sessionsPerWeek", "longShare", "coreSessionsPerWeek", "walkRun"],
+  // Plan 4 (nutrition and hydration). Tasks 5–8 depend on these names.
+  "nutrition.protein": ["gPerKg", "minGPerKg", "maxGPerKg"],
+  "nutrition.proteinPerMeal": ["gPerKgPerMeal", "minMeals"],
+  "nutrition.carbsByLoad": ["tiers"],
+  "nutrition.fatMin": ["pctKcalMin"],
+  "nutrition.energyAvailability": ["floorKcalPerKgFfm", "targetKcalPerKgFfm", "ffmFallbackFraction"],
+  "nutrition.gainRate": ["pctBodyweightPerWeek", "minPct"],
+  "nutrition.calibration": ["windowDays", "minDaysWithData", "kcalPerLbChange", "maxWeeklyStepKcal", "highConfidenceDays"],
+  "nutrition.initialTdee": ["whoopDaysMin", "whoopWindowDays", "fallbackActivityFactor", "mifflin"],
+  "nutrition.dayDistribution": ["maxDailySwingPct"],
+  "nutrition.preWorkout": ["minSessionMin", "carbsGPerKg", "hoursBefore", "swimNoHeavyMealMin"],
+  "nutrition.postWorkout": ["withinHours", "carbsGPerKg", "proteinGPerKg"],
+  "nutrition.micros": ["profiles"],
+  "nutrition.timeline": ["wakeBeforeWindowMin", "snackAfterWakeMin", "fallbackAwakeMin"],
+  "nutrition.exerciseKcal": ["defaultMet", "historyMinWorkouts", "historyLookbackDays"],
+  "hydration.daily": ["totalWaterL", "beverageShare"],
+  "hydration.exercise": ["maxBodyMassLossPct", "defaultLph", "minLph", "maxLph", "minSessionMin"],
+  "hydration.sweatTest": ["minDurationMin", "maxGainLb", "litersPerKgLost"],
+  "hydration.rehydrate": ["replacePctOfLoss"],
+  "supplements.evidence": ["creatine", "caffeine", "vitaminD"],
 };
 
 const supporting = (r: AnyRule) => r.citations.filter((c) => (c.role ?? "supports") === "supports");
@@ -172,6 +193,57 @@ describe("rules catalog", () => {
       }
       expect(evidenceRank(r.evidence), r.id).toBeGreaterThan(evidenceRank("n-of-1"));
       expect(r.citations.some((c) => !isJohnson(c)), r.id).toBe(true);
+    }
+  });
+
+  it("carb tiers ascend by maxMin and each range is low-to-high", () => {
+    const tiers = RULES["nutrition.carbsByLoad"].params.tiers;
+    expect(tiers.length).toBeGreaterThan(1);
+    for (let i = 1; i < tiers.length; i++) expect(tiers[i].maxMin).toBeGreaterThan(tiers[i - 1].maxMin);
+    for (const t of tiers) expect(t.gPerKg[0]).toBeLessThan(t.gPerKg[1]);
+  });
+
+  it("energy-availability floor is below the target, and the FFM fallback is a fraction", () => {
+    const ea = RULES["nutrition.energyAvailability"].params;
+    expect(ea.floorKcalPerKgFfm).toBeLessThan(ea.targetKcalPerKgFfm);
+    expect(ea.ffmFallbackFraction).toBeGreaterThan(0);
+    expect(ea.ffmFallbackFraction).toBeLessThan(1);
+  });
+
+  it("protein default sits inside its range", () => {
+    const p = RULES["nutrition.protein"].params;
+    expect(p.minGPerKg).toBeLessThanOrEqual(p.gPerKg);
+    expect(p.gPerKg).toBeLessThanOrEqual(p.maxGPerKg);
+  });
+
+  it("hydration rates are ordered and the gain-phase rate is above the minimum", () => {
+    const h = RULES["hydration.exercise"].params;
+    expect(h.minLph).toBeLessThanOrEqual(h.defaultLph);
+    expect(h.defaultLph).toBeLessThanOrEqual(h.maxLph);
+    const g = RULES["nutrition.gainRate"].params;
+    expect(g.minPct).toBeLessThan(g.pctBodyweightPerWeek);
+  });
+
+  it("every micro profile lists every micro nutrient with a positive value, its canonical unit and a kind", () => {
+    const profiles = RULES["nutrition.micros"].params.profiles;
+    expect(Object.keys(profiles).sort()).toEqual(["female_19_30", "female_31_50", "male_19_30", "male_31_50"]);
+    const unitOf = new Map(NUTRIENTS.map((n) => [n.key, n.unit]));
+    const required = [...MICRO_KEYS, "fiber_g"];
+    for (const [name, profile] of Object.entries(profiles)) {
+      expect(Object.keys(profile).sort(), name).toEqual([...required].sort());
+      for (const [key, target] of Object.entries(profile)) {
+        expect(target.value, `${name}.${key}`).toBeGreaterThan(0);
+        expect(target.unit, `${name}.${key}`).toBe(unitOf.get(key as never));
+        expect(["rda", "ai", "upper"], `${name}.${key}`).toContain(target.kind);
+      }
+      expect(profile.sodium_mg.kind, name).toBe("upper");
+    }
+  });
+
+  it("every exercise kind has a default MET", () => {
+    const met = RULES["nutrition.exerciseKcal"].params.defaultMet;
+    for (const k of ["swim", "bike", "run", "strength", "lower_leg", "core", "mobility"] as const) {
+      expect(met[k], k).toBeGreaterThan(0);
     }
   });
 

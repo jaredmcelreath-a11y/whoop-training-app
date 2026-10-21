@@ -133,7 +133,7 @@ Current equipment:
 
 **Gain rate**
 - **The owner's decision: keep the 15 lb target.** The owner understands that some of the gain will be fat, since 15 lb of pure muscle in a year isn't realistic.
-- Aim for the upper part of the sourced rate range (about 0.5% of bodyweight per week, roughly 0.7 lb/week) during the gain phase. Months 7–12 can add a slow remainder if 15 lb isn't reached by then. The cap still holds: race preparation always wins.
+- Aim for the upper part of the sourced rate range (about 0.5% of bodyweight per week) during the gain phase. Months 7–12 can add a slow remainder if 15 lb isn't reached by then. The cap still holds: race preparation always wins.
 - Progress shows honestly how much of the gain is lean versus fat, using rescans.
 - If the weight trend falls below target, raise calories. If it's above, lower them.
 

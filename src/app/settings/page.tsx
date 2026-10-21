@@ -18,6 +18,9 @@ export default function SettingsPage() {
       <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
         <WhoopSection />
       </Suspense>
+      <Link href="/settings/nutrition" className={styles.primary}>
+        Nutrition settings
+      </Link>
     </main>
   );
 }

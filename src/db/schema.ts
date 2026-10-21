@@ -327,3 +327,70 @@ export const recommendationLog = pgTable(
       .nullsNotDistinct(),
   ],
 );
+
+export type NutrientValue = { value: number; unit: string };
+export type SupplementTiming = "morning" | "with_meal" | "pre_workout" | "post_workout" | "evening";
+export type Supplement = { name: string; timing: SupplementTiming };
+
+export const nutritionDays = pgTable("nutrition_days", {
+  localDate: day("local_date").primaryKey(),
+  sentAt: ts("sent_at").notNull(),
+  source: text("source").notNull(),
+  kcal: doublePrecision("kcal"),
+  proteinG: doublePrecision("protein_g"),
+  carbsG: doublePrecision("carbs_g"),
+  fatG: doublePrecision("fat_g"),
+  fiberG: doublePrecision("fiber_g"),
+  waterMl: doublePrecision("water_ml"),
+  micros: jsonb("micros").$type<Record<string, NutrientValue>>().notNull().default({}),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+export const waterEntries = pgTable("water_entries", {
+  id: id(),
+  clientId: uuid("client_id").notNull().unique(),
+  loggedAt: ts("logged_at").notNull(),
+  localDate: day("local_date").notNull(),
+  ml: doublePrecision("ml").notNull(),
+});
+
+export const nutritionSettings = pgTable(
+  "nutrition_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    refProfile: text("ref_profile", {
+      enum: ["male_19_30", "female_19_30", "male_31_50", "female_31_50"],
+    }),
+    mealsPerDay: integer("meals_per_day").notNull().default(4),
+    waterSource: text("water_source", { enum: ["app", "cronometer", "both"] })
+      .notNull()
+      .default("app"),
+    supplements: jsonb("supplements").$type<Supplement[]>().notNull().default([]),
+    gainGoalLb: doublePrecision("gain_goal_lb").notNull().default(15),
+    gainStartWeightLb: doublePrecision("gain_start_weight_lb"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("nutrition_settings_single_row", sql`${t.id} = 1`)],
+);
+
+export const sweatTests = pgTable("sweat_tests", {
+  id: id(),
+  testedOn: day("tested_on").notNull(),
+  preLb: doublePrecision("pre_lb").notNull(),
+  postLb: doublePrecision("post_lb").notNull(),
+  fluidMl: doublePrecision("fluid_ml").notNull(),
+  durationMin: doublePrecision("duration_min").notNull(),
+  kind: text("kind", { enum: ["run", "bike", "swim"] }).notNull(),
+  sweatRateLph: doublePrecision("sweat_rate_lph").notNull(),
+  notes: text("notes"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const energyEstimates = pgTable("energy_estimates", {
+  weekStart: day("week_start").primaryKey(),
+  tdeeKcal: doublePrecision("tdee_kcal").notNull(),
+  confidence: text("confidence", { enum: ["low", "medium", "high"] }).notNull(),
+  method: text("method", { enum: ["initial", "calibrated"] }).notNull(),
+  inputs: jsonb("inputs").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});

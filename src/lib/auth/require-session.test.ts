@@ -21,6 +21,7 @@ const ENV = {
   SESSION_SECRET: "a".repeat(32),
   TOKEN_ENC_KEY: Buffer.alloc(32, 7).toString("base64"),
   CRON_SECRET: "cron",
+  INGEST_TOKEN: "i".repeat(32),
 };
 
 describe("requireSession", () => {
