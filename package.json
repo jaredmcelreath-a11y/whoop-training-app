@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "whoop:backfill": "tsx scripts/whoop-backfill.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.10",

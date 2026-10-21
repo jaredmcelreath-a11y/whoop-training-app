@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 async function readPassword() {
@@ -39,5 +40,17 @@ if (!password) {
   process.exit(1);
 }
 const hash = await bcrypt.hash(password, 12);
-console.error("Note: in .env, escape each $ as \\$ (Next.js expands $vars), or use Vercel env UI as-is.");
-console.log(hash);
+
+if (process.argv.includes("--write-env")) {
+  // Next.js expands $vars in .env, so each $ in the hash must be escaped.
+  const line = `APP_PASSWORD_HASH=${hash.replaceAll("$", "\\$")}`;
+  const env = existsSync(".env") ? readFileSync(".env", "utf8") : "";
+  const next = /^APP_PASSWORD_HASH=.*$/m.test(env)
+    ? env.replace(/^APP_PASSWORD_HASH=.*$/m, () => line)
+    : `${env}${env && !env.endsWith("\n") ? "\n" : ""}${line}\n`;
+  writeFileSync(".env", next, { mode: 0o600 });
+  console.error("Saved APP_PASSWORD_HASH to .env");
+} else {
+  console.error("Note: in .env, escape each $ as \\$ (Next.js expands $vars), or use Vercel env UI as-is.");
+  console.log(hash);
+}
