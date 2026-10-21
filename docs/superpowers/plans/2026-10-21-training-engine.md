@@ -170,7 +170,8 @@ Every number and every change comes from a written rule with a verified citation
   | `volume.endurance` | `{ startHours: 5, peakHours: 11, maxWeeklyIncreasePct: 10 }` | 70.3 coaching ranges (expert/practice); Gabbett 2016 on load spikes |
   | `volume.run` | `{ startMinPerWeek: 45, maxWeeklyIncreasePct: 10, absoluteCapWeeklyIncreasePct: 30 }`; uses walk–run first | Nielsen et al. 2014 (novice runners, >30% increase); Buist et al. 2008 (10% rule RCT, labelled honestly) |
   | `volume.split` | `{ swim: 0.25, bike: 0.45, run: 0.30 }` of endurance hours; run share starts at 0.20 for the first 8 weeks | practice; label it so |
-  | `intensity.distribution` | `{ lowShare: 0.8 }` by time | Seiler 2010; Stöggl & Sperlich 2014 |
+  | `volume.loadCheck` | `{ overPct: 20, weeks: 2 }`: if the weekly strain ratio (that week's summed day strain ÷ the trailing 4-week average) exceeds 1 + overPct/100 for `weeks` weeks in a row, the next week holds at the previous actual instead of increasing | Gabbett 2016 (with an honest caveat that the ACWR evidence is contested); spec §7 "consistently over → ease next week" |
+| `intensity.distribution` | `{ lowShare: 0.8 }` by time | Seiler 2010; Stöggl & Sperlich 2014 |
   | `intensity.zones` | WHOOP-style % of max HR, `{ z1: [0.5,0.6], z2: [0.6,0.7], z3: [0.7,0.8], z4: [0.8,0.9], z5: [0.9,1.0] }` | WHOOP zone definition; ACSM guidelines |
   | `recovery.color` | `{ green: 67, yellow: 34 }` (green ≥ 67, yellow 34–66, red ≤ 33) | WHOOP's published recovery bands |
   | `recovery.yellowScale` | `{ durationFactor: 0.8, dropHighIntensity: true }` | Kiviniemi et al. 2007; Javaloyes et al. 2019 (HRV-guided training) |
@@ -218,9 +219,10 @@ Every number and every change comes from a written rule with a verified citation
     - Phases count backward from the race week.
     - A recovery week falls every `season.recoveryWeek.every` weeks, but never in taper.
     - `gainPhase` covers the weeks from season start up to `min(maxWeeks, buildStart)`.
-  - `weeklyTargets(cal, weekIndex, history: { actualEnduranceMin: number[]; actualRunMin: number[] }): { enduranceMin: number; runMin: number; swimMin: number; bikeMin: number }`
+  - `weeklyTargets(cal, weekIndex, history: { actualEnduranceMin: number[]; actualRunMin: number[]; strainRatio: (number | null)[] }): { enduranceMin: number; runMin: number; swimMin: number; bikeMin: number }`
     - Ramps from `startHours` to `peakHours` across base and build. It holds through peak, and taper applies the factor.
     - The `maxWeeklyIncreasePct` is applied against the **previous week's actual** (from `history`). The ramp never compounds on missed plans.
+    - When the last `volume.loadCheck.weeks` strain ratios all exceed the threshold, the targets hold at the previous actual.
     - Run minutes follow `volume.run`.
     - Swim and bike take the remaining split.
 
@@ -235,6 +237,7 @@ Every number and every change comes from a written rule with a verified citation
   - **Property test:** loop 52 weeks, feeding each week's target back as the "actual". Every week's endurance and run minutes are ≤ previous × (1 + pct/100), and never exceed `peakHours`. (Review Focus 3)
   - When the previous actual was 50% of plan (a missed week), the next target is capped against the *actual*.
   - Recovery weeks are at `volumeFactor` × the surrounding level.
+  - With strain ratios `[1.25, 1.3]` (both over 1.2), the next target equals the previous actual. With `[1.25, 1.1]` it ramps normally.
 - [ ] **Step 2:** Run the tests. Expected: FAIL.
 - [ ] **Step 3:** Implement. Do the date math with `weekStart`-style UTC arithmetic on date strings.
 - [ ] **Step 4:** Run the tests. Expected: PASS.
@@ -324,7 +327,8 @@ Every number and every change comes from a written rule with a verified citation
   - `readiness(d: DayInputs): { color: "green" | "yellow" | "red" | "unknown"; hrvTrend: "low" | "normal" | "high" | "unknown"; rhrElevated: boolean | null; lowStreak: boolean; greenStreak: boolean; sleepDebt: boolean; painHold: { area: string; reason: string } | null; fired: { ruleId: string; inputs: Record<string, unknown> }[] }`
     - The HRV trend is low when `hrvLn7 < mean − swcSd·sd`.
     - It is unknown when the baseline has fewer than `baselineMinDays` days.
-  - `adapt(sessions: PlannedSessionDraft[], r: ReturnType<typeof readiness>): { sessions: (PlannedSessionDraft & { adjusted: boolean; reasons: { ruleId: string; text: string }[] })[] }`
+  - `type AdaptedSession = PlannedSessionDraft & { adjusted: boolean; reasons: { ruleId: string; text: string }[] }`
+  - `adapt(sessions: PlannedSessionDraft[], r: ReturnType<typeof readiness>): { sessions: AdaptedSession[] }`
     - Steps run in the order from Global Constraints:
       1. **Pain hold.** Replace runs with a bike or swim of the same duration at z2. If the day is also red, replace them with mobility.
       2. **Red day.** Swap anything hard to z1 or mobility, capped at `maxMin`.
@@ -333,6 +337,7 @@ Every number and every change comes from a written rule with a verified citation
       5. **Sleep debt.** Mark hard sessions "move later in the week", and add a bedtime note.
     - Strength on a red day becomes "mobility + optional light technique".
     - Unknown data changes nothing and adds the reason "Not enough data yet — following the plan".
+    - A pain-hold reason always ends with "If this keeps up, consider talking to your doctor."
 
 - [ ] **Step 1: Failing tests.**
   - `recoveryScore` 70 gives green, 50 gives yellow, 20 gives red. Null gives unknown and the plan is unchanged with the "Not enough data" reason. (Review Focus 1)
@@ -365,6 +370,7 @@ Every number and every change comes from a written rule with a verified citation
     - ln rMSSD comes from `recoveries.hrv_rmssd_ms`.
     - The baseline window covers the previous 30–60 days, excluding the last 7.
     - Sleep debt is the sum over 3 nights of (need − asleep), where both values exist.
+    - `strainRatio` history (for `ensureWeek`) is each past week's summed `cycles.strain` ÷ the trailing 4-week average. It is null when there are fewer than 4 weeks of data.
   - `ensureWeek(db, weekStart: string, now: Date, tz: string): Promise<void>`
     - Generates the week with `buildWeek` plus `prescribe`, using `lastTime` history, and inserts it. If the week already exists, it does nothing.
     - Past dates are never generated.
