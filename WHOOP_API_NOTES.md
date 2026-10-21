@@ -48,3 +48,13 @@
 - Signature: `base64(HMAC_SHA256(client_secret, X-WHOOP-Signature-Timestamp + rawBody))` must equal `X-WHOOP-Signature`.
 - Failed deliveries are retried 5 times over about 1 hour. A delivery fails on any non-2xx or a timeout, so return 2xx fast and queue the work.
 - Deduplicate on `trace_id`. Deliveries can be missed, so also run a periodic reconciliation pull.
+
+## Checked against real v2 data (2026-10-20)
+- The field names used by `src/lib/whoop/normalize.ts` match the live API. A backfill since 2026-08-01 stored every scored value with no unexpected nulls.
+- **Cycles** include `step_count`, so daily steps ARE available.
+- **Sleep `stage_summary`** includes `total_no_data_time_milli`, `sleep_cycle_count` and `disturbance_count`. **`sleep_needed`** has `baseline_milli` and `need_from_{sleep_debt,recent_strain,recent_nap}_milli`.
+- **Workout `zone_durations`** uses `zone_{zero..five}_milli`.
+- **Workout distance:** `distance_meter` and `altitude_gain_meter` are absent for workouts without GPS (most indoor ones).
+- **Workout `sport_name`:** lowercase slugs (e.g. `running`, `swimming`, `cycling`, `weightlifting_msk`, `activity`).
+- **Current cycle:** the in-progress cycle has `end: null`.
+- **v1 ids:** sleep and workout payloads also carry `v1_id`.
