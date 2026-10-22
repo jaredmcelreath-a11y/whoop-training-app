@@ -430,7 +430,14 @@ export type MicroTarget = { value: number; unit: NutrientUnit; kind: "rda" | "ai
 export type MicroProfileName = "male_19_30" | "female_19_30" | "male_31_50" | "female_31_50";
 type MicroProfile = Record<MicroKey | "fiber_g", MicroTarget>;
 type MicrosParams = { profiles: Record<MicroProfileName, MicroProfile> };
-type TimelineParams = { wakeBeforeWindowMin: number; snackAfterWakeMin: number; fallbackAwakeMin: number };
+type TimelineParams = {
+  wakeBeforeWindowMin: number;
+  snackAfterWakeMin: number;
+  fallbackAwakeMin: number;
+  morningSupplementsAfterWakeMin: number;
+  firstMealAfterWakeMin: number;
+  eveningSupplementsBeforeBedMin: number;
+};
 type ExerciseKind = "swim" | "bike" | "run" | "strength" | "lower_leg" | "core" | "mobility";
 type ExerciseKcalParams = {
   defaultMet: Record<ExerciseKind, number>;
@@ -454,6 +461,7 @@ type MagnesiumParams = { rdaMgMen: { "19-30": number; "31+": number }; ageBands:
 type VitaminK2Params = { aiUgMen: number; interactionFromUg: number };
 type CollagenParams = { peptidesGPerDay: number; gelatinG: Range; vitaminCMg: number; hoursBefore: number; jointPainGPerDay: Range };
 
+type AnchorBedtimeParams = { baselineDays: number; maxEarlierMin: number; minNights: number };
 type SupplementsParams = {
   creatine: { gPerDay: Range };
   caffeine: { mgPerKg: Range; minutesBefore: number };
@@ -810,6 +818,49 @@ export const RULES = deepFreeze({
     citations: [PLEWS_2013, GALPIN_RECOVERY_2023],
     caveat:
       "Galpin waits until a decline lasts more than seven days, then cuts to ~50%. The 3-day trigger and 60% are practice (spec §7), more cautious than that.",
+  }),
+
+  "recovery.anchorBedtime": rule<AnchorBedtimeParams>({
+    id: "recovery.anchorBedtime",
+    area: "recovery",
+    statement:
+      "Keep one steady bedtime: your average WHOOP baseline sleep need over the last 14 days plus your usual time awake in bed, counted back from your wake time. When WHOOP shows extra need from sleep debt or hard training, go to bed up to 30 min earlier, never later. It needs at least 3 scored nights.",
+    why: "Regular sleep times matter for health and training, and enough time in bed covers what you need.",
+    params: { baselineDays: 14, maxEarlierMin: 30, minNights: 3 },
+    evidence: "consensus",
+    citations: [
+      {
+        authors: "Walsh NP, Halson SL, Sargent C, Roach GD, et al.",
+        year: 2021,
+        title: "Sleep and the athlete: narrative review and 2021 expert consensus recommendations",
+        venue: "Br J Sports Med 55(7):356-368",
+        url: "https://doi.org/10.1136/bjsports-2020-102025",
+        doi: "10.1136/bjsports-2020-102025",
+        evidence: "consensus",
+      },
+      {
+        authors: "Windred DP, Burns AC, Lane JM, Saxena R, Rutter MK, Cain SW, Phillips AJK",
+        year: 2024,
+        title: "Sleep regularity is a stronger predictor of mortality risk than sleep duration: A prospective cohort study",
+        venue: "Sleep 47(1):zsad253",
+        url: "https://doi.org/10.1093/sleep/zsad253",
+        doi: "10.1093/sleep/zsad253",
+        evidence: "trial",
+      },
+      {
+        authors: "Watson NF, Badr MS, Belenky G, Bliwise DL, et al.",
+        year: 2015,
+        title:
+          "Recommended Amount of Sleep for a Healthy Adult: A Joint Consensus Statement of the American Academy of Sleep Medicine and Sleep Research Society",
+        venue: "Sleep 38(6):843-4",
+        url: "https://doi.org/10.5665/sleep.4716",
+        doi: "10.5665/sleep.4716",
+        evidence: "consensus",
+        role: "context",
+      },
+    ],
+    caveat:
+      "Walsh 2021 recommends consistent sleep and wake times for athletes; Windred 2024, a large observational cohort, found sleep regularity predicted mortality better than sleep duration (an association, not proof of cause). Watson 2015 (context) sets 7+ h for adults. The 14-day average, the 30-min cap, the 3-night minimum and using WHOOP's average time awake in bed as the buffer are scheduling practice, not studied values. WHOOP's need figures are its own estimates. Not medical advice.",
   }),
 
   "recovery.sleepDebt": rule<SleepDebtParams>({
@@ -1478,11 +1529,18 @@ export const RULES = deepFreeze({
     statement:
       "Wake time defaults to 45 min before the first training window. A pre-session snack is never placed earlier than 10 min after waking; if it would be, it moves there and shrinks to the low end of its carb range. Without a WHOOP sleep need, meals are spread over an assumed 960-min awake day.",
     why: "Leaves time to wake up and eat before training, without planning food before you are up.",
-    params: { wakeBeforeWindowMin: 45, snackAfterWakeMin: 10, fallbackAwakeMin: 960 },
+    params: {
+      wakeBeforeWindowMin: 45,
+      snackAfterWakeMin: 10,
+      fallbackAwakeMin: 960,
+      morningSupplementsAfterWakeMin: 10,
+      firstMealAfterWakeMin: 20,
+      eveningSupplementsBeforeBedMin: 60,
+    },
     evidence: "practice",
     citations: [],
     caveat:
-      "All three values are scheduling practice, not studied numbers. The 960-min awake day only spaces meals when no bedtime can be shown; it is not a sleep recommendation.",
+      "All six values are scheduling practice, not studied numbers. Morning supplements are grouped 10 min after waking, breakfast is 20 min after waking, and evening supplements come 60 min before bed. The 960-min awake day only spaces meals when no bedtime can be shown; it is not a sleep recommendation.",
   }),
 
   "nutrition.exerciseKcal": rule<ExerciseKcalParams>({

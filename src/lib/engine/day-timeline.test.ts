@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ML_PER_FL_OZ } from "@/lib/engine/nutrients";
 import { RULES } from "@/lib/engine/rules/catalog";
-import { buildTimeline, mergeActual, supplementNote, supplementRuleIds, type TimelineInput, type TimelineItem } from "./day-timeline";
+import { anchorBedtime, buildTimeline, mergeActual, supplementNote, supplementRuleIds, type TimelineInput, type TimelineItem } from "./day-timeline";
 
 // All values below are invented test data.
 const TL = RULES["nutrition.timeline"].params;
@@ -120,8 +120,8 @@ describe("buildTimeline", () => {
   it("without a sleep need, meals spread over the catalog's fallback awake day", () => {
     const items = buildTimeline(input({ sleepNeedMin: null, mealsPerDay: 2 }));
     const wake = min(of(items, "wake")[0].time);
-    const start = wake + TL.snackAfterWakeMin;
-    const second = start + (TL.fallbackAwakeMin - TL.snackAfterWakeMin) / 2;
+    const start = wake + TL.firstMealAfterWakeMin;
+    const second = start + (TL.fallbackAwakeMin - TL.firstMealAfterWakeMin) / 2;
     expect(min(of(items, "meal")[1].time)).toBe(Math.round(second / 5) * 5);
   });
 
@@ -351,7 +351,7 @@ describe("buildTimeline", () => {
     }
   });
 
-  it("places supplements by timing: with_meal at the first meal, morning at wake, evening at bedtime", () => {
+  it("places supplements by timing: with_meal at the first meal, morning after waking, evening before bed", () => {
     const items = buildTimeline(
       input({
         supplements: [
@@ -366,8 +366,10 @@ describe("buildTimeline", () => {
     );
     const supp = (name: string) => items.find((i) => i.kind === "supplement" && i.title === name)!;
     expect(supp("Creatine").time).toBe(of(items, "meal")[0].time);
-    expect(supp("Vitamin D").time).toBe(of(items, "wake")[0].time);
-    expect(supp("Magnesium").time).toBe(of(items, "bedtime")[0].time);
+    expect(min(items.find((i) => i.title === "Morning Supplements")!.time)).toBe(
+      min(of(items, "wake")[0].time) + TL.morningSupplementsAfterWakeMin,
+    );
+    expect(min(supp("Magnesium").time)).toBe(min(of(items, "bedtime")[0].time) - TL.eveningSupplementsBeforeBedMin);
     expect(min(supp("Caffeine").time)).toBe(min("12:00") - RULES["supplements.evidence"].params.caffeine.minutesBefore);
     expect(min(supp("Whey").time)).toBe(min("12:00") + 90);
     expect(supp("Creatine").ruleIds).toEqual(["supplements.evidence", "supplements.creatineBrain"]);
@@ -533,5 +535,91 @@ describe("creatineBrain rule caveat stays within its sources", () => {
     expect(caveat).not.toMatch(/Kreider/);
     expect(caveat).toMatch(/Antonio 2021/);
     expect(caveat).toMatch(/clinical/i);
+  });
+});
+
+describe("morning supplements", () => {
+  const items = buildTimeline(
+    input({
+      wakeTime: "07:00",
+      supplements: [
+        { name: "Creatine", timing: "morning", amount: "5 g" },
+        { name: "Vitamin D3+K2", timing: "morning" },
+        { name: "Collagen Peptides", timing: "morning" },
+        { name: "Magnesium", timing: "evening" },
+      ],
+    }),
+  );
+  const morning = items.filter((i) => i.kind === "supplement" && i.title === "Morning Supplements");
+
+  it("merge into one item, 10 min after waking", () => {
+    expect(morning).toHaveLength(1);
+    expect(morning[0].time).toBe("07:10");
+  });
+
+  it("list each supplement with its amount, and link every rule once", () => {
+    expect(morning[0].detail).toContain("Creatine (5 g)");
+    expect(morning[0].detail).toContain("Vitamin D3+K2");
+    expect(morning[0].detail).toContain("Collagen Peptides");
+    expect(morning[0].ruleIds).toEqual([
+      "supplements.evidence",
+      "supplements.creatineBrain",
+      "supplements.vitaminK2",
+      "supplements.collagen",
+    ]);
+  });
+
+  it("leave supplements at other times as their own items", () => {
+    expect(items.some((i) => i.kind === "supplement" && i.title === "Magnesium")).toBe(true);
+    expect(items.some((i) => i.kind === "supplement" && i.title === "Creatine")).toBe(false);
+  });
+});
+
+describe("breakfast and evening supplement timing", () => {
+  const items = buildTimeline(
+    input({
+      wakeTime: "07:00",
+      sessions: [],
+      sleepNeedMin: 480,
+      supplements: [{ name: "Magnesium Glycinate", timing: "evening" }],
+    }),
+  );
+
+  it("puts breakfast 20 min after waking", () => {
+    expect(of(items, "meal")[0].time).toBe("07:20");
+  });
+
+  it("puts evening supplements an hour before bedtime", () => {
+    const bed = min(of(items, "bedtime")[0].time);
+    const mag = items.find((i) => i.kind === "supplement" && i.title === "Magnesium Glycinate")!;
+    expect(min(mag.time)).toBe(bed - TL.eveningSupplementsBeforeBedMin);
+    expect(TL.eveningSupplementsBeforeBedMin).toBe(60);
+    expect(mag.detail).toMatch(/hour before bed/i);
+  });
+});
+
+describe("anchor bedtime", () => {
+  const A = RULES["recovery.anchorBedtime"].params;
+
+  it("is the average baseline need plus time awake in bed, moved earlier for extra need up to the cap", () => {
+    expect(anchorBedtime({ baselineMin: 480, bufferMin: 30, extraMin: 0 })).toEqual({ inBedMin: 510, earlierMin: 0 });
+    expect(anchorBedtime({ baselineMin: 480, bufferMin: 30, extraMin: 20 })).toEqual({ inBedMin: 530, earlierMin: 20 });
+    expect(anchorBedtime({ baselineMin: 480, bufferMin: 30, extraMin: 200 })).toEqual({ inBedMin: 510 + A.maxEarlierMin, earlierMin: A.maxEarlierMin });
+  });
+
+  it("never moves later than the anchor", () => {
+    expect(anchorBedtime({ baselineMin: 480, bufferMin: 30, extraMin: -45 }).earlierMin).toBe(0);
+  });
+
+  it("drives the timeline's bedtime, rounded to 5 min, and says when it moved earlier", () => {
+    const steady = buildTimeline(input({ wakeTime: "07:00", sleepNeedMin: 600, bedtime: { inBedMin: 510, earlierMin: 0 } }));
+    const bed = of(steady, "bedtime")[0];
+    expect(bed.time).toBe("22:30");
+    expect(bed.detail).toMatch(/steady bedtime/i);
+    expect(bed.ruleIds).toEqual(["recovery.anchorBedtime", "recovery.sleepDebt"]);
+
+    const earlier = of(buildTimeline(input({ wakeTime: "07:00", bedtime: { inBedMin: 532, earlierMin: 22 } })), "bedtime")[0];
+    expect(earlier.time).toBe("22:10");
+    expect(earlier.detail).toMatch(/22 min earlier/);
   });
 });

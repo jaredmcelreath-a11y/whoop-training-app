@@ -5,14 +5,15 @@ import { Icon } from "@/components/icon";
 import { TabBar } from "@/components/tab-bar";
 import { Cap, Card, StatChip } from "@/components/ui/ui";
 import { AppPage } from "@/components/ui/app-page";
+import { clock12, withClock12 } from "@/lib/ui/clock";
 import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex } from "./day-style";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
-import { buildTimeline, mergeActual, supplementNote, supplementRuleIds } from "@/lib/engine/day-timeline";
+import { anchorBedtime, buildTimeline, mergeActual, supplementNote, supplementRuleIds } from "@/lib/engine/day-timeline";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { getEnv } from "@/lib/env";
 import { addDays, localDate } from "@/lib/log/dates";
-import { actualWorkouts, latestSleepNeedMin, parseDateParam, withDuringFluid } from "@/lib/nutrition/day-view";
+import { actualWorkouts, latestSleepNeedMin, parseDateParam, sleepAnchorInputs, withDuringFluid } from "@/lib/nutrition/day-view";
 import { mlToOz } from "@/lib/nutrition/fuel-view";
 import { getDayNutrition } from "@/lib/nutrition/service";
 import { getNutritionSettings } from "@/lib/nutrition/settings";
@@ -58,6 +59,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
   const ps = await getPlanSettings(db, now, tz);
   const ns = await getNutritionSettings(db);
   const sleepNeedMin = await latestSleepNeedMin(db, date, tz);
+  const anchorIn = await sleepAnchorInputs(db, date, tz);
   const kg = n.weight?.kg ?? null;
 
   const planned = buildTimeline({
@@ -70,6 +72,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
     weightKg: kg,
     sleepNeedMin,
     wakeTime: ps.wakeTime ?? undefined,
+    bedtime: anchorIn ? anchorBedtime(anchorIn) : undefined,
   });
   // Real workouts sit at their actual start: a planned one moves there, others are added.
   const items = mergeActual(planned, await actualWorkouts(db, date, tz));
@@ -126,7 +129,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
       <ol className={styles.timeline}>
         {items.map((it, i) => (
           <li key={`${it.time}-${it.kind}-${i}`} className={styles.item}>
-            <span className={styles.time}>{it.time}</span>
+            <span className={styles.time}>{clock12(it.time)}</span>
             <Card hot={i === next} className={styles.body}>
               <div className={styles.edge} data-edge={EDGE_FOR_KIND[it.kind]} aria-hidden="true" />
               {i === next ? <Cap>Up Next</Cap> : null}
@@ -134,7 +137,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
                 <Icon name={ICON_FOR_ITEM[it.kind]} size={16} className={styles.itemIcon} />
                 <span className={styles.itemTitle}>{displayTitle(it)}</span>
               </div>
-              <p className={styles.detail}>{it.detail}</p>
+              <p className={styles.detail}>{withClock12(it.detail)}</p>
               <details className={styles.why}>
                 <summary className={styles.whySummary}>Why</summary>
                 <ul className={styles.whyList}>

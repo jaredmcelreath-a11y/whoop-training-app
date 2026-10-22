@@ -51,7 +51,7 @@ const REQUIRED: Record<string, string[]> = {
   "nutrition.preWorkout": ["minSessionMin", "carbsGPerKg", "hoursBefore", "swimNoHeavyMealMin"],
   "nutrition.postWorkout": ["withinHours", "carbsGPerKg", "proteinGPerKg"],
   "nutrition.micros": ["profiles"],
-  "nutrition.timeline": ["wakeBeforeWindowMin", "snackAfterWakeMin", "fallbackAwakeMin"],
+  "nutrition.timeline": ["wakeBeforeWindowMin", "snackAfterWakeMin", "fallbackAwakeMin", "morningSupplementsAfterWakeMin", "firstMealAfterWakeMin", "eveningSupplementsBeforeBedMin"],
   "nutrition.exerciseKcal": ["defaultMet", "historyMinWorkouts", "historyLookbackDays"],
   "hydration.daily": ["totalWaterL", "beverageShare"],
   "hydration.exercise": ["maxBodyMassLossPct", "defaultLph", "minLph", "maxLph", "minSessionMin"],

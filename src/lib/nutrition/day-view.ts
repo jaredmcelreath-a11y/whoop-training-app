@@ -1,5 +1,6 @@
 /** Day tab readers and helpers (kept out of the pure engine). */
 import { and, asc, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
+import { RULES } from "@/lib/engine/rules/catalog";
 import type { Db } from "@/db/client";
 import { cardioEntries, sleeps, strengthSessions, workouts } from "@/db/schema";
 import type { ActualWorkout } from "@/lib/engine/day-timeline";
@@ -58,6 +59,36 @@ export async function latestSleepNeedMin(db: Db, date: string, tz: string): Prom
   if (!s || typeof s.needBaselineMin !== "number" || !(s.needBaselineMin > 0)) return null;
   const need = s.needBaselineMin + num(s.needDebtMin) + num(s.needStrainMin) - Math.abs(num(s.needNapMin));
   return need > 0 ? need : null;
+}
+
+/**
+ * Inputs for the steady bedtime (recovery.anchorBedtime): the average WHOOP baseline need and
+ * time awake in bed over scored, non-nap sleeps that ended in the baselineDays before the end of
+ * `date`, plus last night's extra need (debt + strain − nap). Null with fewer than minNights.
+ */
+export async function sleepAnchorInputs(
+  db: Db,
+  date: string,
+  tz: string,
+): Promise<{ baselineMin: number; bufferMin: number; extraMin: number } | null> {
+  const A = RULES["recovery.anchorBedtime"].params;
+  const endOfDay = new Date(zonedLocalToUtc(`${addDays(date, 1)}T00:00`, tz));
+  const since = new Date(zonedLocalToUtc(`${addDays(date, -A.baselineDays + 1)}T00:00`, tz));
+  const rows = (
+    await db
+      .select()
+      .from(sleeps)
+      .where(and(eq(sleeps.nap, false), eq(sleeps.scoreState, SCORED), lt(sleeps.end, endOfDay), gte(sleeps.end, since)))
+      .orderBy(desc(sleeps.end))
+  ).filter((r) => typeof r.needBaselineMin === "number" && r.needBaselineMin > 0);
+  if (rows.length < A.minNights) return null;
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const last = rows[0];
+  return {
+    baselineMin: Math.round(mean(rows.map((r) => r.needBaselineMin as number))),
+    bufferMin: Math.round(mean(rows.map((r) => num(r.awakeMin)))),
+    extraMin: Math.round(num(last.needDebtMin) + num(last.needStrainMin) - Math.abs(num(last.needNapMin))),
+  };
 }
 
 const CARDIO_TITLE = { run: "Run", bike: "Bike", swim: "Swim" } as const;

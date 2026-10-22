@@ -59,6 +59,8 @@ export type TimelineInput = {
   proteinG: number | null;
   carbsG: number | null;
   weightKg: number | null;
+  /** A steady bedtime from recovery.anchorBedtime (time in bed, min); used instead of sleepNeedMin when given. */
+  bedtime?: { inBedMin: number; earlierMin: number };
   /** WHOOP sleep need (min); null means no bedtime item. */
   sleepNeedMin: number | null;
   wakeTime?: string;
@@ -247,9 +249,25 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
     groups.push({ start, end: cursor, titles: ss.map((s) => s.title), swim, fuel, zoneStart });
   });
 
-  // Bedtime.
-  const bed = known(i.sleepNeedMin) ? wake + MIN_PER_DAY - i.sleepNeedMin : null;
-  if (bed !== null) {
+  // Bedtime: the steady anchor when there is enough sleep history, else last night's WHOOP need.
+  const anchor = i.bedtime && known(i.bedtime.inBedMin) && i.bedtime.inBedMin > 0 ? i.bedtime : null;
+  const bed = anchor
+    ? round5(wake + MIN_PER_DAY - anchor.inBedMin)
+    : known(i.sleepNeedMin)
+      ? wake + MIN_PER_DAY - i.sleepNeedMin
+      : null;
+  if (bed !== null && anchor) {
+    drafts.push({
+      at: bed,
+      kind: "bedtime",
+      title: "Bedtime",
+      detail:
+        anchor.earlierMin > 0
+          ? `${anchor.earlierMin} min earlier than your steady bedtime: WHOOP shows extra sleep need tonight.`
+          : "Your steady bedtime, from your average WHOOP sleep need and time awake in bed.",
+      ruleIds: ["recovery.anchorBedtime", "recovery.sleepDebt"],
+    });
+  } else if (bed !== null) {
     drafts.push({
       at: bed,
       kind: "bedtime",
@@ -287,7 +305,9 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
   // Meal slots.
   const n = Math.max(1, Math.floor(i.mealsPerDay));
   const dayEnd = bed ?? wake + TL.fallbackAwakeMin;
-  const spacing = (dayEnd - earliestFood) / n;
+  // Breakfast comes a little after waking; the rest spread evenly to bedtime.
+  const firstMealAt = wake + TL.firstMealAfterWakeMin;
+  const spacing = (dayEnd - firstMealAt) / n;
   const latestMeal = bed !== null ? bed - TL.snackAfterWakeMin : null;
   const zoneAt = (at: number, swimOnly = false) => groups.find((x) => (!swimOnly || x.swim) && at >= x.zoneStart && at < x.end);
   /**
@@ -317,7 +337,7 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
   const meals: MealSlot[] = [];
   let leftOut = 0;
   for (let k = 0; k < n; k++) {
-    const r = relocate(round5(earliestFood + k * spacing));
+    const r = relocate(round5(firstMealAt + k * spacing));
     if (!r.kept) {
       meals.push({ at: r.at, moved: r.moved, early: null });
       continue;
@@ -443,14 +463,26 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
   const bedDraft = drafts.find((d) => d.kind === "bedtime");
   const g0 = groups[0];
   const supps: Draft[] = [];
+  // Morning supplements share one item shortly after waking, so the timeline stays short.
+  const morning = i.supplements.filter((s) => s.timing === "morning");
+  if (morning.length) {
+    const names = morning.map((s) => (s.amount ? `${s.name} (${s.amount})` : s.name));
+    const ids = [...new Set(morning.flatMap((s) => supplementRuleIds(s.name)))];
+    supps.push({
+      at: wake + TL.morningSupplementsAfterWakeMin,
+      kind: "supplement",
+      title: "Morning Supplements",
+      detail: `${names.join(", ")}. Evidence notes are in Supplements below.`,
+      ruleIds: ids.length ? ids : ["supplements.evidence"],
+    });
+  }
+
   for (const s of i.supplements) {
     let at: number | null = null;
     let detail = "";
     switch (s.timing) {
       case "morning":
-        at = wake;
-        detail = "In the morning.";
-        break;
+        continue; // placed above as one item
       case "with_meal":
         at = firstMeal?.at ?? null;
         detail = "With a meal.";
@@ -468,8 +500,8 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
         }
         break;
       case "evening":
-        at = bedDraft?.at ?? lastMeal?.at ?? null;
-        detail = bedDraft ? "At bedtime." : "In the evening.";
+        at = bedDraft ? bedDraft.at - TL.eveningSupplementsBeforeBedMin : (lastMeal?.at ?? null);
+        detail = bedDraft ? "An hour before bed." : "In the evening.";
         break;
     }
     if (at === null) continue;
@@ -549,4 +581,14 @@ export function mergeActual(items: readonly TimelineItem[], actual: readonly Act
     }
   }
   return placed.sort((a, b) => a.at - b.at).map((p) => p.item);
+}
+
+/**
+ * Time in bed for a steady bedtime (recovery.anchorBedtime): the average baseline need plus the
+ * usual time awake in bed, plus tonight's extra need capped at maxEarlierMin. Never moves later.
+ */
+export function anchorBedtime(i: { baselineMin: number; bufferMin: number; extraMin: number }): { inBedMin: number; earlierMin: number } {
+  const A = RULES["recovery.anchorBedtime"].params;
+  const earlierMin = Math.round(Math.min(Math.max(i.extraMin, 0), A.maxEarlierMin));
+  return { inBedMin: Math.round(i.baselineMin + i.bufferMin) + earlierMin, earlierMin };
 }

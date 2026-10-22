@@ -779,6 +779,15 @@ The app's drink baseline is `totalWaterL × beverageShare`.
 - **Galpin 2023** (expert, supports): "about 125%".
 - **Shirreffs SM, Taylor AJ, Leiper JB, Maughan RJ (1996).** *Med Sci Sports Exerc* 28(10):1260-71. https://doi.org/10.1097/00005768-199610000-00009 (trial, 12 men, **context**). A drink volume larger than the sweat loss restores balance only if it contains enough sodium.
 
+## recovery.anchorBedtime
+
+**Params:** `{ baselineDays: 14, maxEarlierMin: 30, minNights: 3 }`. **Evidence:** consensus.
+
+- **Walsh NP, Halson SL, Sargent C, et al. (2021).** Sleep and the athlete: 2021 expert consensus recommendations. *Br J Sports Med* 55(7):356-368. https://doi.org/10.1136/bjsports-2020-102025 (consensus). Recommends consistent sleep and wake times.
+- **Windred DP, Burns AC, Lane JM, et al. (2024).** *Sleep* 47(1):zsad253. https://doi.org/10.1093/sleep/zsad253 (observational cohort). Sleep regularity predicted mortality better than sleep duration.
+- Context: Watson 2015 (*Sleep*, 10.5665/sleep.4716), 7+ h for adults.
+- The 14-day window, 30-min cap, 3-night minimum and using WHOOP's average time awake in bed as the buffer are scheduling practice.
+
 ## supplements.evidence
 
 **Params:** `{ creatine: { gPerDay: [3, 5] }, caffeine: { mgPerKg: [3, 6], minutesBefore: 60 }, vitaminD: { labGuided: true, rdaUg: 15, ulUg: 100 } }`. **Evidence:** consensus.

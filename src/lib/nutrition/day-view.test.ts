@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { sleeps } from "@/db/schema";
-import { latestSleepNeedMin, parseDateParam, withDuringFluid } from "./day-view";
+import { latestSleepNeedMin, parseDateParam, sleepAnchorInputs, withDuringFluid } from "./day-view";
 
 // All values below are invented test data.
 const TZ = "America/Chicago";
@@ -82,5 +82,38 @@ describe("withDuringFluid", () => {
   });
   it("leaves sessions alone when there is nothing to drink", () => {
     expect(withDuringFluid([s("Swim")], [])).toEqual([s("Swim")]);
+  });
+});
+
+describe("sleepAnchorInputs", () => {
+  const TZ2 = "America/Chicago";
+  async function night(id: string, endUtc: string, baseline: number, awake: number, debt = 0, strain = 0, nap = 0) {
+    const end = new Date(endUtc);
+    await db.insert(sleeps).values({
+      id,
+      start: new Date(end.getTime() - 8 * 3600_000),
+      end,
+      timezoneOffset: "-06:00",
+      nap: false,
+      scoreState: "SCORED",
+      awakeMin: awake,
+      needBaselineMin: baseline,
+      needDebtMin: debt,
+      needStrainMin: strain,
+      needNapMin: nap,
+    });
+  }
+
+  it("is null with fewer than the minimum nights", async () => {
+    await night("a", "2026-03-04T13:00:00Z", 480, 30);
+    expect(await sleepAnchorInputs(db, "2026-03-05", TZ2)).toBeNull();
+  });
+
+  it("averages baseline need and time awake in bed over recent nights; extra need comes from last night", async () => {
+    await night("a", "2026-03-02T13:00:00Z", 470, 20);
+    await night("b", "2026-03-03T13:00:00Z", 480, 30);
+    await night("c", "2026-03-05T13:00:00Z", 490, 40, 25, 10, -5);
+    await night("old", "2026-02-01T13:00:00Z", 900, 300); // outside the window
+    expect(await sleepAnchorInputs(db, "2026-03-05", TZ2)).toEqual({ baselineMin: 480, bufferMin: 30, extraMin: 30 });
   });
 });
