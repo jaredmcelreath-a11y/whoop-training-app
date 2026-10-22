@@ -802,3 +802,9 @@ details[open] > .summary::after {
   composes: badge;
   color: var(--sub);
 }
+
+.countdownDate {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--sub);
+}

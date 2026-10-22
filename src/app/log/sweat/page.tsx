@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -24,7 +24,7 @@ const SPORTS = [
 export default function SweatPage() {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -34,7 +34,7 @@ export default function SweatPage() {
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <SweatContent />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

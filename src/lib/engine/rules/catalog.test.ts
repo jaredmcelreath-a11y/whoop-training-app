@@ -90,6 +90,10 @@ function textNumbers(text: string): number[] {
 const TEXT_NUMBER_ALLOWLIST: Record<string, number[]> = {
   // yellow is 34–66 and red ≤33: the band edges are green − 1 and yellow − 1.
   "recovery.color": [66, 33],
+  // "Omega-3" is the nutrient's name, not a dose.
+  "supplements.omega3": [3],
+  // "K2" is the vitamin's form, not a number.
+  "supplements.vitaminK2": [2],
 };
 
 const isJohnson = (c: { authors: string; url: string }) =>

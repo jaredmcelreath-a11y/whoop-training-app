@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ML_PER_FL_OZ } from "@/lib/engine/nutrients";
 import { RULES } from "@/lib/engine/rules/catalog";
-import { buildTimeline, supplementNote, type TimelineInput, type TimelineItem } from "./day-timeline";
+import { buildTimeline, mergeActual, supplementNote, supplementRuleIds, type TimelineInput, type TimelineItem } from "./day-timeline";
 
 // All values below are invented test data.
 const TL = RULES["nutrition.timeline"].params;
@@ -370,7 +370,7 @@ describe("buildTimeline", () => {
     expect(supp("Magnesium").time).toBe(of(items, "bedtime")[0].time);
     expect(min(supp("Caffeine").time)).toBe(min("12:00") - RULES["supplements.evidence"].params.caffeine.minutesBefore);
     expect(min(supp("Whey").time)).toBe(min("12:00") + 90);
-    expect(supp("Creatine").ruleIds).toEqual(["supplements.evidence"]);
+    expect(supp("Creatine").ruleIds).toEqual(["supplements.evidence", "supplements.creatineBrain"]);
   });
 
   it("pre- and post-workout supplements are skipped on a day with no sessions", () => {
@@ -394,6 +394,144 @@ describe("supplementNote", () => {
     expect(supplementNote("Creatine monohydrate", 70)).toContain(`${s.creatine.gPerDay[0]}-${s.creatine.gPerDay[1]} g a day`);
     expect(supplementNote("caffeine", 70)).toContain(`${s.caffeine.mgPerKg[0] * 70}-${s.caffeine.mgPerKg[1] * 70} mg`);
     expect(supplementNote("Vitamin D3", null)).toContain(`${s.vitaminD.ulUg}`);
-    expect(supplementNote("Fish oil", 70)).toBeNull();
+    expect(supplementNote("Ashwagandha", 70)).toBeNull();
+  });
+});
+
+describe("supplement evidence for every supplement", () => {
+  const B = RULES["supplements.creatineBrain"].params;
+  const O = RULES["supplements.omega3"].params;
+  const M = RULES["supplements.magnesium"].params;
+  const K = RULES["supplements.vitaminK2"].params;
+  const C = RULES["supplements.collagen"].params;
+
+  it("recognizes the usual names and spellings", () => {
+    for (const n of ["Omega-3", "fish oil", "EPA/DHA"]) expect(supplementNote(n, 70), n).toContain(`${O.safeUpToG} g`);
+    for (const n of ["Magnesium Glycinate", "Mg glycinate"]) expect(supplementNote(n, 70), n).toContain(`${M.supplementUlMg} mg`);
+    for (const n of ["Collagen Peptides", "Collegen", "gelatin"]) expect(supplementNote(n, 70), n).toContain(`${C.peptidesGPerDay} g`);
+    expect(supplementNote("Vitamin K2", 70)).toContain(`${K.aiUgMen} µg`);
+  });
+
+  it("gives both the vitamin D and K2 notes for a D3+K2 combo", () => {
+    const note = supplementNote("Vitamin D3+K2", 70)!;
+    expect(note).toContain(`${RULES["supplements.evidence"].params.vitaminD.ulUg} µg`);
+    expect(note).toContain(`${K.aiUgMen} µg`);
+  });
+
+  it("explains a creatine amount above the muscle dose with the brain research, and the dose split", () => {
+    const note = supplementNote("Creatine", 70, "10 g")!;
+    expect(note).toContain(`${B.studiedGPerDay[0]}-${B.studiedGPerDay[1]} g`);
+    expect(note).toContain(`${B.splitDoses} × ${B.splitDoseG} g`);
+  });
+
+  it("never endorses an amount above every sourced range", () => {
+    expect(supplementNote("Creatine", 70, "30 g")).toMatch(/above every dose/i);
+    expect(supplementNote("Fish oil", 70, "8 g")).toMatch(/above every dose/i);
+    expect(supplementNote("Magnesium", 70, "600 mg")).toMatch(/above/i);
+  });
+
+  it("links each supplement to its own rule", () => {
+    expect(supplementRuleIds("Collegen")).toEqual(["supplements.collagen"]);
+    expect(supplementRuleIds("Vitamin D3+K2")).toEqual(["supplements.evidence", "supplements.vitaminK2"]);
+    expect(supplementRuleIds("Creatine")).toEqual(["supplements.evidence", "supplements.creatineBrain"]);
+    expect(supplementRuleIds("Ashwagandha")).toEqual([]);
+  });
+});
+
+describe("buildTimeline with a set wake time", () => {
+  it("starts the day at the wake time and keeps items in order, even after the first window opens", () => {
+    const items = buildTimeline(input({ wakeTime: "07:00" }));
+    const wake = items.find((it) => it.kind === "wake")!;
+    expect(wake.time).toBe("07:00");
+    const mins = items.map((it) => min(it.time));
+    for (let i = 1; i < mins.length; i++) {
+      if (mins[i] < mins[i - 1]) expect(items[i].kind, `item ${i} goes backwards`).toBe("bedtime");
+    }
+  });
+});
+
+describe("mergeActual (real workouts on the timeline)", () => {
+  const it2 = (time: string, kind: TimelineItem["kind"], title: string, sport?: string): TimelineItem => ({
+    time,
+    kind,
+    title,
+    detail: kind === "session" ? "40 min" : "",
+    ruleIds: kind === "session" ? ["week.template"] : [],
+    ...(sport ? { sport } : {}),
+  });
+  const day = [it2("06:15", "wake", "Wake"), it2("07:00", "session", "Easy run", "run"), it2("12:30", "meal", "Lunch"), it2("22:15", "bedtime", "Bedtime")];
+
+  it("moves a matching planned session to its real start, marked done, without a duplicate", () => {
+    const out = mergeActual(day, [{ startHHMM: "17:40", sport: "run", title: "Running", durationMin: 35, source: "whoop" }]);
+    const runs = out.filter((x) => x.kind === "session");
+    expect(runs).toHaveLength(1);
+    expect(runs[0].time).toBe("17:40");
+    expect(runs[0].title).toBe("Easy run");
+    expect(runs[0].detail).toContain("Done at 17:40");
+    expect(runs[0].ruleIds).toEqual(["week.template"]);
+    expect(out.map((x) => x.time)).toEqual(["06:15", "12:30", "17:40", "22:15"]);
+  });
+
+  it("adds a workout with no planned match as its own item", () => {
+    const out = mergeActual(day, [{ startHHMM: "18:00", sport: "strength", title: "weightlifting", durationMin: 50, source: "whoop" }]);
+    const added = out.find((x) => x.time === "18:00")!;
+    expect(added.kind).toBe("session");
+    expect(added.title).toBe("Weightlifting");
+    expect(added.detail).toBe("From WHOOP · 50 min");
+    expect(added.ruleIds).toEqual([]);
+    expect(out.filter((x) => x.kind === "session")).toHaveLength(2);
+  });
+
+  it("pairs two runs with two planned runs in order", () => {
+    const two = [it2("06:00", "session", "Run A", "run"), it2("12:00", "session", "Run B", "run")];
+    const out = mergeActual(two, [
+      { startHHMM: "06:30", sport: "run", title: "Running", durationMin: 30, source: "app" },
+      { startHHMM: "17:00", sport: "run", title: "Running", durationMin: 30, source: "app" },
+    ]);
+    expect(out.map((x) => `${x.time} ${x.title}`)).toEqual(["06:30 Run A", "17:00 Run B"]);
+  });
+
+  it("adds a workout of unknown sport, and logged-in-app workouts say so", () => {
+    const out = mergeActual(day, [{ startHHMM: "09:00", sport: null, title: "Workout", durationMin: 20, source: "app" }]);
+    expect(out.find((x) => x.time === "09:00")?.detail).toBe("Logged · 20 min");
+  });
+
+  it("nudges a workout that lands on another item's minute", () => {
+    const out = mergeActual(day, [{ startHHMM: "12:30", sport: "bike", title: "Cycling", durationMin: 30, source: "whoop" }]);
+    expect(out.find((x) => x.title === "Cycling")?.time).toBe("12:35");
+  });
+});
+
+describe("supplement notes: review fixes", () => {
+  it("doesn't read a dose unit in a name as magnesium", () => {
+    expect(supplementNote("Zinc 15 mg", 70)).toBeNull();
+    expect(supplementNote("Vitamin C 500 mg", 70)).toBeNull();
+    expect(supplementNote("Caffeine 200 mg", 70)).not.toMatch(/Magnesium/);
+    expect(supplementRuleIds("Zinc 15 mg")).toEqual([]);
+    expect(supplementNote("Mg glycinate", 70)).toMatch(/Magnesium/);
+    expect(supplementNote("Mg", 70)).toMatch(/Magnesium/);
+  });
+
+  it("says to split into doses of 5 g or less, never implying a lower total", () => {
+    const B = RULES["supplements.creatineBrain"].params;
+    const note = supplementNote("Creatine", 70, "15 g")!;
+    expect(note).toContain(`${B.splitDoseG} g or less`);
+    expect(note).not.toMatch(/Split it as 2 × 5 g\./);
+  });
+
+  it("flags a collagen amount above the sourced range, and reads amounts with thousands separators", () => {
+    expect(supplementNote("Collagen Peptides", 70, "25 g")).toMatch(/above every dose/i);
+    expect(supplementNote("Collagen Peptides", 70, "10 g")).not.toMatch(/above every dose/i);
+    expect(supplementNote("Fish oil", 70, "6,000 mg")).toMatch(/above every dose/i);
+  });
+});
+
+describe("creatineBrain rule caveat stays within its sources", () => {
+  const caveat = RULES["supplements.creatineBrain"].caveat;
+  it("makes no vegetarian claim and cites the safety source the rule carries", () => {
+    expect(caveat).not.toMatch(/vegetarian/i);
+    expect(caveat).not.toMatch(/Kreider/);
+    expect(caveat).toMatch(/Antonio 2021/);
+    expect(caveat).toMatch(/clinical/i);
   });
 });

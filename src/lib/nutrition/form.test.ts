@@ -16,6 +16,24 @@ const BASE: [string, string][] = [
 ];
 
 describe("nutritionPatchFromForm", () => {
+  it("keeps a supplement's amount, and leaves it out when blank", () => {
+    const res = nutritionPatchFromForm(
+      fd([
+        ...BASE,
+        ["supplementName", "Invented Powder"],
+        ["supplementTiming", "morning"],
+        ["supplementAmount", " 10 g "],
+        ["supplementName", "Mineral Z"],
+        ["supplementTiming", "evening"],
+        ["supplementAmount", ""],
+      ]),
+    );
+    expect(res.ok && res.patch.supplements).toEqual([
+      { name: "Invented Powder", timing: "morning", amount: "10 g" },
+      { name: "Mineral Z", timing: "evening" },
+    ]);
+  });
+
   it("parses numbers and supplement rows, dropping empty ones", () => {
     const res = nutritionPatchFromForm(
       fd([

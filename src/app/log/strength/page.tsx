@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
@@ -17,7 +17,7 @@ import styles from "./strength.module.css";
 export default function StrengthPage() {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={styles.header}>
           <Link href="/log" className={styles.back}>
             ‹ Log
@@ -27,7 +27,7 @@ export default function StrengthPage() {
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <Sessions />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

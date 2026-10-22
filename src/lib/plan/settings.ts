@@ -13,6 +13,8 @@ export type PlanSettings = {
   restDow: number;
   jointStatus: "unrestricted" | "caution" | "restricted";
   poolLengthM: number;
+  /** "HH:MM", or null to derive wake from the first training window. */
+  wakeTime: string | null;
 };
 
 export const DEFAULT_RACE_DATE = "2027-10-17";
@@ -52,6 +54,7 @@ export const PlanSettingsInput = z
     restDow: dow,
     jointStatus: z.enum(["unrestricted", "caution", "restricted"]),
     poolLengthM: z.number().positive(),
+    wakeTime: hhmm.nullable().optional(),
   })
   .superRefine((v, ctx) => {
     const weeks = daysBetween(v.seasonStart, v.raceDate) / DAYS_PER_WEEK;
@@ -95,6 +98,7 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     restDow: r.restDow,
     jointStatus: r.jointStatus,
     poolLengthM: r.poolLengthM,
+    wakeTime: r.wakeTime ?? null,
   };
 }
 
@@ -130,7 +134,7 @@ export async function updatePlanSettings(
   }
   const [updated] = await db
     .update(planSettings)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, wakeTime: parsed.data.wakeTime ?? null, updatedAt: new Date() })
     .where(eq(planSettings.id, 1))
     .returning();
   return toSettings(updated);

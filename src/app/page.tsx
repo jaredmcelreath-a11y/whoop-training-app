@@ -69,12 +69,12 @@ async function TodayContent() {
       </p>
       <div className={styles.chips}>
         <SleepChip t={t} />
-        <HrvChip t={t} />
+        <StrainChip t={t} />
         <WeightChip t={t} />
       </div>
       <TodayTraining db={db} now={now} tz={tz} />
       <TodayFuel db={db} now={now} tz={tz} />
-      <StrainCard t={t} />
+      <HrvCard t={t} />
       <p className={styles.sync}>
         {t.lastSyncedAt ? `Last synced ${formatDateTime(t.lastSyncedAt, tz)}` : "Not synced yet"}
         {syncFailed ? <span className={styles.syncFailed}> · Sync failed</span> : null}
@@ -110,15 +110,10 @@ function SleepChip({ t }: { t: TodaySummary }) {
   return <StatChip label="Sleep" icon="moon" value={hm(s.asleepMin)} hint={need ?? "Need unknown"} />;
 }
 
-function HrvChip({ t }: { t: TodaySummary }) {
-  const h = t.hrv;
-  if (!h) return <StatChip label="HRV" icon="pulse" value={null} hint="No data yet" />;
-  const avg = h.avg30 === null ? null : Math.round(h.avg30);
-  const avgHint = avg === null ? "30-day avg —" : `30-day avg ${avg}`;
-  if (h.ms === null) return <StatChip label="HRV" icon="pulse" value={unscoredLabel(t.recovery?.state)} hint={avgHint} />;
-  const ms = Math.round(h.ms);
-  const hint = avg === null ? avgHint : `${ms >= avg ? "↑" : "↓"} vs 30-day avg ${avg}`;
-  return <StatChip label="HRV" icon="pulse" value={`${ms} ms`} hint={hint} />;
+function StrainChip({ t }: { t: TodaySummary }) {
+  if (t.dayStrain !== null) return <StatChip label="Strain" icon="bolt" value={t.dayStrain.toFixed(1)} hint="Day Strain" />;
+  const noCycle = t.recovery === null && t.sleep === null;
+  return <StatChip label="Strain" icon="bolt" value={noCycle ? null : PENDING} hint={noCycle ? "No data yet" : "Not scored yet"} />;
 }
 
 function WeightChip({ t }: { t: TodaySummary }) {
@@ -127,15 +122,24 @@ function WeightChip({ t }: { t: TodaySummary }) {
   return <StatChip label="Weight" icon="scale" value={value} hint={weightHint(w)} href="/log#weight" />;
 }
 
-function StrainCard({ t }: { t: TodaySummary }) {
-  const noCycle = t.recovery === null && t.sleep === null;
-  const strain = t.dayStrain === null ? (noCycle ? "—" : PENDING) : t.dayStrain.toFixed(1);
+function HrvCard({ t }: { t: TodaySummary }) {
+  const h = t.hrv;
+  const avg = h?.avg30 == null ? null : Math.round(h.avg30);
+  let hrv = "—";
+  let hint = avg === null ? "30-day avg —" : `30-day avg ${avg}`;
+  if (h && h.ms === null) hrv = unscoredLabel(t.recovery?.state);
+  if (h && h.ms !== null) {
+    const ms = Math.round(h.ms);
+    hrv = `${ms} ms`;
+    if (avg !== null) hint = `${ms >= avg ? "↑" : "↓"} vs 30-day avg ${avg}`;
+  }
   return (
     <Card>
       <div className={styles.strainRow}>
         <div>
-          <Cap>Day Strain</Cap>
-          <p className={styles.strainNum}>{strain}</p>
+          <Cap>HRV</Cap>
+          <p className={styles.strainNum}>{hrv}</p>
+          <p className={styles.small}>{hint}</p>
         </div>
         <div className={styles.strainRight}>
           <Cap>Resting HR</Cap>
@@ -152,7 +156,7 @@ function TodaySkeleton() {
       <p className={styles.meta}>&nbsp;</p>
       <RecoveryRing score={null} band={null} pendingLabel="Loading" />
       <div className={styles.chips}>
-        {["Sleep", "HRV", "Weight"].map((l) => (
+        {["Sleep", "Strain", "Weight"].map((l) => (
           <StatChip key={l} label={l} value={null} hint="Loading…" />
         ))}
       </div>

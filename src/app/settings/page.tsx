@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -12,7 +12,7 @@ import styles from "./settings.module.css";
 
 export default function SettingsPage() {
   return (
-    <Page>
+    <AppPage>
       <Link href="/" className={styles.back}>
         ← Today
       </Link>
@@ -27,7 +27,7 @@ export default function SettingsPage() {
       <Link href="/settings/nutrition" className={styles.primary}>
         Nutrition Settings
       </Link>
-    </Page>
+    </AppPage>
   );
 }
 

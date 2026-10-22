@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BigNum, Cap, Card, Meter, Page } from "@/components/ui/ui";
+import { BigNum, Cap, Card, Meter } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { LineChart } from "@/components/line-chart";
@@ -24,12 +25,12 @@ const FAILED = "Couldn't load this section";
 export default function ProgressPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
-      <Page>
+      <AppPage>
         <h1 className={styles.title}>Progress</h1>
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <ProgressContent searchParams={searchParams} />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="progress" />
     </>
   );

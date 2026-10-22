@@ -273,6 +273,8 @@ export const planSettings = pgTable(
       enum: ["unrestricted", "caution", "restricted"],
     }).notNull(),
     poolLengthM: doublePrecision("pool_length_m").notNull(),
+    /** "HH:MM"; null derives wake from the first training window. */
+    wakeTime: text("wake_time"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],
@@ -330,7 +332,7 @@ export const recommendationLog = pgTable(
 
 export type NutrientValue = { value: number; unit: string };
 export type SupplementTiming = "morning" | "with_meal" | "pre_workout" | "post_workout" | "evening";
-export type Supplement = { name: string; timing: SupplementTiming };
+export type Supplement = { name: string; timing: SupplementTiming; amount?: string | null };
 
 export const nutritionDays = pgTable("nutrition_days", {
   localDate: day("local_date").primaryKey(),

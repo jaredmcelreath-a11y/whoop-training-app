@@ -7,6 +7,7 @@ import { getDayPlan, type DaySession } from "@/lib/plan/service";
 import { reasonView, sessionLogLink, sessionNotes } from "@/lib/plan/today-view";
 import { INTENSITY_LABEL } from "@/lib/plan/view";
 import { localDate } from "@/lib/log/dates";
+import { trainingCardView } from "@/lib/nutrition/fuel-view";
 import styles from "./today.module.css";
 import { WhySheet } from "./why-sheet";
 
@@ -25,17 +26,24 @@ export async function TodayTraining({ db, now, tz }: { db: Db; now: Date; tz: st
     );
   }
 
+  if (trainingCardView(sessions).kind === "rest") {
+    return (
+      <Card hot href="/plan">
+        <Cap>Today&apos;s Session</Cap>
+        <p className={styles.restDay}>
+          <Icon name="rest" size={22} className={styles.kindIcon} />
+          Rest Day
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card hot>
       <Cap>{sessions.length > 1 ? "Today's Sessions" : "Today's Session"}</Cap>
-      {sessions.length === 0 ? (
-        <p className={styles.small}>
-          Nothing planned today. <Link href="/plan" className={styles.whyLink}>Open the plan</Link> or{" "}
-          <Link href="/plan/settings" className={styles.whyLink}>set up your plan</Link>.
-        </p>
-      ) : (
-        sessions.map((s) => <SessionRow key={s.id} s={s} />)
-      )}
+      {sessions.map((s) => (
+        <SessionRow key={s.id} s={s} />
+      ))}
     </Card>
   );
 }

@@ -550,6 +550,7 @@ const SETTINGS: PlanSettings = {
   restDow: 0,
   jointStatus: "unrestricted",
   poolLengthM: 25,
+  wakeTime: null,
 };
 const WEEKS: PlannedSessionDraft[][] = [
   buildWeek({

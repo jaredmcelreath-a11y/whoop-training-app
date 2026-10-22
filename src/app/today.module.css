@@ -238,3 +238,35 @@
 .syncFailed {
   color: var(--low);
 }
+
+.fuelLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.fuelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.restDay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 800;
+}

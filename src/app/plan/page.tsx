@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ICON_FOR_KIND, Icon } from "@/components/icon";
-import { BigNum, Cap, Card, Page } from "@/components/ui/ui";
+import { BigNum, Cap, Card } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import type { SessionKind } from "@/db/schema";
 import { getPlanSettings } from "@/lib/plan/settings";
 import { titleCase } from "@/lib/ui/title-case";
@@ -69,12 +70,12 @@ const INTENSITY_CLASS: Record<string, string> = {
 export default function PlanPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
-      <Page>
+      <AppPage>
         <PlanHeader active="week" title="Plan" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <WeekContent searchParams={searchParams} />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="plan" />
     </>
   );
@@ -109,7 +110,7 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
       <Card hot>
         <Cap>{phaseName && isCurrent && meta ? `${phaseName} · Week ${meta.index + 1}` : "Race Day"}</Cap>
         <BigNum unit={left === 1 ? "Week to Race Day" : "Weeks to Race Day"}>{left}</BigNum>
-        <p className={styles.sub}>{dayHeading(settings.raceDate)}</p>
+        <p className={styles.countdownDate}>{dayHeading(settings.raceDate)}</p>
       </Card>
 
       <nav className={styles.weekNav} aria-label="Week">

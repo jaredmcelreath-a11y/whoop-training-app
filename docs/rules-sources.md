@@ -578,7 +578,7 @@ Added in Task 4 (weekly session template) so `buildWeek` never inlines a number.
 - **Hydration guidance** (from the Guest Series). There is no hydration rule in this plan. It belongs with the nutrition rules later.
 - **Galpin's books** (for example *Unplugged*, 2017). Not reviewed directly, so not cited.
 
-### Bryan Johnson (Blueprint): used
+## Bryan Johnson (Blueprint): used
 
 - **Blueprint protocol page** (https://protocol.bryanjohnson.com), on `recovery.sleepDebt` as `n-of-1`.
   - It covers a fixed bedtime, "being consistent is as important as getting enough sleep", and a 60-minute wind-down.
@@ -789,6 +789,61 @@ The app's drink baseline is `totalWaterL × beverageShare`.
 - **Galpin 2023** (expert): creatine 3–5 g/day.
 
 The caveat carries the "talk to your doctor or a registered dietitian" line, per the global constraints.
+
+## supplements.creatineBrain
+
+**Params:** `{ studiedGPerDay: [2.2, 20], youngNoEffectGPerDay: [10, 20], splitAboveG: 10, splitDoses: 2, splitDoseG: 5 }`. **Evidence:** meta-analysis.
+
+- **Prokopidis K, et al. (2023).** *Nutr Rev* 81(4):416-427. https://doi.org/10.1093/nutrit/nuac064 (meta-analysis). Memory SMD 0.29; older adults 0.88; ages 11–31 about 0.03 (not significant); dose 2.2–20 g/day did not change the effect.
+- **Xu C, et al. (2024).** *Front Nutr* 11:1424972. https://doi.org/10.3389/fnut.2024.1424972 (meta-analysis). Memory SMD 0.31 (GRADE moderate); doses 3–20 g/day. A 2025 corrigendum (10.3389/fnut.2025.1570800) fixes attention wording only.
+- **Avgerinos KI, et al. (2018).** *Exp Gerontol* 108:166-173. https://doi.org/10.1016/j.exger.2018.04.013 (systematic review). Possible memory benefit; unchanged in young people.
+- **Moriarty T, et al. (2023).** *Brain Sci* 13(9):1276. https://doi.org/10.3390/brainsci13091276 (trial). 10 vs 20 g/day vs placebo for 6 weeks in young adults: no effect.
+- **Ostojic SM, Ahmetovic Z (2008).** *Res Sports Med* 16(1):15-22. https://doi.org/10.1080/15438620701693280 (trial). Diarrhea 55.6% on 1 × 10 g vs 28.6% on 2 × 5 g.
+- Context: Dolan 2019 (*Eur J Sport Sci*, 10.1080/17461391.2018.1500644, brain uptake may need higher or longer dosing); Gordji-Nejad 2024 (*Sci Rep*, 10.1038/s41598-024-54249-9, single 0.35 g/kg dose during sleep loss); Antonio 2021 (*JISSN*, 10.1186/s12970-021-00412-w, safety); Galpin (expert, 3–5 g); Johnson (n-of-1, 7.5 g).
+
+## supplements.omega3
+
+**Params:** `{ safeUpToG: 5, athleteG: 2, afSignalAboveG: 1 }`. **Evidence:** consensus.
+
+- **Maughan RJ, et al. (2018).** IOC consensus statement on dietary supplements. *Br J Sports Med* 52(7):439-455. https://doi.org/10.1136/bjsports-2018-099027 (consensus). About 2 g/day; soreness benefit "not a consistent finding".
+- **EFSA NDA Panel (2012).** *EFSA Journal* 10(7):2815. https://doi.org/10.2903/j.efsa.2012.2815 (consensus). Up to 5 g/day combined EPA+DHA raises no safety concern for adults.
+- **US FDA (2019).** Letter of enforcement discretion, docket FDA-2014-Q-1146. https://www.fda.gov/media/128043/download (consensus). Supplements providing no more than 5 g/day EPA+DHA.
+- **Lv Zt, et al. (2020).** *Biomed Res Int* 2020:8062017. https://doi.org/10.1155/2020/8062017 (meta-analysis). Soreness −0.93 on a 10-point scale, below the 1.4-point clinically noticeable change.
+- **Gencer B, et al. (2021).** *Circulation* 144(25):1981-1990. https://doi.org/10.1161/CIRCULATIONAHA.121.055654 (meta-analysis). Atrial fibrillation HR 1.49 above 1 g/day, in older at-risk populations.
+- Context: Xin 2021 (*Food Sci Nutr*, 10.1002/fsn3.2598, muscle-damage blood markers); Galpin (expert, 2–5 g); Johnson (n-of-1, 800 mg).
+
+## supplements.magnesium
+
+**Params:** `{ rdaMgMen: { "19-30": 400, "31+": 420 }, ageBands: [19, 30, 31], supplementUlMg: 350 }`. **Evidence:** consensus.
+
+- **Institute of Medicine (1997).** DRIs for Calcium, Phosphorus, Magnesium, Vitamin D, and Fluoride. https://doi.org/10.17226/5776 (consensus). RDA men 400 mg (19–30), 420 mg (31+); UL 350 mg/day from supplements only.
+- **Mah J, Pitre T (2021).** *BMC Complement Med Ther* 21:125. https://doi.org/10.1186/s12906-021-03297-z (meta-analysis). Sleep onset −17 min in older adults with insomnia; low-quality evidence.
+- **Wang R, et al. (2017).** *Magnes Res* 30(4):120-132. https://doi.org/10.1684/mrh.2018.0430 (meta-analysis). No strength or power benefit in people with adequate magnesium.
+- **Arab A, et al. (2023).** *Biol Trace Elem Res* 201(1):121-128. https://doi.org/10.1007/s12011-022-03162-1 (systematic review). Trials contradictory.
+- **Schuster J, et al. (2025).** *Nat Sci Sleep* 17:2027-2040. https://doi.org/10.2147/NSS.S524348 (trial). 250 mg as bisglycinate, small insomnia-score benefit (d about 0.2).
+- Context: Galpin (expert, 6 mg/kg).
+
+## supplements.vitaminK2
+
+**Params:** `{ aiUgMen: 120, interactionFromUg: 10 }`. **Evidence:** consensus.
+
+- **Institute of Medicine (2001).** DRIs for Vitamin A, Vitamin K, … and Zinc. https://doi.org/10.17226/10026 (consensus). AI men 120 µg/day; no UL.
+- **Huang ZB, et al. (2015).** *Osteoporos Int* 26(3):1175-1186. https://doi.org/10.1007/s00198-014-2989-6 (meta-analysis). Bone benefit only in postmenopausal women with osteoporosis.
+- **Lees JS, et al. (2019).** *Heart* 105(12):938-945. https://doi.org/10.1136/heartjnl-2018-313955 (meta-analysis). Less vascular calcification; stiffness not clearly changed.
+- **Theuwissen E, et al. (2013).** *J Thromb Haemost* 11(6):1085-1092. https://doi.org/10.1111/jth.12203 (trial). 10–20 µg/day MK-7 shifted INR on vitamin K antagonists.
+- Context: Knapen 2015 (*Thromb Haemost*, 10.1160/TH14-08-0675, postmenopausal women).
+
+## supplements.collagen
+
+**Params:** `{ peptidesGPerDay: 10, gelatinG: [5, 15], vitaminCMg: 50, hoursBefore: 1, jointPainGPerDay: [5, 10] }`. **Evidence:** consensus.
+
+- **Maughan RJ, et al. (2018).** IOC consensus statement (as above) (consensus). 5–15 g gelatin with 50 mg vitamin C, or about 10 g/day collagen hydrolysate; "few data".
+- **Bischof K, et al. (2024).** *Sports Med* 54(11):2865-2888. https://doi.org/10.1007/s40279-024-02079-0 (meta-analysis). Fat-free mass SMD 0.48 (moderate certainty).
+- **Khatri M, et al. (2021).** *Amino Acids* 53(10):1493-1506. https://doi.org/10.1007/s00726-021-03072-x (systematic review). Most benefit for joint function and pain.
+- **Shaw G, et al. (2017).** *Am J Clin Nutr* 105(1):136-143. https://doi.org/10.3945/ajcn.116.138594 (trial). 15 g vitamin C-enriched gelatin 1 h before activity doubled a collagen-synthesis marker.
+- **Clark KL, et al. (2008)**, **Zdzieblik D, et al. (2017; 2021)** (trials): 5–10 g/day modestly reduced activity-related joint pain (DOIs 10.1185/030079908X291967, 10.1139/apnm-2016-0390, 10.3390/nu13020523).
+- **Paul C, et al. (2019).** *Nutrients* 11(5):1079. https://doi.org/10.3390/nu11051079. Collagen lacks tryptophan (an incomplete protein).
+- Context: Praet 2019 (*Nutrients*, 10.3390/nu11010076, Achilles pilot); Johnson (n-of-1, about 11 g).
 
 ## Bryan Johnson
 

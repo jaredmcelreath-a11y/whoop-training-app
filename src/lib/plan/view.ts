@@ -374,6 +374,7 @@ const FIELD_LABEL: Record<string, string> = {
   restDow: "Rest day",
   jointStatus: "Joint status",
   poolLengthM: "Pool length",
+  wakeTime: "Wake time",
 };
 
 type FormResult = { ok: true; settings: PlanSettings } | { ok: false; error: string };
@@ -417,6 +418,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     restDow: dow("restDow"),
     jointStatus,
     poolLengthM: Math.round(toMeters(len, unit) * PERCENT) / PERCENT,
+    wakeTime: str(f, "wakeTime") || null,
   });
   if (!parsed.success) {
     const msgs = parsed.error.issues.map((i) => {
@@ -426,5 +428,5 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     });
     return { ok: false, error: [...new Set(msgs)].join("; ") };
   }
-  return { ok: true, settings: parsed.data };
+  return { ok: true, settings: { ...parsed.data, wakeTime: parsed.data.wakeTime ?? null } };
 }

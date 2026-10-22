@@ -27,7 +27,7 @@ const WATER_OPTIONS: { value: NutritionSettings["waterSource"]; label: string; t
 ];
 
 let nextRowId = 0;
-type Row = { id: number; name: string; timing: NutritionSettings["supplements"][number]["timing"] };
+type Row = { id: number; name: string; timing: NutritionSettings["supplements"][number]["timing"]; amount: string };
 
 export function NutritionSettingsForm({ settings }: { settings: NutritionSettings }) {
   const [state, action, pending] = useActionState<NutritionSettingsState, FormData>(saveNutritionSettings, {});
@@ -48,7 +48,7 @@ function FormBody({
   action: (fd: FormData) => void;
 }) {
   const [rows, setRows] = useState<Row[]>(() =>
-    settings.supplements.map((s) => ({ id: nextRowId++, name: s.name, timing: s.timing })),
+    settings.supplements.map((s) => ({ id: nextRowId++, name: s.name, timing: s.timing, amount: s.amount ?? "" })),
   );
   const update = (id: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -108,7 +108,10 @@ function FormBody({
 
       <fieldset className={styles.card}>
         <legend className={styles.cardTitle}>Supplements</legend>
-        <p className={styles.text}>Names and timing only. The app never suggests a dose.</p>
+        <p className={styles.text}>
+          Name, amount (optional, e.g. &quot;10 g&quot;) and timing. The Day page compares each amount with the sourced doses
+          in the Library; the app never suggests more.
+        </p>
         {rows.map((r, i) => (
           <div key={r.id} className={styles.suppRow}>
             <input
@@ -120,6 +123,16 @@ function FormBody({
               value={r.name}
               onChange={(e) => update(r.id, { name: e.target.value })}
               className={styles.input}
+            />
+            <input
+              type="text"
+              name="supplementAmount"
+              aria-label={`Supplement ${i + 1} amount`}
+              placeholder="Amount"
+              maxLength={40}
+              value={r.amount}
+              onChange={(e) => update(r.id, { amount: e.target.value })}
+              className={`${styles.input} ${styles.amountInput}`}
             />
             <select
               name="supplementTiming"
@@ -148,7 +161,7 @@ function FormBody({
           type="button"
           className={styles.secondary}
           disabled={rows.length >= MAX_SUPPLEMENT_ROWS}
-          onClick={() => setRows((rs) => [...rs, { id: nextRowId++, name: "", timing: "morning" }])}
+          onClick={() => setRows((rs) => [...rs, { id: nextRowId++, name: "", timing: "morning", amount: "" }])}
         >
           Add Row
         </button>

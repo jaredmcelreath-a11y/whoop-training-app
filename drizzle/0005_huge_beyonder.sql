@@ -1,0 +1,1 @@
+ALTER TABLE "plan_settings" ADD COLUMN "wake_time" text;

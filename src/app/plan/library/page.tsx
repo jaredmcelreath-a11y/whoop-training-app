@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { requireSession } from "@/lib/auth/session";
@@ -33,12 +33,12 @@ type AnyRule = {
 export default function LibraryPage() {
   return (
     <>
-      <Page>
+      <AppPage>
         <PlanHeader active="library" title="Library" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <LibraryContent />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="plan" />
     </>
   );

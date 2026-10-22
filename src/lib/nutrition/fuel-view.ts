@@ -60,3 +60,25 @@ export function needLink(need: string): string {
 export function fuelNeeds(needs: string[]): { text: string; href: string }[] {
   return needs.map((text) => ({ text, href: needLink(text) }));
 }
+
+export type FuelRow = { label: string; value: number | null; target: number | null; unit: string };
+
+/** Today's fuel card rows: water first, then calories, protein, carbs and fat. */
+export function fuelRows(
+  targets: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null,
+  eaten: { kcal: number | null; proteinG: number | null; carbsG: number | null; fatG: number | null } | null,
+  water: { countedMl: number; targetMl: number },
+): FuelRow[] {
+  return [
+    { label: "Water", value: mlToOz(water.countedMl), target: water.targetMl > 0 ? mlToOz(water.targetMl) : null, unit: "oz" },
+    { label: "Calories", value: eaten?.kcal ?? null, target: targets?.kcal ?? null, unit: "kcal" },
+    { label: "Protein", value: eaten?.proteinG ?? null, target: targets?.proteinG ?? null, unit: "g" },
+    { label: "Carbs", value: eaten?.carbsG ?? null, target: targets?.carbsG ?? null, unit: "g" },
+    { label: "Fat", value: eaten?.fatG ?? null, target: targets?.fatG ?? null, unit: "g" },
+  ];
+}
+
+/** Whether Today's session card shows sessions or a plain Rest Day. */
+export function trainingCardView(sessions: readonly { kind: string }[]): { kind: "rest" | "sessions" } {
+  return { kind: sessions.some((s) => s.kind !== "rest") ? "sessions" : "rest" };
+}

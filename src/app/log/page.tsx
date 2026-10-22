@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icon";
 import { TabBar } from "@/components/tab-bar";
-import { Cap, Card, Page } from "@/components/ui/ui";
+import { Cap, Card } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { getLogHub, pickTodayLift } from "@/lib/log/hub";
 import { getDayPlan } from "@/lib/plan/service";
 import { titleCase } from "@/lib/ui/title-case";
@@ -28,11 +29,11 @@ const SECTIONS: { href: string; label: string; icon: IconName }[] = [
 export default function LogPage() {
   return (
     <>
-      <Page title="Log">
+      <AppPage title="Log">
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <LogContent />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

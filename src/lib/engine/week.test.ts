@@ -17,6 +17,7 @@ const SETTINGS: PlanSettings = {
   restDow: 0,
   jointStatus: "caution",
   poolLengthM: 25,
+  wakeTime: null,
 };
 
 const WEEK = "2026-11-16"; // a Monday

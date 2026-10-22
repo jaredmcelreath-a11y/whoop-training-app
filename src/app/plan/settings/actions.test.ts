@@ -25,6 +25,7 @@ const SETTINGS: PlanSettings = {
   restDow: 0,
   jointStatus: "caution",
   poolLengthM: 22.86,
+  wakeTime: null,
 };
 
 beforeEach(() => {

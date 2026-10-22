@@ -1,0 +1,97 @@
+.sub {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.note {
+  font-size: 13px;
+  color: var(--sub);
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dayNav {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.dayLabel {
+  text-align: center;
+  min-width: 0;
+}
+
+.dayName {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.todayLink {
+  display: inline-block;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.groupTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.row {
+  padding: 7px 0;
+}
+
+.rowHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.nums,
+.over {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sub);
+  white-space: nowrap;
+}
+
+.over {
+  color: var(--low);
+}
+
+.limit {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--caution);
+}

@@ -52,6 +52,21 @@ describe("updateNutritionSettings", () => {
     });
   });
 
+  it("keeps an optional amount on a supplement, and old rows without one", async () => {
+    await getNutritionSettings(db);
+    const out = await updateNutritionSettings(db, {
+      supplements: [
+        { name: "Creatine", timing: "morning", amount: "10 g" },
+        { name: "Omega-3", timing: "morning" },
+      ],
+    });
+    expect(out.supplements[0].amount).toBe("10 g");
+    expect(out.supplements[1].amount ?? null).toBeNull();
+    await expect(
+      updateNutritionSettings(db, { supplements: [{ name: "X", timing: "morning", amount: "x".repeat(41) }] }),
+    ).rejects.toThrow();
+  });
+
   it("rejects 21 supplements", async () => {
     await getNutritionSettings(db);
     const supplements = Array.from({ length: 21 }, (_, i) => ({

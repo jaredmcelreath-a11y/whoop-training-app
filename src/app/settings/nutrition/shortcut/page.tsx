@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { titleCase } from "@/lib/ui/title-case";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { requireSession } from "@/lib/auth/session";
@@ -10,14 +10,14 @@ import styles from "../nutrition.module.css";
 
 export default function ShortcutGuidePage() {
   return (
-    <Page>
+    <AppPage>
       <Link href="/settings/nutrition" className={styles.back}>
         ← Nutrition
       </Link>
       <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
         <Guide />
       </Suspense>
-    </Page>
+    </AppPage>
   );
 }
 

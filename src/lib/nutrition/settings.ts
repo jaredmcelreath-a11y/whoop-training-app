@@ -10,12 +10,15 @@ export type NutritionSettings = {
   supplements: {
     name: string;
     timing: "morning" | "with_meal" | "pre_workout" | "post_workout" | "evening";
+    /** As typed, e.g. "10 g"; null when not set. */
+    amount?: string | null;
   }[];
   gainGoalLb: number;
   gainStartWeightLb: number | null;
 };
 
 export const MAX_SUPPLEMENTS = 20;
+const MAX_SUPPLEMENT_AMOUNT = 40;
 const MAX_SUPPLEMENT_NAME = 60;
 const MAX_MEALS_PER_DAY = 10;
 
@@ -32,6 +35,13 @@ export const NutritionSettingsInput = z.object({
           .min(1, "Supplement name is required")
           .max(MAX_SUPPLEMENT_NAME, `Supplement names are at most ${MAX_SUPPLEMENT_NAME} characters`),
         timing: z.enum(["morning", "with_meal", "pre_workout", "post_workout", "evening"]),
+        amount: z
+          .string()
+          .trim()
+          .max(MAX_SUPPLEMENT_AMOUNT, `Amounts are at most ${MAX_SUPPLEMENT_AMOUNT} characters`)
+          .nullish()
+          // A blank amount is stored as absent, so rows without one are unchanged.
+          .transform((v) => (v ? v : undefined)),
       }),
     )
     .max(MAX_SUPPLEMENTS, `At most ${MAX_SUPPLEMENTS} supplements`),

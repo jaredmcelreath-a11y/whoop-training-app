@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -15,7 +15,7 @@ import { PainForm } from "./pain-form";
 export default function PainPage() {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -25,7 +25,7 @@ export default function PainPage() {
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <PainContent />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

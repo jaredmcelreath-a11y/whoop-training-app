@@ -45,6 +45,18 @@ describe("getPlanSettings", () => {
   });
 });
 
+describe("wake time", () => {
+  it("defaults to none, so the Day timeline derives it from the first window", async () => {
+    expect((await getPlanSettings(db, NOW, TZ)).wakeTime).toBeNull();
+  });
+
+  it("can be set and cleared", async () => {
+    await getPlanSettings(db, NOW, TZ);
+    expect((await updatePlanSettings(db, { wakeTime: "07:00" })).wakeTime).toBe("07:00");
+    expect((await updatePlanSettings(db, { wakeTime: null })).wakeTime).toBeNull();
+  });
+});
+
 describe("updatePlanSettings", () => {
   it("changes only the patched field", async () => {
     const before = await getPlanSettings(db, NOW, TZ);
@@ -59,6 +71,12 @@ describe("updatePlanSettings", () => {
 });
 
 describe("PlanSettingsInput", () => {
+  it("accepts an HH:MM wake time or none, and rejects other text", () => {
+    expect(PlanSettingsInput.safeParse({ ...base, wakeTime: "07:00" }).success).toBe(true);
+    expect(PlanSettingsInput.safeParse({ ...base, wakeTime: null }).success).toBe(true);
+    expect(PlanSettingsInput.safeParse({ ...base, wakeTime: "7am" }).success).toBe(false);
+  });
+
   const base = {
     raceDate: "2027-10-17",
     seasonStart: "2026-10-26",

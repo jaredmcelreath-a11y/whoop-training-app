@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barPercent, confidenceNote, fuelNeeds, mlToOz, needLink, ozLabel, syncedLabel, WATER_TAP_ML } from "./fuel-view";
+import { barPercent, confidenceNote, fuelNeeds, fuelRows, mlToOz, needLink, ozLabel, syncedLabel, trainingCardView, WATER_TAP_ML } from "./fuel-view";
 import { NEED } from "./service";
 import { ML_PER_FL_OZ } from "@/lib/engine/nutrients";
 
@@ -79,5 +79,38 @@ describe("fuelNeeds", () => {
   it("returns each need with its link", () => {
     expect(fuelNeeds(["Log a weight"])).toEqual([{ text: "Log a weight", href: "/log" }]);
     expect(fuelNeeds([])).toEqual([]);
+  });
+});
+
+describe("fuelRows (Today's fuel card)", () => {
+  const targets = { kcal: 2900, proteinG: 160, carbsG: 380, fatG: 85 };
+  const eaten = { kcal: 1200, proteinG: 70, carbsG: 150, fatG: 40 };
+  const water = { countedMl: 1000, targetMl: 3000 };
+
+  it("puts water first, then calories, protein, carbs and fat", () => {
+    expect(fuelRows(targets, eaten, water).map((r) => r.label)).toEqual(["Water", "Calories", "Protein", "Carbs", "Fat"]);
+  });
+
+  it("carries eaten amounts and targets, with water in oz", () => {
+    const rows = fuelRows(targets, eaten, water);
+    expect(rows[4]).toEqual({ label: "Fat", value: 40, target: 85, unit: "g" });
+    expect(rows[0].unit).toBe("oz");
+    expect(rows[0].value).toBeCloseTo(1000 / ML_PER_FL_OZ, 5);
+  });
+
+  it("has no food targets, only water's, when targets are missing", () => {
+    const rows = fuelRows(null, null, water);
+    expect(rows.filter((r) => r.target !== null).map((r) => r.label)).toEqual(["Water"]);
+    expect(rows.slice(1).every((r) => r.value === null)).toBe(true);
+  });
+});
+
+describe("trainingCardView", () => {
+  it("is a rest day with no sessions or only rest", () => {
+    expect(trainingCardView([])).toEqual({ kind: "rest" });
+    expect(trainingCardView([{ kind: "rest" }])).toEqual({ kind: "rest" });
+  });
+  it("lists sessions otherwise", () => {
+    expect(trainingCardView([{ kind: "run" }, { kind: "rest" }])).toEqual({ kind: "sessions" });
   });
 });

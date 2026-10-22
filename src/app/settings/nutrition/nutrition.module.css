@@ -132,7 +132,8 @@
 
 .suppRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  /* Name and timing share the row; amount sits under the name on narrow screens. */
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr) minmax(0, 1fr) 44px;
   gap: 6px;
   margin-top: 6px;
 }
@@ -290,4 +291,20 @@
   padding: 6px 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
+}
+
+/* Paired with .input; this class only places the field in the row. */
+.amountInput {
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .suppRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  }
+
+  .suppRow .amountInput {
+    grid-column: 1;
+    grid-row: 2;
+  }
 }

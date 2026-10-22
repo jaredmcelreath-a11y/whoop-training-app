@@ -67,11 +67,17 @@ function number(raw: string): number {
 export function nutritionPatchFromForm(fd: FormData): FormParse {
   const names = fd.getAll("supplementName");
   const timings = fd.getAll("supplementTiming");
+  const amounts = fd.getAll("supplementAmount");
   const supplements: NutritionSettings["supplements"] = [];
   names.forEach((n, i) => {
     const name = typeof n === "string" ? n.trim() : "";
     if (!name) return; // empty rows are dropped
-    supplements.push({ name, timing: String(timings[i] ?? "") as NutritionSettings["supplements"][number]["timing"] });
+    const amount = typeof amounts[i] === "string" ? (amounts[i] as string).trim() : "";
+    supplements.push({
+      name,
+      timing: String(timings[i] ?? "") as NutritionSettings["supplements"][number]["timing"],
+      ...(amount ? { amount } : {}),
+    });
   });
 
   const meals = number(text(fd, "mealsPerDay"));

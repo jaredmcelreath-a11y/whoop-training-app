@@ -43,6 +43,8 @@ export type TimelineItem = {
   ruleIds: RuleId[];
   proteinG?: number;
   carbsG?: number;
+  /** For session items: the planned session's kind (swim, bike, run, strength, …). */
+  sport?: string;
 };
 
 export type SupplementTiming = "morning" | "with_meal" | "pre_workout" | "post_workout" | "evening";
@@ -52,7 +54,7 @@ export type TimelineInput = {
   /** `duringMl`: fluid to drink during the session (hydration.exercise), shown in oz when positive. */
   sessions: readonly { title: string; kind: string; durationMin: number; window?: number; intensity: string; duringMl?: number }[];
   mealsPerDay: number;
-  supplements: readonly { name: string; timing: SupplementTiming }[];
+  supplements: readonly { name: string; timing: SupplementTiming; amount?: string | null }[];
   /** Day targets; null when unknown (amounts are then left out). */
   proteinG: number | null;
   carbsG: number | null;
@@ -89,20 +91,109 @@ type Draft = Omit<TimelineItem, "time"> & { at: number };
 type Group = { start: number; end: number; titles: string[]; swim: boolean; fuel: boolean; zoneStart: number };
 
 /** The evidence note for a supplement the catalog covers, else null. */
-export function supplementNote(name: string, weightKg: number | null): string | null {
-  const p = RULES["supplements.evidence"].params;
+type SupplementKind = "creatine" | "caffeine" | "vitaminD" | "vitaminK2" | "omega3" | "magnesium" | "collagen";
+
+/** Which known supplements a typed name is (a D3+K2 combo is both). */
+function supplementKinds(name: string): SupplementKind[] {
   const n = name.toLowerCase();
-  if (n.includes("creatin")) return `Creatine monohydrate: ${p.creatine.gPerDay[0]}-${p.creatine.gPerDay[1]} g a day.`;
-  if (n.includes("caffein") || n.includes("coffee")) {
-    const forYou = known(weightKg)
-      ? ` (${Math.round(p.caffeine.mgPerKg[0] * weightKg)}-${Math.round(p.caffeine.mgPerKg[1] * weightKg)} mg for you)`
-      : "";
-    return `Caffeine: ${p.caffeine.mgPerKg[0]}-${p.caffeine.mgPerKg[1]} mg/kg${forYou}, about ${p.caffeine.minutesBefore} min before key sessions.`;
+  const kinds: SupplementKind[] = [];
+  if (n.includes("creatin")) kinds.push("creatine");
+  if (n.includes("caffein") || n.includes("coffee")) kinds.push("caffeine");
+  if (/vitamin\s*d|vit\.?\s*d|\bd3\b/.test(n)) kinds.push("vitaminD");
+  if (/\bk2\b|vitamin\s*k|menaquinone|mk-?7/.test(n)) kinds.push("vitaminK2");
+  if (/omega|fish\s*oil|\bepa\b|\bdha\b/.test(n)) kinds.push("omega3");
+  // "mg" counts only as the name itself or before a magnesium form, never as a dose unit ("Zinc 15 mg").
+  if (/magnes|^mg$|^mg\s+(glycinate|bisglycinate|citrate|threonate|malate|oxide|chloride|taurate)\b/.test(n.trim())) kinds.push("magnesium");
+  if (/coll[ae]gen|gelatin/.test(n)) kinds.push("collagen");
+  return kinds;
+}
+
+const RULE_FOR: Record<SupplementKind, RuleId[]> = {
+  creatine: ["supplements.evidence", "supplements.creatineBrain"],
+  caffeine: ["supplements.evidence"],
+  vitaminD: ["supplements.evidence"],
+  vitaminK2: ["supplements.vitaminK2"],
+  omega3: ["supplements.omega3"],
+  magnesium: ["supplements.magnesium"],
+  collagen: ["supplements.collagen"],
+};
+
+/** The Library rules behind a supplement's note, once each; [] for an unknown name. */
+export function supplementRuleIds(name: string): RuleId[] {
+  return [...new Set(supplementKinds(name).flatMap((k) => RULE_FOR[k]))];
+}
+
+/** A typed amount in grams ("10 g", "10g", "600 mg"), or null when it can't be read. */
+function amountGrams(amount: string | null | undefined): number | null {
+  const m = amount?.trim().toLowerCase().replace(/,/g, "").match(/^(\d+(?:\.\d+)?)\s*(g|grams?|mg|milligrams?)?$/);
+  if (!m) return null;
+  const v = Number(m[1]);
+  return m[2]?.startsWith("m") ? v / 1000 : v;
+}
+
+const ABOVE = "Your amount is above every dose the app has sources for; check with your doctor or a registered dietitian.";
+
+export function supplementNote(name: string, weightKg: number | null, amount?: string | null): string | null {
+  const p = RULES["supplements.evidence"].params;
+  const B = RULES["supplements.creatineBrain"].params;
+  const O = RULES["supplements.omega3"].params;
+  const M = RULES["supplements.magnesium"].params;
+  const K = RULES["supplements.vitaminK2"].params;
+  const C = RULES["supplements.collagen"].params;
+  const g = amountGrams(amount);
+  const notes: string[] = [];
+  for (const kind of supplementKinds(name)) {
+    switch (kind) {
+      case "creatine": {
+        let note = `Creatine monohydrate: ${p.creatine.gPerDay[0]}-${p.creatine.gPerDay[1]} g a day.`;
+        if (g !== null && g > B.studiedGPerDay[1]) note += ` ${ABOVE}`;
+        else if (g !== null && g > p.creatine.gPerDay[1]) {
+          note +=
+            ` Brain studies used ${B.studiedGPerDay[0]}-${B.studiedGPerDay[1]} g a day, with a small memory benefit mostly in older or sleep-deprived adults.` +
+            (g >= B.splitAboveG
+              ? ` Split it into doses of ${B.splitDoseG} g or less (${B.splitDoses} × ${B.splitDoseG} g at ${B.splitAboveG} g); in young, rested adults 10 and 20 g a day showed no memory effect.`
+              : "");
+        }
+        notes.push(note);
+        break;
+      }
+      case "caffeine": {
+        const forYou = known(weightKg)
+          ? ` (${Math.round(p.caffeine.mgPerKg[0] * weightKg)}-${Math.round(p.caffeine.mgPerKg[1] * weightKg)} mg for you)`
+          : "";
+        notes.push(`Caffeine: ${p.caffeine.mgPerKg[0]}-${p.caffeine.mgPerKg[1]} mg/kg${forYou}, about ${p.caffeine.minutesBefore} min before key sessions.`);
+        break;
+      }
+      case "vitaminD":
+        notes.push(`Vitamin D: dose only from a blood test with your doctor. RDA ${p.vitaminD.rdaUg} µg, upper limit ${p.vitaminD.ulUg} µg a day.`);
+        break;
+      case "vitaminK2":
+        notes.push(`Vitamin K: adequate intake ${K.aiUgMen} µg a day for men. On a warfarin-type blood thinner, ask your prescriber first.`);
+        break;
+      case "omega3":
+        notes.push(
+          g !== null && g > O.safeUpToG
+            ? `Omega-3: up to ${O.safeUpToG} g a day EPA+DHA is considered safe. ${ABOVE}`
+            : `Omega-3: up to ${O.safeUpToG} g a day EPA+DHA is considered safe; about ${O.athleteG} g a day is cited for athletes.`,
+        );
+        break;
+      case "magnesium": {
+        const mg = g === null ? null : g * 1000;
+        notes.push(
+          `Magnesium: keep supplements at or under ${M.supplementUlMg} mg elemental a day.` +
+            (mg !== null && mg > M.supplementUlMg ? " Your amount is above that limit; check with your doctor or a registered dietitian." : ""),
+        );
+        break;
+      }
+      case "collagen":
+        notes.push(
+          `Collagen: about ${C.peptidesGPerDay} g a day, or ${C.gelatinG[0]}-${C.gelatinG[1]} g gelatin with ${C.vitaminCMg} mg vitamin C about ${C.hoursBefore} h before training. It doesn't count toward protein targets.` +
+            (g !== null && g > C.gelatinG[1] ? ` ${ABOVE}` : ""),
+        );
+        break;
+    }
   }
-  if (/vitamin\s*d|vit\.?\s*d|\bd3\b/.test(n)) {
-    return `Vitamin D: dose only from a blood test with your doctor. RDA ${p.vitaminD.rdaUg} µg, upper limit ${p.vitaminD.ulUg} µg a day.`;
-  }
-  return null;
+  return notes.length ? notes.join(" ") : null;
 }
 
 export function buildTimeline(i: TimelineInput): TimelineItem[] {
@@ -143,6 +234,7 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
       drafts.push({
         at: cursor,
         kind: "session",
+        sport: s.kind,
         title: s.title,
         detail: drinkOz > 0 ? `${s.durationMin} min. Drink ~${drinkOz} oz during.` : `${s.durationMin} min`,
         ruleIds: drinkOz > 0 ? ["week.template", "hydration.exercise"] : ["week.template"],
@@ -381,11 +473,80 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
         break;
     }
     if (at === null) continue;
-    const note = supplementNote(s.name, kg);
-    supps.push({ at, kind: "supplement", title: s.name, detail: note ? `${detail} ${note}` : detail, ruleIds: ["supplements.evidence"] });
+    const note = supplementNote(s.name, kg, s.amount);
+    const amount = s.amount ? `${s.amount}. ` : "";
+    const ids = supplementRuleIds(s.name);
+    supps.push({
+      at,
+      kind: "supplement",
+      title: s.name,
+      detail: note ? `${amount}${detail} ${note}` : `${amount}${detail}`,
+      ruleIds: ids.length ? ids : ["supplements.evidence"],
+    });
   }
 
   return [...drafts, ...supps]
     .sort((a, b) => a.at - b.at || KIND_ORDER[a.kind] - KIND_ORDER[b.kind])
     .map(({ at, ...rest }) => ({ ...rest, time: fmt(at) }));
+}
+
+/** A workout that actually happened (logged in the app or recorded by WHOOP). */
+export type ActualWorkout = {
+  startHHMM: string;
+  sport: "swim" | "bike" | "run" | "strength" | null;
+  title: string;
+  durationMin: number;
+  source: "app" | "whoop";
+};
+
+const STRENGTH_SPORTS = new Set(["strength", "lower_leg", "core"]);
+const sportOf = (s: string | undefined) => (s && STRENGTH_SPORTS.has(s) ? "strength" : (s ?? null));
+const hhmm = (m: number) => `${String(Math.floor((m % 1440) / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/**
+ * Puts real workouts on the timeline. A workout that matches a planned session of the same
+ * sport (first unmatched, in order) moves that session to the real start and marks it done;
+ * anything else becomes its own item. Items stay in day order (a bedtime after midnight
+ * stays last), and a workout on another item's minute moves 5 min later.
+ */
+export function mergeActual(items: readonly TimelineItem[], actual: readonly ActualWorkout[]): TimelineItem[] {
+  // Absolute minutes in day order: a clock time that goes backwards belongs to the next day.
+  let offset = 0;
+  let prev = -1;
+  const placed = items.map((it) => {
+    let t = toMin(it.time) + offset;
+    if (t < prev) {
+      offset += 1440;
+      t += 1440;
+    }
+    prev = t;
+    return { at: t, item: it };
+  });
+  const used = new Set<number>();
+  for (const w of [...actual].sort((a, b) => toMin(a.startHHMM) - toMin(b.startHHMM))) {
+    const at = toMin(w.startHHMM);
+    const idx = placed.findIndex((p, i) => !used.has(i) && p.item.kind === "session" && w.sport !== null && sportOf(p.item.sport) === w.sport);
+    if (idx >= 0) {
+      used.add(idx);
+      const p = placed[idx];
+      placed[idx] = { at, item: { ...p.item, time: w.startHHMM, detail: `${p.item.detail} Done at ${w.startHHMM}.`.trim() } };
+    } else {
+      let t = at;
+      while (placed.some((p) => p.at === t)) t += 5;
+      const title = w.title.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      placed.push({
+        at: t,
+        item: {
+          time: hhmm(t),
+          kind: "session",
+          ...(w.sport ? { sport: w.sport } : {}),
+          title,
+          detail: `${w.source === "whoop" ? "From WHOOP" : "Logged"} · ${w.durationMin} min`,
+          ruleIds: [],
+        },
+      });
+      used.add(placed.length - 1);
+    }
+  }
+  return placed.sort((a, b) => a.at - b.at).map((p) => p.item);
 }

@@ -30,6 +30,7 @@ const CURRENT: PlanSettings = {
   restDow: 0,
   jointStatus: "caution",
   poolLengthM: 22.86,
+  wakeTime: null,
 };
 
 function form(entries: Record<string, string>): FormData {
@@ -222,6 +223,15 @@ describe("season helpers", () => {
     expect(weeksToRace("2026-10-19", "2027-10-17")).toBe(51);
     expect(weeksToRace("2027-10-11", "2027-10-17")).toBe(0);
     expect(weeksToRace("2027-10-18", "2027-10-17")).toBe(0);
+  });
+});
+
+describe("settingsFromForm wake time", () => {
+  it("reads an HH:MM wake time, and an empty field as none", () => {
+    const set = settingsFromForm(form({ ...VALID, wakeTime: "07:00" }), CURRENT);
+    expect(set.ok && set.settings.wakeTime).toBe("07:00");
+    const blank = settingsFromForm(form({ ...VALID, wakeTime: "" }), CURRENT);
+    expect(blank.ok && blank.settings.wakeTime).toBeNull();
   });
 });
 

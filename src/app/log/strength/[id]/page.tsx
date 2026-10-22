@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { Icon } from "@/components/icon";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -24,7 +24,7 @@ import { AddExerciseForm, DeleteWorkoutButton, SetRow } from "./set-row";
 export default function WorkoutPage({ params, searchParams }: PageProps<"/log/strength/[id]">) {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={styles.header}>
           <Link href="/log/strength" className={styles.back}>
             ‹ Strength
@@ -33,7 +33,7 @@ export default function WorkoutPage({ params, searchParams }: PageProps<"/log/st
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <Workout params={params} searchParams={searchParams} />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

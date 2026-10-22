@@ -3,15 +3,16 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Icon } from "@/components/icon";
 import { TabBar } from "@/components/tab-bar";
-import { Cap, Card, Page, StatChip } from "@/components/ui/ui";
+import { Cap, Card, StatChip } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex } from "./day-style";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
-import { buildTimeline, supplementNote } from "@/lib/engine/day-timeline";
+import { buildTimeline, mergeActual, supplementNote, supplementRuleIds } from "@/lib/engine/day-timeline";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { getEnv } from "@/lib/env";
 import { addDays, localDate } from "@/lib/log/dates";
-import { latestSleepNeedMin, parseDateParam, withDuringFluid } from "@/lib/nutrition/day-view";
+import { actualWorkouts, latestSleepNeedMin, parseDateParam, withDuringFluid } from "@/lib/nutrition/day-view";
 import { mlToOz } from "@/lib/nutrition/fuel-view";
 import { getDayNutrition } from "@/lib/nutrition/service";
 import { getNutritionSettings } from "@/lib/nutrition/settings";
@@ -34,11 +35,11 @@ const TIMING_LABEL: Record<string, string> = {
 export default function DayPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
-      <Page title="Day">
+      <AppPage title="Day">
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <DayContent searchParams={searchParams} />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="day" />
     </>
   );
@@ -59,7 +60,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
   const sleepNeedMin = await latestSleepNeedMin(db, date, tz);
   const kg = n.weight?.kg ?? null;
 
-  const items = buildTimeline({
+  const planned = buildTimeline({
     windows: ps.windows,
     sessions: withDuringFluid(n.sessions, n.water.duringSessions),
     mealsPerDay: ns.mealsPerDay,
@@ -68,7 +69,10 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
     carbsG: n.targets?.carbsG ?? null,
     weightKg: kg,
     sleepNeedMin,
+    wakeTime: ps.wakeTime ?? undefined,
   });
+  // Real workouts sit at their actual start: a planned one moves there, others are added.
+  const items = mergeActual(planned, await actualWorkouts(db, date, tz));
 
   const nowHHMM =
     date === today
@@ -153,19 +157,20 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
         {ns.supplements.length ? (
           <ul className={styles.supps}>
             {ns.supplements.map((s, i) => {
-              const note = supplementNote(s.name, kg);
+              const note = supplementNote(s.name, kg, s.amount);
               return (
                 <li key={`${s.name}-${i}`} className={styles.supp}>
                   <div className={styles.itemHead}>
                     <span className={styles.itemTitle}>{s.name}</span>
+                    {s.amount ? <span className={styles.amount}>{s.amount}</span> : null}
                     <span className={styles.badge}>{TIMING_LABEL[s.timing] ?? s.timing}</span>
                   </div>
                   <p className={styles.detail}>{note ?? "No evidence note for this one in the library."}</p>
-                  {note ? (
-                    <a href="/plan/library#supplements.evidence" className={styles.whyLink}>
-                      See the Evidence
+                  {supplementRuleIds(s.name).map((id) => (
+                    <a key={id} href={`/plan/library#${id}`} className={styles.whyLink}>
+                      {id === "supplements.creatineBrain" ? "Brain Evidence" : "See the Evidence"}
                     </a>
-                  ) : null}
+                  ))}
                 </li>
               );
             })}

@@ -1,8 +1,10 @@
 /** Day tab readers and helpers (kept out of the pure engine). */
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { sleeps } from "@/db/schema";
-import { addDays, zonedLocalToUtc } from "@/lib/log/dates";
+import { cardioEntries, sleeps, strengthSessions, workouts } from "@/db/schema";
+import type { ActualWorkout } from "@/lib/engine/day-timeline";
+import { overlapsLogged, whoopKind, type Span } from "@/lib/plan/inputs";
+import { addDays, toZonedLocal, zonedLocalToUtc } from "@/lib/log/dates";
 
 const SCORED = "SCORED";
 
@@ -56,4 +58,75 @@ export async function latestSleepNeedMin(db: Db, date: string, tz: string): Prom
   if (!s || typeof s.needBaselineMin !== "number" || !(s.needBaselineMin > 0)) return null;
   const need = s.needBaselineMin + num(s.needDebtMin) + num(s.needStrainMin) - Math.abs(num(s.needNapMin));
   return need > 0 ? need : null;
+}
+
+const CARDIO_TITLE = { run: "Run", bike: "Bike", swim: "Swim" } as const;
+const minutesBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 60_000);
+const clock = (at: Date, tz: string) => toZonedLocal(at, tz).slice(11, 16);
+
+/**
+ * The day's real workouts, for the Day timeline: finished app strength sessions, app cardio
+ * entries, and WHOOP workouts not already linked to an app entry (generic "activity" skipped).
+ * Sorted by start; read only.
+ */
+export async function actualWorkouts(db: Db, date: string, tz: string): Promise<ActualWorkout[]> {
+  const from = new Date(zonedLocalToUtc(`${date}T00:00`, tz));
+  const to = new Date(zonedLocalToUtc(`${addDays(date, 1)}T00:00`, tz));
+  const lifts = await db
+    .select({ start: strengthSessions.startedAt, end: strengthSessions.endedAt })
+    .from(strengthSessions)
+    .where(and(eq(strengthSessions.localDate, date), isNotNull(strengthSessions.endedAt)));
+  const cardio = await db
+    .select({ kind: cardioEntries.kind, start: cardioEntries.startedAt, durationS: cardioEntries.durationS })
+    .from(cardioEntries)
+    .where(eq(cardioEntries.localDate, date));
+  const whoop = await db
+    .select({ start: workouts.start, end: workouts.end, sport: workouts.sportName })
+    .from(workouts)
+    .where(
+      and(
+        gte(workouts.start, from),
+        lt(workouts.start, to),
+        sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
+        sql`not exists (select 1 from ${strengthSessions} where ${strengthSessions.whoopWorkoutId} = ${workouts.id})`,
+      ),
+    )
+    .orderBy(asc(workouts.start));
+
+  // An unlinked WHOOP workout overlapping an app entry of its kind is that same session.
+  const logged: Span[] = [
+    ...lifts.map((l) => ({ kind: "strength" as const, start: l.start, end: l.end as Date })),
+    ...cardio.map((c) => ({ kind: c.kind, start: c.start, end: new Date(c.start.getTime() + c.durationS * 1000) })),
+  ];
+
+  const out: (ActualWorkout & { at: number })[] = [
+    ...lifts.map((l) => ({
+      at: l.start.getTime(),
+      startHHMM: clock(l.start, tz),
+      sport: "strength" as const,
+      title: "Strength",
+      durationMin: minutesBetween(l.start, l.end as Date),
+      source: "app" as const,
+    })),
+    ...cardio.map((c) => ({
+      at: c.start.getTime(),
+      startHHMM: clock(c.start, tz),
+      sport: c.kind,
+      title: CARDIO_TITLE[c.kind],
+      durationMin: Math.round(c.durationS / 60),
+      source: "app" as const,
+    })),
+    ...whoop
+      .filter((w) => w.sport !== null && w.sport !== "activity" && !overlapsLogged(w, logged))
+      .map((w) => ({
+        at: w.start.getTime(),
+        startHHMM: clock(w.start, tz),
+        sport: whoopKind(w.sport),
+        title: w.sport as string,
+        durationMin: minutesBetween(w.start, w.end),
+        source: "whoop" as const,
+      })),
+  ];
+  out.sort((a, b) => a.at - b.at);
+  return out.map((w) => ({ startHHMM: w.startHHMM, sport: w.sport, title: w.title, durationMin: w.durationMin, source: w.source }));
 }

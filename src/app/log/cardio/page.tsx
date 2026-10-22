@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -20,7 +20,7 @@ import styles from "./cardio.module.css";
 export default function CardioPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -30,7 +30,7 @@ export default function CardioPage({ searchParams }: { searchParams: Promise<{ k
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <CardioContent searchParams={searchParams} />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

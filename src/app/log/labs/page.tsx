@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Page } from "@/components/ui/ui";
+import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -19,7 +19,7 @@ const RETEST_AFTER_DAYS = 182;
 export default function LabsPage() {
   return (
     <>
-      <Page>
+      <AppPage>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -29,7 +29,7 @@ export default function LabsPage() {
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <LabsContent />
         </Suspense>
-      </Page>
+      </AppPage>
       <TabBar active="log" />
     </>
   );

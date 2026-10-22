@@ -30,6 +30,12 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
         <input type="date" name="raceDate" required defaultValue={settings.raceDate} className={styles.input} />
       </label>
 
+      <label className={styles.field}>
+        <span className={styles.label}>Wake Time</span>
+        <input type="time" name="wakeTime" defaultValue={settings.wakeTime ?? ""} className={styles.input} />
+        <span className={styles.disclaimer}>Sets the start of your Day timeline. Leave blank to use 45 min before your first window.</span>
+      </label>
+
       <fieldset className={styles.field}>
         <legend className={styles.label}>Training Window 1</legend>
         <div className={styles.row}>

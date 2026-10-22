@@ -36,6 +36,13 @@
       "when": 1792610712000,
       "tag": "0004_supreme_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792690067946,
+      "tag": "0005_huge_beyonder",
+      "breakpoints": true
     }
   ]
 }
