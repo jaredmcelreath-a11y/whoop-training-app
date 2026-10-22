@@ -15,8 +15,9 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin: 0 0 14px;
 }
 
@@ -40,7 +41,8 @@
 
 .card {
   background: var(--card);
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   padding: 14px;
   margin: 0;
   min-width: 0;
@@ -55,11 +57,11 @@
 }
 
 .cardTitle {
-  font-size: 12px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sub);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
   margin-bottom: 6px;
   padding: 0;
 }
@@ -95,7 +97,7 @@
 
 .input:focus,
 .select:focus {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--info);
   outline-offset: 1px;
 }
 
@@ -164,8 +166,8 @@
 
 .primary {
   border: 0;
-  background: var(--green);
-  color: #06291a;
+  background: var(--good);
+  color: var(--on-accent);
 }
 
 .secondary,
@@ -206,12 +208,12 @@
 
 .saved {
   font-size: 14px;
-  color: var(--green);
+  color: var(--good);
 }
 
 .error {
   font-size: 14px;
-  color: var(--red);
+  color: var(--low);
   overflow-wrap: anywhere;
 }
 

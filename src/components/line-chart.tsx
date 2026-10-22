@@ -81,6 +81,9 @@ export function LineChart({
           <line className={styles.goal} x1={pad} x2={width - pad} y1={g.yOf(goal)} y2={g.yOf(goal)} />
         )}
         {linePaths.map((d, i) => (
+          <path key={`a${i}`} className={styles.area} data-area="true" d={areaPath(d, height - pad)} />
+        ))}
+        {linePaths.map((d, i) => (
           <path key={i} className={styles.line} d={d} />
         ))}
         {rawDots.map((p, i) => (
@@ -111,4 +114,13 @@ export function LineChart({
       )}
     </figure>
   );
+}
+
+/** Closes a line path ("M x y L x y …") down to the chart floor, for the soft fill under it. */
+function areaPath(d: string, floorY: number): string {
+  const nums = d.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
+  if (nums.length < 4) return "";
+  const firstX = nums[0];
+  const lastX = nums[nums.length - 2];
+  return `${d} L ${lastX} ${floorY} L ${firstX} ${floorY} Z`;
 }

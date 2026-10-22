@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Db } from "@/db/client";
 import { localDate } from "@/lib/log/dates";
-import { barPercent, confidenceNote, fuelNeeds, ozLabel, syncedLabel } from "@/lib/nutrition/fuel-view";
+import { confidenceNote, fuelNeeds, ozLabel, syncedLabel } from "@/lib/nutrition/fuel-view";
 import { getDayNutrition, type DayNutrition } from "@/lib/nutrition/service";
 import { getNutritionSettings, type NutritionSettings } from "@/lib/nutrition/settings";
+import { Cap, Card, Meter } from "@/components/ui/ui";
 import styles from "./today.module.css";
 import { WaterButton } from "./water-button";
 
@@ -17,10 +18,10 @@ export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string
   } catch (err) {
     console.error("getDayNutrition failed:", err);
     return (
-      <section className={styles.training} aria-label="Today's fuel">
-        <h2 className={styles.tileLabel}>Today&apos;s fuel</h2>
+      <Card>
+        <Cap>Fuel So Far</Cap>
         <p className={styles.small}>Couldn&apos;t load today&apos;s fuel</p>
-      </section>
+      </Card>
     );
   }
 
@@ -30,8 +31,8 @@ export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string
   const note = confidenceNote(n.confidence, t !== null);
 
   return (
-    <section className={styles.training} aria-label="Today's fuel">
-      <h2 className={styles.tileLabel}>Today&apos;s fuel</h2>
+    <Card>
+      <Cap>Fuel So Far</Cap>
       {t ? (
         <>
           <Bar label="Calories" value={e?.kcal ?? null} target={t.kcal} unit="kcal" />
@@ -46,9 +47,7 @@ export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string
           <span>Water</span>
           <span>{ozLabel(n.water.countedMl, n.water.targetMl)}</span>
         </div>
-        <div className={styles.bar} aria-hidden="true">
-          <div className={styles.barFill} style={{ width: `${barPercent(n.water.countedMl, n.water.targetMl)}%` }} />
-        </div>
+        <Meter value={n.water.countedMl} max={n.water.targetMl} tone="info" label="Water" />
       </div>
       {waterSource !== "cronometer" ? <WaterButton /> : <p className={styles.small}>Water is counted from Cronometer.</p>}
       <p className={styles.small}>{syncedLabel(n.lastSyncedAt, tz)}</p>
@@ -64,7 +63,7 @@ export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string
           ))}
         </ul>
       ) : null}
-    </section>
+    </Card>
   );
 }
 
@@ -73,13 +72,11 @@ function Bar({ label, value, target, unit }: { label: string; value: number | nu
     <div className={styles.barRow}>
       <div className={styles.barHead}>
         <span>{label}</span>
-        <span>
+        <span className={styles.barNums}>
           {value === null ? "–" : Math.round(value)} / {Math.round(target)} {unit}
         </span>
       </div>
-      <div className={styles.bar} aria-hidden="true">
-        <div className={styles.barFill} style={{ width: `${barPercent(value, target)}%` }} />
-      </div>
+      <Meter value={value ?? 0} max={target} tone={label === "Calories" ? "accent" : "good"} label={label} />
     </div>
   );
 }

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ICON_FOR_KIND, Icon } from "@/components/icon";
+import { Cap, Card } from "@/components/ui/ui";
+import { titleCase } from "@/lib/ui/title-case";
 import type { Db } from "@/db/client";
 import { getDayPlan, type DaySession } from "@/lib/plan/service";
 import { reasonView, sessionLogLink, sessionNotes } from "@/lib/plan/today-view";
@@ -15,16 +18,16 @@ export async function TodayTraining({ db, now, tz }: { db: Db; now: Date; tz: st
   } catch (err) {
     console.error("getDayPlan failed:", err);
     return (
-      <section className={styles.training}>
-        <h2 className={styles.tileLabel}>Today&apos;s training</h2>
+      <Card hot>
+        <Cap>Today&apos;s Session</Cap>
         <p className={styles.small}>Couldn&apos;t load today&apos;s plan</p>
-      </section>
+      </Card>
     );
   }
 
   return (
-    <section className={styles.training} aria-label="Today's training">
-      <h2 className={styles.tileLabel}>Today&apos;s training</h2>
+    <Card hot>
+      <Cap>{sessions.length > 1 ? "Today's Sessions" : "Today's Session"}</Cap>
       {sessions.length === 0 ? (
         <p className={styles.small}>
           Nothing planned today. <Link href="/plan" className={styles.whyLink}>Open the plan</Link> or{" "}
@@ -33,7 +36,7 @@ export async function TodayTraining({ db, now, tz }: { db: Db; now: Date; tz: st
       ) : (
         sessions.map((s) => <SessionRow key={s.id} s={s} />)
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -47,8 +50,9 @@ function SessionRow({ s }: { s: DaySession }) {
     <div className={styles.session}>
       <div className={styles.sessionHead}>
         <p className={styles.sessionTitle}>
-          {done ? <span className={styles.green} aria-label="Done">✓ </span> : null}
-          {s.title}
+          <Icon name={ICON_FOR_KIND[s.kind]} size={18} className={styles.kindIcon} />
+          {titleCase(s.title)}
+          {done ? <Icon name="check" label="Done" className={styles.doneIcon} /> : null}
         </p>
         {rest ? null : (
           <p className={styles.small}>

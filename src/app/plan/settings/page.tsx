@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Page } from "@/components/ui/ui";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { getDb } from "@/db/client";
@@ -14,12 +15,12 @@ import { PlanSettingsForm } from "./settings-form";
 export default function PlanSettingsPage() {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <PlanHeader active="settings" title="Plan settings" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <SettingsContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="plan" />
     </>
   );

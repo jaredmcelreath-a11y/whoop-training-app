@@ -111,11 +111,31 @@ export const KIND_LABEL: Record<string, string> = {
   bike: "Bike",
   run: "Run",
   strength: "Strength",
-  lower_leg: "Lower leg",
+  lower_leg: "Lower Leg",
   core: "Core",
   mobility: "Mobility",
   rest: "Rest",
 };
+
+export type StripState = "done" | "today" | "future" | "missed" | "rest";
+
+/**
+ * One state per day for the Plan week strip. Rest-only (or empty) days are "rest"; a day
+ * whose non-rest sessions are all done is "done"; today is "today"; a past day with
+ * anything unfinished is "missed"; everything else is "future".
+ */
+export function weekStrip(
+  days: readonly { date: string; sessions: readonly { status: "planned" | "done" | "skipped"; kind: string }[] }[],
+  today: string,
+): StripState[] {
+  return days.map((d) => {
+    const work = d.sessions.filter((s) => s.kind !== "rest");
+    if (work.length === 0) return "rest";
+    if (work.every((s) => s.status === "done")) return "done";
+    if (d.date === today) return "today";
+    return d.date < today ? "missed" : "future";
+  });
+}
 
 export const INTENSITY_LABEL: Record<string, string> = {
   z1: "Zone 1",
@@ -264,7 +284,7 @@ export const EVIDENCE_TEXT: Record<Evidence, string> = {
 
 export const EVIDENCE_LABEL: Record<Evidence, string> = {
   consensus: "Consensus",
-  "meta-analysis": "Meta-analysis",
+  "meta-analysis": "Meta-Analysis",
   trial: "Trial",
   expert: "Expert",
   "n-of-1": "n-of-1",
@@ -277,10 +297,10 @@ export const AREA_LABEL: Record<string, string> = {
   intensity: "Intensity",
   strength: "Strength",
   recovery: "Recovery",
-  pain: "Pain and joints",
-  concurrent: "Mixing cardio and lifting",
-  lower_leg: "Lower leg",
-  week: "Weekly template",
+  pain: "Pain and Joints",
+  concurrent: "Mixing Cardio and Lifting",
+  lower_leg: "Lower Leg",
+  week: "Weekly Template",
   nutrition: "Nutrition",
   hydration: "Hydration",
   supplements: "Supplements",

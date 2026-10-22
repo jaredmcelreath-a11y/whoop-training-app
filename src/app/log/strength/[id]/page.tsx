@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
+import { Icon } from "@/components/icon";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -22,7 +24,7 @@ import { AddExerciseForm, DeleteWorkoutButton, SetRow } from "./set-row";
 export default function WorkoutPage({ params, searchParams }: PageProps<"/log/strength/[id]">) {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <header className={styles.header}>
           <Link href="/log/strength" className={styles.back}>
             ‹ Strength
@@ -31,7 +33,7 @@ export default function WorkoutPage({ params, searchParams }: PageProps<"/log/st
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <Workout params={params} searchParams={searchParams} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -96,7 +98,7 @@ async function Workout({
                     </span>
                     <form action={removeSetAction.bind(null, id, s.id)}>
                       <SubmitButton className={styles.remove} aria-label={`Remove set ${s.setIndex + 1}`}>
-                        ✕
+                        <Icon name="close" />
                       </SubmitButton>
                     </form>
                   </li>
@@ -119,7 +121,7 @@ async function Workout({
 
       {finished ? null : (
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Add exercise</h2>
+          <h2 className={styles.cardTitle}>Add Exercise</h2>
           <form method="get" className={styles.inline}>
             {/* Sent alongside the pick (?ex=<list>&ex=<new>) so earlier picks stay on screen. */}
             {exParam ? <input type="hidden" name="ex" value={exParam} /> : null}

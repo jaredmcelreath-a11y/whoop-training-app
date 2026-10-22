@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { THEME_SCRIPT, themeColor } from "@/lib/ui/theme";
+import { ThemeSync } from "@/components/theme-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#12161b",
+  themeColor: themeColor("dark"),
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -20,8 +22,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    // The theme script sets data-theme before first paint, so React must not fight it.
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body>
+        <ThemeSync />
+        {children}
+      </body>
     </html>
   );
 }

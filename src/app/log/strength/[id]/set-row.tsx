@@ -71,7 +71,7 @@ export function SetRow({
         />
       </label>
       <button type="submit" className={styles.addButton} disabled={pending}>
-        {pending ? "…" : "Add set"}
+        {pending ? "…" : "Add Set"}
       </button>
       {state.error && !pending ? (
         <p className={styles.error} role="alert">
@@ -110,7 +110,7 @@ export function AddExerciseForm({ sessionId, exList }: { sessionId: string; exLi
           ))}
         </select>
         <button type="submit" className={styles.secondary} disabled={pending}>
-          {pending ? "Adding…" : "Add new"}
+          {pending ? "Adding…" : "Add New"}
         </button>
       </div>
       {state.error && !pending ? (

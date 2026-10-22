@@ -491,5 +491,5 @@ describe("buildWeek", () => {
               }
             }
         }
-  });
+  }, 120_000); // exhaustive sweep; slow when the full suite runs in parallel
 });

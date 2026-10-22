@@ -20,6 +20,6 @@ describe("iPhone Home Screen metadata", () => {
 
   it("covers the notch and sets the theme colour", () => {
     expect(viewport.viewportFit).toBe("cover");
-    expect(viewport.themeColor).toBe("#12161b");
+    expect(viewport.themeColor).toBe("#0b0e12");
   });
 });

@@ -12,23 +12,25 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin: 8px 0 14px;
 }
 
 .card {
   background: var(--card);
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   padding: 14px;
 }
 
 .cardTitle {
-  font-size: 12px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sub);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
   margin-bottom: 6px;
 }
 
@@ -43,21 +45,22 @@
   width: 100%;
   text-align: center;
   margin-top: 12px;
-  padding: 10px;
-  border-radius: 12px;
-  font-weight: 700;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 800;
   text-decoration: none;
   cursor: pointer;
 }
 
 .primary {
-  background: var(--green);
-  color: #06291a;
+  background: var(--good);
+  color: var(--on-accent);
   border: 0;
 }
 
 .danger {
   background: transparent;
-  color: var(--red);
-  border: 1px solid var(--red);
+  color: var(--low);
+  border: 1px solid var(--low);
 }

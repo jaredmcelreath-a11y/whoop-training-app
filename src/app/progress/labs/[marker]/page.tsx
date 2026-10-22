@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { LineChart } from "@/components/line-chart";
@@ -19,7 +20,7 @@ const NO_GAP_BREAK = Number.POSITIVE_INFINITY;
 export default function LabMarkerPage({ params }: { params: Params }) {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <header className={styles.header}>
           <Link href="/progress" className={styles.back}>
             ‹ Progress
@@ -28,7 +29,7 @@ export default function LabMarkerPage({ params }: { params: Params }) {
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <MarkerContent params={params} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="progress" />
     </>
   );
@@ -59,7 +60,7 @@ async function MarkerContent({ params }: { params: Params }) {
   if (marker === null || history.length === 0) {
     return (
       <section className={styles.card}>
-        <h1 className={styles.title}>No results for this marker</h1>
+        <h1 className={styles.title}>No Results for This Marker</h1>
         <Link href="/progress" className={styles.link}>
           Back to Progress
         </Link>

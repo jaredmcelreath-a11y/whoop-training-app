@@ -35,7 +35,7 @@
 }
 
 .segment:has(input:focus-visible) {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--info);
 }
 
 .form {
@@ -74,12 +74,12 @@
 .check input {
   width: 22px;
   height: 22px;
-  accent-color: var(--green);
+  accent-color: var(--good);
 }
 
 .saved {
   font-size: 13px;
-  color: var(--green);
+  color: var(--good);
 }
 
 .item {
@@ -136,7 +136,7 @@
 .slider input {
   width: 100%;
   min-height: 44px;
-  accent-color: var(--green);
+  accent-color: var(--good);
 }
 
 .sliderValue {

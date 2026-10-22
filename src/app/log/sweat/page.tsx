@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -23,17 +24,17 @@ const SPORTS = [
 export default function SweatPage() {
   return (
     <>
-      <main className={base.page}>
+      <Page>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
           </Link>
-          <h1 className={base.title}>Sweat-rate test</h1>
+          <h1 className={base.title}>Sweat-Rate Test</h1>
         </header>
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <SweatContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -48,7 +49,7 @@ async function SweatContent() {
   return (
     <>
       <section className={base.card}>
-        <h2 className={base.cardTitle}>Latest rate</h2>
+        <h2 className={base.cardTitle}>Latest Rate</h2>
         {SPORTS.map(([kind, label]) => {
           const lph = rates[kind];
           return (
@@ -59,7 +60,7 @@ async function SweatContent() {
         })}
       </section>
       <section className={base.card}>
-        <h2 className={base.cardTitle}>New test</h2>
+        <h2 className={base.cardTitle}>New Test</h2>
         <p className={base.sub}>
           {rule.statement}{" "}
           <a href="/plan/library#hydration.sweatTest" className={styles.whyLink}>

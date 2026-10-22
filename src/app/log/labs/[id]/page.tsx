@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -16,17 +17,17 @@ export default function LabPanelPage({
 }) {
   return (
     <>
-      <main className={base.page}>
+      <Page>
         <header className={base.header}>
           <Link href="/log/labs" className={base.back}>
             ‹ Labs
           </Link>
-          <h1 className={base.title}>Lab panel</h1>
+          <h1 className={base.title}>Lab Panel</h1>
         </header>
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <PanelContent params={params} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );

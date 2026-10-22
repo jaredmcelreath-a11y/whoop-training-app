@@ -26,19 +26,20 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
   return (
     <form key={state.savedAt ?? 0} action={action} onSubmit={keepInputOnSubmit(action)} className={styles.form}>
       <label className={styles.field}>
-        <span className={styles.label}>Race date</span>
+        <span className={styles.label}>Race Date</span>
         <input type="date" name="raceDate" required defaultValue={settings.raceDate} className={styles.input} />
       </label>
 
       <fieldset className={styles.field}>
-        <legend className={styles.label}>Training window 1</legend>
+        <legend className={styles.label}>Training Window 1</legend>
         <div className={styles.row}>
           <input type="time" name="w1Start" aria-label="Window 1 start" defaultValue={w1?.start ?? ""} className={styles.input} />
           <input type="time" name="w1End" aria-label="Window 1 end" defaultValue={w1?.end ?? ""} className={styles.input} />
         </div>
       </fieldset>
       <fieldset className={styles.field}>
-        <legend className={styles.label}>Training window 2 (optional — leave blank for none)</legend>
+        <legend className={styles.label}>Training Window 2 (Optional)</legend>
+        <p className={styles.disclaimer}>Leave blank for none.</p>
         <div className={styles.row}>
           <input type="time" name="w2Start" aria-label="Window 2 start" defaultValue={w2?.start ?? ""} className={styles.input} />
           <input type="time" name="w2End" aria-label="Window 2 end" defaultValue={w2?.end ?? ""} className={styles.input} />
@@ -50,7 +51,7 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
       <DaySelect name="restDow" label="Rest day" value={settings.restDow} />
 
       <fieldset className={styles.field}>
-        <legend className={styles.label}>Joint status</legend>
+        <legend className={styles.label}>Joint Status</legend>
         {JOINT_OPTIONS.map((o) => (
           <label key={o.value} className={styles.radio}>
             <input type="radio" name="jointStatus" value={o.value} defaultChecked={settings.jointStatus === o.value} />
@@ -62,7 +63,7 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
       </fieldset>
 
       <fieldset className={styles.field}>
-        <legend className={styles.label}>Pool length</legend>
+        <legend className={styles.label}>Pool Length</legend>
         <div className={styles.row}>
           <input
             type="text"

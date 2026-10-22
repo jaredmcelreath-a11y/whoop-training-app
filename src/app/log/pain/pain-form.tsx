@@ -30,7 +30,7 @@ export function PainForm({ trends }: { trends: Record<string, string> }) {
         </select>
       </label>
       <button type="submit" className={base.primary} disabled={pending}>
-        {pending ? "Saving…" : "Log pain"}
+        {pending ? "Saving…" : "Log Pain"}
       </button>
       {!pending && state.error ? (
         <p className={base.error} role="alert">

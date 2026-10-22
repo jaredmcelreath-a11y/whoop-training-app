@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
@@ -16,7 +17,7 @@ import styles from "./strength.module.css";
 export default function StrengthPage() {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <header className={styles.header}>
           <Link href="/log" className={styles.back}>
             ‹ Log
@@ -26,7 +27,7 @@ export default function StrengthPage() {
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <Sessions />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -42,7 +43,7 @@ async function Sessions() {
     <>
       <form action={startWorkout} className={styles.startForm}>
         <SubmitButton className={styles.primary} pendingLabel="Starting…">
-          {resumable ? "Resume today's workout" : "Start workout"}
+          {resumable ? "Resume today's workout" : "Start Workout"}
         </SubmitButton>
       </form>
       <section className={styles.card}>

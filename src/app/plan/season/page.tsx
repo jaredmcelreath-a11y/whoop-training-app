@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Page } from "@/components/ui/ui";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { getDb } from "@/db/client";
@@ -17,12 +18,12 @@ const DAYS_PER_WEEK = 7;
 export default function SeasonPage() {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <PlanHeader active="season" title="Season" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <SeasonContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="plan" />
     </>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -18,7 +19,7 @@ const RETEST_AFTER_DAYS = 182;
 export default function LabsPage() {
   return (
     <>
-      <main className={base.page}>
+      <Page>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -28,7 +29,7 @@ export default function LabsPage() {
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <LabsContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -55,7 +56,7 @@ async function LabsContent() {
         </p>
       ) : null}
       <section className={base.card}>
-        <h2 className={base.cardTitle}>New panel</h2>
+        <h2 className={base.cardTitle}>New Panel</h2>
         <LabForm today={localDate(now, tz)} />
       </section>
       <section className={base.card}>

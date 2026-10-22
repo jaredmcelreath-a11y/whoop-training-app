@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { ICON_FOR_KIND, Icon } from "@/components/icon";
+import { BigNum, Cap, Card, Page } from "@/components/ui/ui";
+import type { SessionKind } from "@/db/schema";
+import { getPlanSettings } from "@/lib/plan/settings";
+import { titleCase } from "@/lib/ui/title-case";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -19,9 +24,13 @@ import {
   prescriptionLine,
   shortDay,
   structureLine,
+  weekStrip,
+  weeksToRace,
+  WEEKDAYS,
   type RxLine,
 } from "@/lib/plan/view";
 import { PlanHeader } from "./plan-nav";
+import { StripBox } from "./strip-box";
 import styles from "./plan.module.css";
 
 const DAYS_PER_WEEK = 7;
@@ -42,6 +51,8 @@ type ViewSession = {
   adjustedLabel?: string;
 };
 
+const STRIP_LABEL = { done: "Done", today: "Today", future: "Planned", missed: "Missed", rest: "Rest" } as const;
+
 const RULE_WHY = RULES as Record<string, { why: string } | undefined>;
 
 const INTENSITY_CLASS: Record<string, string> = {
@@ -58,12 +69,12 @@ const INTENSITY_CLASS: Record<string, string> = {
 export default function PlanPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <PlanHeader active="week" title="Plan" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <WeekContent searchParams={searchParams} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="plan" />
     </>
   );
@@ -88,12 +99,22 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
   const hold = todayPlan && (todayPlan.readiness.painHold || todayPlan.readiness.jointRestricted) ? todayPlan.readiness : null;
 
   const meta = days.flatMap((d) => d.sessions).map((s) => (s.details as { week?: WeekMeta }).week).find(Boolean);
+  const settings = await getPlanSettings(db, now, tz);
+  const left = weeksToRace(weekStart(today), settings.raceDate);
+  const strip = weekStrip(days, today);
+  const phaseName = meta ? (PHASE_LABEL[meta.phase as keyof typeof PHASE_LABEL] ?? titleCase(meta.phase)) : null;
 
   return (
     <>
+      <Card hot>
+        <Cap>{phaseName && isCurrent && meta ? `${phaseName} · Week ${meta.index + 1}` : "Race Day"}</Cap>
+        <BigNum unit={left === 1 ? "Week to Race Day" : "Weeks to Race Day"}>{left}</BigNum>
+        <p className={styles.sub}>{dayHeading(settings.raceDate)}</p>
+      </Card>
+
       <nav className={styles.weekNav} aria-label="Week">
         <Link href={`/plan?week=${addDays(ws, -DAYS_PER_WEEK)}`} className={styles.weekArrow} aria-label="Previous week">
-          ‹
+          <Icon name="chevron-left" size={20} />
         </Link>
         <div className={styles.weekLabel}>
           <div className={styles.weekRange}>
@@ -102,20 +123,36 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
           {meta ? (
             <div className={styles.weekMeta}>
               Week {meta.index + 1} · {PHASE_LABEL[meta.phase as keyof typeof PHASE_LABEL] ?? meta.phase}
-              {meta.recovery ? " · recovery week" : ""}
-              {meta.gainPhase ? " · gain phase" : ""}
+              {meta.recovery ? " · Recovery Week" : ""}
+              {meta.gainPhase ? " · Gain Phase" : ""}
             </div>
           ) : null}
           {!isCurrent ? (
             <Link href="/plan" className={styles.thisWeek}>
-              Back to this week
+              Back to This Week
             </Link>
           ) : null}
         </div>
         <Link href={`/plan?week=${addDays(ws, DAYS_PER_WEEK)}`} className={styles.weekArrow} aria-label="Next week">
-          ›
+          <Icon name="chevron-right" size={20} />
         </Link>
       </nav>
+
+      <ol className={styles.strip} aria-label="This week at a glance">
+        {days.map((d, i) => (
+          <li
+            key={d.date}
+            className={styles.stripDay}
+            data-state={strip[i]}
+            aria-label={`${WEEKDAYS[i]}: ${STRIP_LABEL[strip[i]]}`}
+          >
+            <StripBox state={strip[i]} />
+            <span className={styles.stripInitial} aria-hidden="true">
+              {WEEKDAYS[i][0]}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       {hold?.painHold ? (
         <p className={styles.banner} role="status">
@@ -125,14 +162,14 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
         <p className={styles.banner} role="status">
           Joint status restricted: runs and jumps are swapped. Change it in{" "}
           <Link href="/plan/settings" className={styles.whyLink}>
-            Plan settings
+            Plan Settings
           </Link>
           .
         </p>
       ) : null}
 
       {days.every((d) => d.sessions.length === 0) ? (
-        <p className={styles.card}>No sessions planned this week. It may be outside the season, or in the past.</p>
+        <p className={styles.emptyWeek}>No sessions planned this week. It may be outside the season, or in the past.</p>
       ) : null}
 
       {days.map((d) => {
@@ -141,7 +178,7 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
           isToday && todayPlan
             ? todayPlan.sessions.map((s) => ({ ...s, key: s.id }))
             : hold && d.date > today
-              ? holdDayView(d.sessions, hold).map((s) => ({ ...s, key: s.id, adjustedLabel: "changed for the hold" }))
+              ? holdDayView(d.sessions, hold).map((s) => ({ ...s, key: s.id, adjustedLabel: "Changed for the Hold" }))
               : d.sessions.map((s) => ({
                 key: s.id,
                 kind: s.kind,
@@ -155,12 +192,12 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
                 adjusted: false,
               }));
         return (
-          <section key={d.date} className={isToday ? styles.cardToday : styles.card} aria-label={dayHeading(d.date)}>
+          <Card key={d.date} className={isToday ? styles.dayToday : undefined}>
             <div className={styles.dayHead}>
               <h2 className={styles.dayName}>{dayHeading(d.date)}</h2>
               {isToday ? <span className={styles.todayBadge}>Today</span> : null}
               {isToday && todayPlan && todayPlan.readiness.color !== "unknown" ? (
-                <span className={styles.colorBadge}>Recovery: {todayPlan.readiness.color}</span>
+                <span className={styles.colorBadge}>Recovery: {titleCase(todayPlan.readiness.color)}</span>
               ) : null}
             </div>
             {sessions.length ? (
@@ -170,9 +207,9 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
                 ))}
               </ul>
             ) : (
-              <p className={styles.empty}>Nothing planned</p>
+              <p className={styles.empty}>Nothing Planned</p>
             )}
-          </section>
+          </Card>
         );
       })}
     </>
@@ -191,17 +228,20 @@ function Session({ s }: { s: ViewSession }) {
       <details>
         <summary className={styles.summary}>
           <span className={styles.sessionTop}>
-            <span className={styles.kind}>{KIND_LABEL[s.kind] ?? s.kind}</span>
-            <span className={styles.sessionTitle}>{s.title}</span>
+            <span className={styles.kind}>
+              <Icon name={ICON_FOR_KIND[s.kind as SessionKind] ?? "flag"} size={14} />
+              {KIND_LABEL[s.kind] ?? titleCase(s.kind)}
+            </span>
+            <span className={styles.sessionTitle}>{titleCase(s.title)}</span>
           </span>
           <span className={styles.sessionMeta}>
             {s.durationMin > 0 ? <span>{s.durationMin} min</span> : null}
             {s.kind !== "rest" ? (
               <span className={INTENSITY_CLASS[s.intensity] ?? styles.badge}>{INTENSITY_LABEL[s.intensity] ?? s.intensity}</span>
             ) : null}
-            {s.status === "done" ? <span className={styles.done}>✓ done</span> : null}
-            {s.status === "skipped" ? <span className={styles.skipped}>skipped</span> : null}
-            {s.adjusted ? <span className={styles.adjusted}>{s.adjustedLabel ?? "adjusted today"}</span> : null}
+            {s.status === "done" ? <span className={styles.done}><Icon name="check" /> Done</span> : null}
+            {s.status === "skipped" ? <span className={styles.skipped}>Skipped</span> : null}
+            {s.adjusted ? <span className={styles.adjusted}>{s.adjustedLabel ?? "Adjusted Today"}</span> : null}
           </span>
         </summary>
         <div className={styles.sessionBody}>

@@ -10,8 +10,9 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .sub {
@@ -45,15 +46,17 @@
 
 .subActive {
   background: var(--card2);
-  color: var(--text);
-  outline: 1px solid var(--line);
+  color: var(--accent);
+  font-weight: 800;
+  outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* ---- cards --------------------------------------------------------------- */
 
 .card {
   background: var(--card);
-  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   padding: 14px;
   margin-bottom: 12px;
   scroll-margin-top: 16px;
@@ -62,7 +65,7 @@
 
 .banner {
   background: var(--card2);
-  border: 1px solid var(--yellow);
+  border: 1px solid var(--caution);
   border-radius: 16px;
   padding: 14px;
   margin-bottom: 12px;
@@ -72,7 +75,88 @@
 
 .cardToday {
   composes: card;
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent);
+}
+
+.dayToday {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.emptyWeek {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--sub);
+}
+
+/* ---- week strip ------------------------------------------------------------ */
+
+.strip {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 4px 0 6px;
+  padding: 0;
+}
+
+.stripDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stripBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--card2);
+}
+
+.stripDay[data-state="done"] .stripBox {
+  background: var(--good);
+}
+
+.stripDay[data-state="missed"] .stripBox {
+  background: color-mix(in srgb, var(--low) 70%, transparent);
+}
+
+.stripDay[data-state="today"] .stripBox {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.stripDay[data-state="rest"] .stripBox {
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+
+.stripGlyph {
+  display: inline-flex;
+  color: var(--on-accent);
+}
+
+.stripInitial {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sub);
+}
+
+.stripDay[data-state="today"] .stripGlyph {
+  display: inline-flex;
+  color: var(--on-accent);
+}
+
+.stripInitial {
+  color: var(--accent);
 }
 
 .cardTitle {
@@ -97,6 +181,8 @@
 .weekArrow {
   min-height: 44px;
   min-width: 44px;
+  color: var(--text);
+  border: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,7 +210,7 @@
   display: inline-block;
   margin-top: 2px;
   font-size: 13px;
-  color: var(--blue);
+  color: var(--info);
 }
 
 .dayHead {
@@ -143,8 +229,8 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #04213f;
-  background: var(--blue);
+  color: var(--on-accent);
+  background: var(--info);
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -203,6 +289,9 @@ details[open] > .summary::after {
 
 .kind {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -211,7 +300,7 @@ details[open] > .summary::after {
 }
 
 .sessionTitle {
-  font-weight: 600;
+  font-weight: 800;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -236,26 +325,26 @@ details[open] > .summary::after {
 
 .intEasy {
   composes: badge;
-  color: var(--green);
+  color: var(--good);
 }
 
 .intHard {
   composes: badge;
-  color: var(--yellow);
+  color: var(--caution);
 }
 
 .intMax {
   composes: badge;
-  color: var(--red);
+  color: var(--low);
 }
 
 .intStrength {
   composes: badge;
-  color: var(--blue);
+  color: var(--info);
 }
 
 .done {
-  color: var(--green);
+  color: var(--good);
   font-weight: 600;
 }
 
@@ -265,7 +354,7 @@ details[open] > .summary::after {
 }
 
 .adjusted {
-  color: var(--yellow);
+  color: var(--caution);
 }
 
 .sessionBody {
@@ -299,7 +388,7 @@ details[open] > .summary::after {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  color: var(--yellow);
+  color: var(--caution);
   overflow-wrap: anywhere;
 }
 
@@ -322,7 +411,7 @@ details[open] > .summary::after {
   display: block;
   min-height: 44px;
   padding: 6px 0;
-  color: var(--blue);
+  color: var(--info);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
@@ -371,7 +460,7 @@ details[open] > .summary::after {
 }
 
 .phaseNow::before {
-  background: var(--blue);
+  background: var(--info);
 }
 
 .phaseName {
@@ -411,7 +500,7 @@ details[open] > .summary::after {
 }
 
 .chipGain {
-  border-color: var(--green);
+  border-color: var(--good);
 }
 
 .chipRecovery {
@@ -421,8 +510,8 @@ details[open] > .summary::after {
 }
 
 .chipNow {
-  background: var(--blue);
-  color: #04213f;
+  background: var(--info);
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -488,7 +577,7 @@ details[open] > .summary::after {
 
 .input:focus,
 .select:focus {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--info);
   outline-offset: 1px;
 }
 
@@ -533,8 +622,8 @@ details[open] > .summary::after {
   padding: 11px;
   border-radius: 12px;
   border: 0;
-  background: var(--green);
-  color: #06291a;
+  background: var(--good);
+  color: var(--on-accent);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -547,12 +636,12 @@ details[open] > .summary::after {
 
 .saved {
   font-size: 14px;
-  color: var(--green);
+  color: var(--good);
 }
 
 .error {
   font-size: 14px;
-  color: var(--red);
+  color: var(--low);
   overflow-wrap: anywhere;
 }
 
@@ -588,7 +677,7 @@ details[open] > .summary::after {
 }
 
 .rule:target {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--info);
   outline-offset: 6px;
   border-radius: 4px;
 }
@@ -648,7 +737,7 @@ details[open] > .summary::after {
 .caveat {
   font-size: 13px;
   color: var(--sub);
-  border-left: 2px solid var(--yellow);
+  border-left: 2px solid var(--caution);
   padding-left: 8px;
   overflow-wrap: anywhere;
 }
@@ -666,7 +755,7 @@ details[open] > .summary::after {
 }
 
 .citeLink {
-  color: var(--blue);
+  color: var(--info);
   text-decoration: none;
 }
 
@@ -686,30 +775,30 @@ details[open] > .summary::after {
 /* Evidence badges: one colour per level, strongest to weakest. */
 .evConsensus {
   composes: badge;
-  color: #2fd08a;
+  color: var(--good);
 }
 
 .evMeta {
   composes: badge;
-  color: #5aa9ff;
+  color: var(--info);
 }
 
 .evTrial {
   composes: badge;
-  color: #b48cff;
+  color: var(--sleep);
 }
 
 .evExpert {
   composes: badge;
-  color: #f2c14e;
+  color: var(--caution);
 }
 
 .evN1 {
   composes: badge;
-  color: #ff9f5a;
+  color: var(--low);
 }
 
 .evPractice {
   composes: badge;
-  color: #9aa5b3;
+  color: var(--sub);
 }

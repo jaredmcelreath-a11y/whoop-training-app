@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { RULES } from "@/lib/engine/rules/catalog";
+import { titleCase } from "@/lib/ui/title-case";
 import {
+  weekStrip,
+  AREA_LABEL,
+  EVIDENCE_LABEL,
+  INTENSITY_LABEL,
+  KIND_LABEL,
+  PHASE_LABEL,
   dayHeading,
   detailNotes,
   humanizeParams,
@@ -247,5 +254,33 @@ describe("settingsFromForm", () => {
     const joint = settingsFromForm(form({ ...VALID, jointStatus: "bogus" }), CURRENT);
     expect(joint.ok).toBe(false);
     expect(!joint.ok && joint.error).not.toMatch(/\{|\[/);
+  });
+});
+
+describe("weekStrip", () => {
+  const s = (status: "planned" | "done" | "skipped", kind = "run") => ({ status, kind });
+  it("gives each day of an invented week its state", () => {
+    const days = [
+      { date: "2026-03-02", sessions: [s("done"), s("done", "strength")] },
+      { date: "2026-03-03", sessions: [s("planned")] },
+      { date: "2026-03-04", sessions: [s("planned", "rest")] },
+      { date: "2026-03-05", sessions: [s("planned")] },
+      { date: "2026-03-06", sessions: [s("planned")] },
+      { date: "2026-03-07", sessions: [] },
+      { date: "2026-03-08", sessions: [s("done"), s("skipped", "swim")] },
+    ];
+    expect(weekStrip(days, "2026-03-05")).toEqual(["done", "missed", "rest", "today", "future", "rest", "future"]);
+  });
+
+  it("counts a past day with a skipped session as missed", () => {
+    expect(weekStrip([{ date: "2026-03-02", sessions: [s("done"), s("skipped", "swim")] }], "2026-03-04")).toEqual(["missed"]);
+  });
+});
+
+describe("labels are Title Case", () => {
+  it("phase, kind and intensity labels", () => {
+    for (const v of [...Object.values(PHASE_LABEL), ...Object.values(KIND_LABEL), ...Object.values(INTENSITY_LABEL), ...Object.values(AREA_LABEL), ...Object.values(EVIDENCE_LABEL)]) {
+      expect(titleCase(v), v).toBe(v);
+    }
   });
 });

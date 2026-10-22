@@ -62,7 +62,7 @@ export function ScanForm({ today }: { today: string }) {
         />
       </label>
       <button type="submit" className={base.primary} disabled={pending}>
-        {pending ? "Saving…" : "Save scan"}
+        {pending ? "Saving…" : "Save Scan"}
       </button>
       {!pending && state.error ? (
         <p className={base.error} role="alert">

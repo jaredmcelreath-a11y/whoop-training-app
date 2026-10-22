@@ -19,8 +19,9 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .sub {
@@ -141,7 +142,7 @@
 .numInput:focus,
 .input:focus,
 .select:focus {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--info);
   outline-offset: 1px;
 }
 
@@ -158,8 +159,8 @@
 
 .addButton,
 .primary {
-  background: var(--green);
-  color: #06291a;
+  background: var(--good);
+  color: var(--on-accent);
 }
 
 .addButton {
@@ -216,7 +217,7 @@
   min-height: 44px;
   border: 0;
   background: transparent;
-  color: var(--red);
+  color: var(--low);
   font: inherit;
   font-size: 15px;
   text-decoration: underline;
@@ -250,7 +251,7 @@
 
 .error {
   font-size: 13px;
-  color: var(--red);
+  color: var(--low);
   overflow-wrap: anywhere;
 }
 

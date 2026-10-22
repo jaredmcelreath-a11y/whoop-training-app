@@ -68,7 +68,7 @@ export function SweatForm({ today }: { today: string }) {
       </label>
 
       <button type="submit" className={base.primary} disabled={pending}>
-        {pending ? "Saving…" : "Save test"}
+        {pending ? "Saving…" : "Save Test"}
       </button>
       {!pending && state.error ? (
         <p className={base.error} role="alert">

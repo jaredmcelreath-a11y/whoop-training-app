@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Page } from "@/components/ui/ui";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { requireSession } from "@/lib/auth/session";
@@ -32,12 +33,12 @@ type AnyRule = {
 export default function LibraryPage() {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <PlanHeader active="library" title="Library" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <LibraryContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="plan" />
     </>
   );
@@ -56,7 +57,7 @@ async function LibraryContent() {
   return (
     <>
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>How to read this</h2>
+        <h2 className={styles.cardTitle}>How to Read This</h2>
         <p className={styles.spaced}>
           Every rule the plan follows is listed here with its sources. Each rule&apos;s badge is the strongest kind of
           evidence that directly supports it, from strongest to weakest:
@@ -105,7 +106,7 @@ function RuleEntry({ r }: { r: AnyRule }) {
       <p className={styles.ruleWhy}>{r.why}</p>
       {params.length ? (
         <>
-          <p className={styles.subhead}>Numbers used</p>
+          <p className={styles.subhead}>Numbers Used</p>
           <Params items={params} />
         </>
       ) : null}

@@ -2,9 +2,10 @@
 .svg { display: block; width: 100%; height: auto; }
 .grid { stroke: var(--line); stroke-width: 1; }
 .tick { fill: var(--sub); font-size: 10px; }
-.line { fill: none; stroke: var(--blue); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.dot { fill: var(--blue); stroke: var(--card); stroke-width: 2; }
-.dotFaint { fill: var(--blue); opacity: 0.45; }
-.goal { stroke: var(--yellow); stroke-width: 1; stroke-dasharray: 4 3; }
+.area { fill: color-mix(in srgb, var(--accent) 15%, transparent); stroke: none; }
+.line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.dot { fill: var(--info); stroke: var(--card); stroke-width: 2; }
+.dotFaint { fill: var(--info); opacity: 0.45; }
+.goal { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.5; }
 .latest { margin: 4px 0 0; color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
 .empty { display: flex; align-items: center; min-height: 44px; color: var(--sub); font-size: 14px; text-decoration: none; }

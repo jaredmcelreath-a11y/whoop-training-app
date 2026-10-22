@@ -107,7 +107,7 @@ export function LabForm({ today }: { today: string }) {
         onClick={applyPaste}
         disabled={!paste.trim()}
       >
-        Parse into rows
+        Parse Into Rows
       </button>
       {unparsed.length ? (
         <div className={base.error} role="alert">
@@ -182,11 +182,11 @@ export function LabForm({ today }: { today: string }) {
         className={base.secondary}
         onClick={() => setRows((rs) => [...rs, blank()])}
       >
-        Add row
+        Add Row
       </button>
 
       <button type="submit" className={base.primary} disabled={pending}>
-        {pending ? "Saving…" : "Save panel"}
+        {pending ? "Saving…" : "Save Panel"}
       </button>
       {!pending && state.error ? (
         <p className={base.error} role="alert">

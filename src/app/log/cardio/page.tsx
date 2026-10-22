@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -19,7 +20,7 @@ import styles from "./cardio.module.css";
 export default function CardioPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
   return (
     <>
-      <main className={base.page}>
+      <Page>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
@@ -29,7 +30,7 @@ export default function CardioPage({ searchParams }: { searchParams: Promise<{ k
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <CardioContent searchParams={searchParams} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -43,7 +44,7 @@ async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: 
   return (
     <>
       <section className={base.card}>
-        <h2 className={base.cardTitle}>Log cardio</h2>
+        <h2 className={base.cardTitle}>Log Cardio</h2>
         <CardioForm initialKind={kind} defaultStart={toZonedLocal(new Date(), getEnv().OWNER_TZ)} />
       </section>
       <section className={base.card}>

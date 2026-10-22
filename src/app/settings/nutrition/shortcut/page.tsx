@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { titleCase } from "@/lib/ui/title-case";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { requireSession } from "@/lib/auth/session";
@@ -8,14 +10,14 @@ import styles from "../nutrition.module.css";
 
 export default function ShortcutGuidePage() {
   return (
-    <main className={styles.page}>
+    <Page>
       <Link href="/settings/nutrition" className={styles.back}>
         ← Nutrition
       </Link>
       <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
         <Guide />
       </Suspense>
-    </main>
+    </Page>
   );
 }
 
@@ -40,9 +42,9 @@ async function Guide() {
         switch (b.type) {
           case "heading":
             return b.level === 1 ? (
-              <h1 key={i} className={styles.title}><Inline text={b.text} /></h1>
+              <h1 key={i} className={styles.title}><Inline text={titleCase(b.text)} /></h1>
             ) : (
-              <h2 key={i} className={styles.guideH}><Inline text={b.text} /></h2>
+              <h2 key={i} className={styles.guideH}><Inline text={titleCase(b.text)} /></h2>
             );
           case "para":
             return <p key={i} className={styles.guideP}><Inline text={b.text} /></p>;

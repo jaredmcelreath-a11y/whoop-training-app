@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BigNum, Cap, Card, Meter, Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { LineChart } from "@/components/line-chart";
@@ -23,12 +24,12 @@ const FAILED = "Couldn't load this section";
 export default function ProgressPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <h1 className={styles.title}>Progress</h1>
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <ProgressContent searchParams={searchParams} />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="progress" />
     </>
   );
@@ -70,10 +71,11 @@ async function ProgressContent({ searchParams }: { searchParams: SearchParams })
           </Link>
         ))}
       </nav>
+      {body ? <GainCard body={body} /> : null}
       <Section title="Weight" data={body}>
         {(b) => <WeightSection body={b} />}
       </Section>
-      <Section title="Body scans" data={body}>
+      <Section title="Body Scans" data={body}>
         {(b) => <ScansSection body={b} />}
       </Section>
       <Section title="Labs" data={markers}>
@@ -95,14 +97,37 @@ async function ProgressContent({ searchParams }: { searchParams: SearchParams })
 function Section<T>({ title, data, children }: { title: string; data: T | null; children: (d: T) => ReactNode }) {
   // Loader failures arrive here as null (see safe); the views below are pure.
   return (
-    <section className={styles.card} aria-label={title}>
+    <Card>
       <h2 className={styles.cardTitle}>{title}</h2>
       {data === null ? <p className={styles.error}>{FAILED}</p> : children(data)}
-    </section>
+    </Card>
   );
 }
 
 const lb1 = (x: number | null) => (x === null ? "–" : (Math.round(x * 10) / 10).toFixed(1));
+
+function GainCard({ body }: { body: BodyProgress }) {
+  const { gain } = body;
+  return (
+    <Card hot>
+      <Cap>Gain Goal</Cap>
+      {gain.gainedLb === null ? (
+        <p className={styles.text}>{gainLine(gain)}</p>
+      ) : (
+        <>
+          <BigNum unit={`/ ${gain.goalLb} lb`}>{signed1(gain.gainedLb)}</BigNum>
+          <Meter value={Math.max(gain.gainedLb, 0)} max={gain.goalLb} tone="accent" label="Gain toward goal" />
+          <p className={styles.text}>
+            {body.rateLbPerWeek === null
+              ? "Not enough weigh-ins for a rate yet."
+              : `${signed1(body.rateLbPerWeek)} lb/wk` +
+                (body.targetRateLbPerWeek === null ? "" : ` · target ${signed1(body.targetRateLbPerWeek)} lb/wk`)}
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
 
 function WeightSection({ body }: { body: BodyProgress }) {
   const { gain } = body;
@@ -124,7 +149,7 @@ function WeightSection({ body }: { body: BodyProgress }) {
         emptyHref="/log#weight"
       />
       <p className={styles.text}>{rate}</p>
-      <p className={styles.text}>Gain goal: {gainLine(gain)}</p>
+      <p className={styles.text}>{gainLine(gain)}</p>
     </>
   );
 }
@@ -133,7 +158,7 @@ function ScansSection({ body }: { body: BodyProgress }) {
   if (body.scans.length === 0) {
     return (
       <Link href="/log/scans" className={styles.link}>
-        Log a body scan
+        Log a Body Scan
       </Link>
     );
   }
@@ -243,7 +268,7 @@ function EnduranceSection({ training }: { training: TrainingProgress }) {
   const run = latestOf(training.runPace);
   return (
     <>
-      <h3 className={styles.subTitle}>VO2 max</h3>
+      <h3 className={styles.subTitle}>VO2 Max</h3>
       <LineChart
         segments={splitAtGaps(training.vo2max)}
         unit="ml/kg/min"
@@ -259,7 +284,7 @@ function EnduranceSection({ training }: { training: TrainingProgress }) {
         emptyText="Log WHOOP Age weekly to see a trend"
         emptyHref="/log#weekly"
       />
-      <h3 className={styles.subTitle}>Swim pace</h3>
+      <h3 className={styles.subTitle}>Swim Pace</h3>
       <p className={styles.sub}>Seconds per 100 yd; lower is faster.{swim !== undefined ? ` Latest ${paceLabel(swim, "100 yd")}.` : ""}</p>
       <LineChart
         segments={splitAtGaps(training.swimPace)}
@@ -268,7 +293,7 @@ function EnduranceSection({ training }: { training: TrainingProgress }) {
         emptyText="Log swims with distance to see pace"
         emptyHref="/log/cardio"
       />
-      <h3 className={styles.subTitle}>Run pace</h3>
+      <h3 className={styles.subTitle}>Run Pace</h3>
       <p className={styles.sub}>Seconds per mile; lower is faster.{run !== undefined ? ` Latest ${paceLabel(run, "mi")}.` : ""}</p>
       <LineChart
         segments={splitAtGaps(training.runPace)}
@@ -277,7 +302,7 @@ function EnduranceSection({ training }: { training: TrainingProgress }) {
         emptyText="Log runs with distance to see pace"
         emptyHref="/log/cardio"
       />
-      <h3 className={styles.subTitle}>Bike power</h3>
+      <h3 className={styles.subTitle}>Bike Power</h3>
       <LineChart
         segments={splitAtGaps(training.bikeWatts)}
         unit="W"

@@ -1,14 +1,37 @@
-:root {
-  --bg: #12161b;
-  --card: #1d232b;
-  --card2: #252c35;
-  --line: #313a45;
+:root,
+[data-theme="dark"] {
+  --bg: #0b0e12;
+  --glow: #0f3b2a;
+  --card: rgba(255,255,255,.04);
+  --card2: rgba(255,255,255,.07);
+  --line: rgba(255,255,255,.08);
   --text: #e9edf2;
   --sub: #9aa5b3;
-  --green: #2fd08a;
-  --yellow: #f2c14e;
-  --red: #f0646a;
-  --blue: #5aa9ff;
+  --accent: #7ff0bd;
+  --good: #2fd08a;
+  --caution: #f2c14e;
+  --low: #f0646a;
+  --info: #5aa9ff;
+  --sleep: #9a8cff;
+  --on-accent: #04140d;
+  color-scheme: dark;
+}
+
+[data-theme="espresso"] {
+  --bg: #1e1712;
+  --glow: #3b4a3a;
+  --card: rgba(255,240,225,.05);
+  --card2: rgba(255,240,225,.08);
+  --line: rgba(255,235,215,.10);
+  --text: #f3ebe2;
+  --sub: #c2b1a2;
+  --accent: #a8dcbc;
+  --good: #9fd8b5;
+  --caution: #e8c48a;
+  --low: #d98a6c;
+  --info: #9bb8c9;
+  --sleep: #b7a6d6;
+  --on-accent: #1e1712;
   color-scheme: dark;
 }
 

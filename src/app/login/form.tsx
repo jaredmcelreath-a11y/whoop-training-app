@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
+import styles from "./login.module.css";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(
@@ -9,8 +10,10 @@ export function LoginForm() {
     {},
   );
   return (
-    <form action={action} style={{ display: "grid", gap: 12, maxWidth: 320 }}>
-      <label htmlFor="password">Password</label>
+    <form action={action} className={styles.form}>
+      <label htmlFor="password" className={styles.label}>
+        Password
+      </label>
       <input
         id="password"
         name="password"
@@ -18,11 +21,16 @@ export function LoginForm() {
         autoComplete="current-password"
         required
         autoFocus
+        className={styles.input}
       />
-      <button type="submit" disabled={pending}>
-        {pending ? "Checking..." : "Sign in"}
+      <button type="submit" disabled={pending} className={styles.button}>
+        {pending ? "Checking…" : "Sign In"}
       </button>
-      {state.error ? <p role="alert">{state.error}</p> : null}
+      {state.error ? (
+        <p role="alert" className={styles.error}>
+          {state.error}
+        </p>
+      ) : null}
     </form>
   );
 }

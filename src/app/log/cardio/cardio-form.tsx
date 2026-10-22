@@ -123,7 +123,7 @@ export function CardioForm({ defaultStart, initialKind = "run" }: { defaultStart
           </label>
           {kind === "swim" ? (
             <label className={styles.field}>
-              <span className={styles.label}>Pool length ({unit})</span>
+              <span className={styles.label}>Pool Length ({unit})</span>
               <input
                 name="poolLength"
                 type="text"
@@ -136,7 +136,7 @@ export function CardioForm({ defaultStart, initialKind = "run" }: { defaultStart
           ) : null}
           {kind === "bike" ? (
             <label className={styles.field}>
-              <span className={styles.label}>Avg watts</span>
+              <span className={styles.label}>Avg Watts</span>
               <input
                 name="avgWatts"
                 type="text"
@@ -230,10 +230,10 @@ function AfterRunPrompt({ runId }: { runId: string }) {
       ))}
       <div className={base.inline}>
         <button type="submit" className={base.primary} disabled={pending}>
-          {pending ? "Saving…" : "Log pain"}
+          {pending ? "Saving…" : "Log Pain"}
         </button>
         <button type="button" className={base.secondary} onClick={() => setDismissed(true)}>
-          Not now
+          Not Now
         </button>
       </div>
       <Status state={state} pending={pending} />

@@ -35,3 +35,17 @@ describe("LineChart", () => {
     expect(y).toBeLessThanOrEqual(140 - 24);
   });
 });
+
+describe("LineChart theming", () => {
+  const html = renderToStaticMarkup(
+    <LineChart {...base} segments={[pts(["2026-10-01", 150], ["2026-10-08", 151], ["2026-10-15", 152])]} goal={155} />,
+  );
+
+  it("has no color literals, so it recolors with the theme", () => {
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+  });
+
+  it("fills a soft area under each line, closed to the chart floor", () => {
+    expect(html).toMatch(/<path[^>]*data-area="true"[^>]*d="M[^"]*Z"/);
+  });
+});

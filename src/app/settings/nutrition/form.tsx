@@ -57,7 +57,7 @@ function FormBody({
     <form action={action} onSubmit={keepInputOnSubmit(action)} className={styles.form}>
       <section className={styles.card}>
         <label className={styles.field}>
-          <span className={styles.cardTitle}>Reference-intake profile</span>
+          <span className={styles.cardTitle}>Reference-Intake Profile</span>
           <select name="refProfile" defaultValue={settings.refProfile ?? ""} className={styles.select}>
             <option value="">Not set (no micronutrient targets)</option>
             {REF_PROFILES.map((p) => (
@@ -75,7 +75,7 @@ function FormBody({
 
       <section className={styles.card}>
         <label className={styles.field}>
-          <span className={styles.cardTitle}>Meals per day</span>
+          <span className={styles.cardTitle}>Meals Per Day</span>
           <input
             type="number"
             name="mealsPerDay"
@@ -92,7 +92,7 @@ function FormBody({
       </section>
 
       <fieldset className={styles.card}>
-        <legend className={styles.cardTitle}>Water source</legend>
+        <legend className={styles.cardTitle}>Water Source</legend>
         <p className={styles.text}>
           If you log water in Cronometer and also tap the +16 oz button here, the same drink would be counted twice.
           Pick one source to avoid that.
@@ -150,15 +150,15 @@ function FormBody({
           disabled={rows.length >= MAX_SUPPLEMENT_ROWS}
           onClick={() => setRows((rs) => [...rs, { id: nextRowId++, name: "", timing: "morning" }])}
         >
-          Add row
+          Add Row
         </button>
         {rows.length >= MAX_SUPPLEMENT_ROWS ? <p className={styles.text}>Up to {MAX_SUPPLEMENT_ROWS} rows.</p> : null}
       </fieldset>
 
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>Gain goal</h2>
+        <h2 className={styles.cardTitle}>Gain Goal</h2>
         <label className={styles.field}>
-          <span className={styles.label}>Goal (lb to gain)</span>
+          <span className={styles.label}>Goal (lb to Gain)</span>
           <input
             type="text"
             name="gainGoalLb"
@@ -169,7 +169,7 @@ function FormBody({
           />
         </label>
         <label className={styles.field}>
-          <span className={styles.label}>Start weight (lb, optional)</span>
+          <span className={styles.label}>Start Weight (lb, Optional)</span>
           <input
             type="text"
             name="gainStartWeightLb"

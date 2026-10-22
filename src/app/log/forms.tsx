@@ -34,7 +34,7 @@ export function WeightForm() {
       className={styles.form}
     >
       <label className={styles.field}>
-        <span className={styles.label}>Today&apos;s weight (lb)</span>
+        <span className={styles.label}>Today&apos;s Weight (lb)</span>
         <input
           name="weightLb"
           type="text"
@@ -46,7 +46,7 @@ export function WeightForm() {
         />
       </label>
       <button type="submit" className={styles.primary} disabled={pending}>
-        {pending ? "Saving…" : "Save weight"}
+        {pending ? "Saving…" : "Log Weight"}
       </button>
       <Status state={state} pending={pending} />
     </form>
@@ -64,7 +64,7 @@ export function WeeklyForm({ vo2max, whoopAge }: { vo2max: number | null; whoopA
     >
       <div className={styles.row}>
         <label className={styles.field}>
-          <span className={styles.label}>VO2 max</span>
+          <span className={styles.label}>VO2 Max</span>
           <input
             name="vo2max"
             type="text"
@@ -87,7 +87,7 @@ export function WeeklyForm({ vo2max, whoopAge }: { vo2max: number | null; whoopA
         </label>
       </div>
       <button type="submit" className={styles.primary} disabled={pending}>
-        {pending ? "Saving…" : "Save this week"}
+        {pending ? "Saving…" : "Save This Week"}
       </button>
       <Status state={state} pending={pending} />
     </form>

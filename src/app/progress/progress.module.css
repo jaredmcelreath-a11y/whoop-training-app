@@ -14,8 +14,9 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin-bottom: 12px;
   overflow-wrap: anywhere;
 }
@@ -29,7 +30,7 @@
   align-items: center;
   min-height: 44px;
   min-width: 44px;
-  color: var(--blue);
+  color: var(--info);
   text-decoration: none;
   font-size: 15px;
   flex-shrink: 0;
@@ -77,9 +78,9 @@
 
 .rangeActive {
   background: var(--card2);
-  color: var(--text);
-  font-weight: 600;
-  outline: 1px solid var(--blue);
+  color: var(--accent);
+  font-weight: 800;
+  outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 /* ---- cards --------------------------------------------------------------- */
@@ -93,11 +94,8 @@
 }
 
 .cardTitle {
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--sub);
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 800;
   margin-bottom: 8px;
 }
 
@@ -111,14 +109,14 @@
 
 .error {
   font-size: 14px;
-  color: var(--red);
+  color: var(--low);
 }
 
 .link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--blue);
+  color: var(--info);
   font-size: 14px;
 }
 
@@ -194,7 +192,7 @@
   padding: 0 6px;
   border-radius: 6px;
   background: var(--card2);
-  color: var(--yellow);
+  color: var(--caution);
   font-size: 12px;
   font-weight: 600;
 }

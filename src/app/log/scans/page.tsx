@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Page } from "@/components/ui/ui";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
@@ -15,17 +16,17 @@ import { DeleteButton, ScanForm } from "./scan-form";
 export default function ScansPage() {
   return (
     <>
-      <main className={base.page}>
+      <Page>
         <header className={base.header}>
           <Link href="/log" className={base.back}>
             ‹ Log
           </Link>
-          <h1 className={base.title}>Body scans</h1>
+          <h1 className={base.title}>Body Scans</h1>
         </header>
         <Suspense fallback={<p className={base.sub}>Loading…</p>}>
           <ScansContent />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );
@@ -41,7 +42,7 @@ async function ScansContent() {
   return (
     <>
       <section className={base.card}>
-        <h2 className={base.cardTitle}>New scan</h2>
+        <h2 className={base.cardTitle}>New Scan</h2>
         <ScanForm today={today} />
       </section>
       <section className={base.card}>

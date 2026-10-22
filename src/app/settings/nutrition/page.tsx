@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { Page } from "@/components/ui/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -16,7 +17,7 @@ import styles from "./nutrition.module.css";
 export default function NutritionSettingsPage() {
   return (
     <>
-      <main className={styles.page}>
+      <Page>
         <Link href="/settings" className={styles.back}>
           ← Settings
         </Link>
@@ -24,7 +25,7 @@ export default function NutritionSettingsPage() {
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
           <Content />
         </Suspense>
-      </main>
+      </Page>
       <TabBar active="log" />
     </>
   );

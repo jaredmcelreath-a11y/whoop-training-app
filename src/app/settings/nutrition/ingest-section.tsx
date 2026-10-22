@@ -43,12 +43,12 @@ export function IngestSection({ masked, url }: { masked: string; url: string }) 
 
   return (
     <section className={styles.card}>
-      <h2 className={styles.cardTitle}>Apple Health ingest</h2>
+      <h2 className={styles.cardTitle}>Apple Health Ingest</h2>
       <p className={styles.text}>
         Your iPhone Shortcut posts Cronometer&apos;s Apple Health totals to this address:
       </p>
       <code className={styles.code}>POST {url}</code>
-      <p className={styles.label}>Token (sent as Authorization: Bearer)</p>
+      <p className={styles.label}>Token (Sent as Authorization: Bearer)</p>
       <div className={styles.tokenRow}>
         <code className={styles.token} data-testid="token">
           {token ?? masked}

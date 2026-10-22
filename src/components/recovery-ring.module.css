@@ -1,0 +1,88 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 4px 0 12px;
+}
+
+.ring {
+  width: min(180px, 52vw);
+  height: auto;
+}
+
+.track,
+.arc {
+  fill: none;
+  stroke-width: 12;
+}
+
+.track {
+  stroke: var(--card2);
+}
+
+.arc {
+  stroke-linecap: round;
+  stroke: var(--good);
+}
+
+.arc[data-band="caution"] {
+  stroke: var(--caution);
+}
+
+.arc[data-band="low"] {
+  stroke: var(--low);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arc {
+    animation: fill 0.9s ease-out;
+  }
+
+  @keyframes fill {
+    from {
+      stroke-dashoffset: 390;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+.value {
+  fill: var(--text);
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.pending {
+  fill: var(--sub);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.caption {
+  fill: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+
+.label[data-band="good"] {
+  color: var(--good);
+}
+
+.label[data-band="caution"] {
+  color: var(--caution);
+}
+
+.label[data-band="low"] {
+  color: var(--low);
+}

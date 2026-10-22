@@ -1,16 +1,3 @@
-.page {
-  width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
-  padding: calc(16px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom));
-}
-
-.title {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
 .sub {
   font-size: 13px;
   color: var(--sub);
@@ -23,6 +10,12 @@
   overflow-wrap: anywhere;
 }
 
+.sectionTitle {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 22px 0 4px;
+}
+
 /* ---- day navigation ------------------------------------------------------ */
 
 .dayNav {
@@ -30,19 +23,19 @@
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .arrow {
-  min-height: 44px;
-  min-width: 44px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--text);
   background: var(--card);
-  text-decoration: none;
-  font-size: 20px;
+  border: 1px solid var(--line);
 }
 
 .dayLabel {
@@ -51,218 +44,160 @@
 }
 
 .dayName {
-  font-weight: 700;
-}
-
-.todayLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 13px;
-  color: var(--blue);
-}
-
-/* ---- cards --------------------------------------------------------------- */
-
-.card {
-  background: var(--card);
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 12px;
-  min-width: 0;
-}
-
-.cardTitle {
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--sub);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-/* ---- targets ------------------------------------------------------------- */
-
-.targets {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.target {
-  background: var(--card2);
-  border-radius: 12px;
-  padding: 8px 10px;
-  min-width: 0;
-}
-
-.targetLabel {
-  font-size: 12px;
-  color: var(--sub);
-}
-
-.targetValue {
-  margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   overflow-wrap: anywhere;
 }
 
-.unit {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--sub);
+.todayLink {
+  display: inline-block;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ---- targets --------------------------------------------------------------- */
+
+.targets {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .needs {
   margin: 10px 0 0;
   padding-left: 18px;
   font-size: 13px;
-  color: var(--yellow);
-  overflow-wrap: anywhere;
+  color: var(--sub);
 }
 
-/* ---- timeline ------------------------------------------------------------ */
+/* ---- timeline -------------------------------------------------------------- */
 
 .timeline {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
 }
 
 .item {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 10px;
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
-}
-
-.item:first-child {
-  border-top: 0;
-  padding-top: 0;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
 }
 
 .time {
+  padding-top: 24px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  padding-top: 1px;
 }
 
 .body {
-  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  padding-left: 16px;
+}
+
+.edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent);
+}
+
+.edge[data-edge="caution"] {
+  background: var(--caution);
+}
+
+.edge[data-edge="info"] {
+  background: var(--info);
+}
+
+.edge[data-edge="sleep"] {
+  background: var(--sleep);
 }
 
 .itemHead {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.itemIcon {
+  flex: none;
+  color: var(--sub);
 }
 
 .itemTitle {
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .detail {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--sub);
-  margin-top: 2px;
+  margin-top: 3px;
   overflow-wrap: anywhere;
 }
-
-.kind {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: 999px;
-  padding: 2px 8px;
-  background: var(--card2);
-  color: var(--sub);
-}
-
-.kWake {
-  composes: kind;
-}
-
-.kBed {
-  composes: kind;
-  color: var(--blue);
-}
-
-.kSession {
-  composes: kind;
-  color: var(--green);
-}
-
-.kMeal {
-  composes: kind;
-  color: var(--text);
-}
-
-.kSnack {
-  composes: kind;
-  color: var(--yellow);
-}
-
-.kSupp {
-  composes: kind;
-  color: var(--sub);
-}
-
-.badge {
-  composes: kind;
-}
-
-/* ---- why ------------------------------------------------------------------ */
 
 .why {
   margin-top: 2px;
 }
 
 .whySummary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   min-height: 44px;
   font-size: 13px;
-  color: var(--blue);
+  font-weight: 700;
+  color: var(--accent);
   cursor: pointer;
 }
 
 .whyList {
+  list-style: none;
+  padding: 0;
   margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
-}
-
-.whyList li {
-  margin-bottom: 6px;
 }
 
 .whyLink {
   display: inline-block;
-  min-height: 24px;
-  color: var(--blue);
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--info);
   overflow-wrap: anywhere;
 }
 
-/* ---- supplements ---------------------------------------------------------- */
+/* ---- supplements ----------------------------------------------------------- */
 
 .supps {
   list-style: none;
-  margin: 0;
   padding: 0;
+  margin: 0;
 }
 
 .supp {
   padding: 10px 0;
+}
+
+.supp + .supp {
   border-top: 1px solid var(--line);
 }
 
-.supp:first-child {
-  border-top: 0;
-  padding-top: 0;
+.badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 99px;
+  padding: 2px 8px;
 }

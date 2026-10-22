@@ -1,27 +1,33 @@
 import { eq } from "drizzle-orm";
+import { Page } from "@/components/ui/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getDb } from "@/db/client";
 import { whoopConnection } from "@/db/schema";
+import { ThemePicker } from "@/components/theme-picker";
 import { requireSession } from "@/lib/auth/session";
 import { DisconnectButton } from "./disconnect-button";
 import styles from "./settings.module.css";
 
 export default function SettingsPage() {
   return (
-    <main className={styles.page}>
+    <Page>
       <Link href="/" className={styles.back}>
         ← Today
       </Link>
       <h1 className={styles.title}>Settings</h1>
+      <section className={styles.card}>
+        <h2 className={styles.cardTitle}>Theme</h2>
+        <ThemePicker />
+      </section>
       <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
         <WhoopSection />
       </Suspense>
       <Link href="/settings/nutrition" className={styles.primary}>
-        Nutrition settings
+        Nutrition Settings
       </Link>
-    </main>
+    </Page>
   );
 }
 
