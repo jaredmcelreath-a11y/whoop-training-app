@@ -58,19 +58,19 @@ async function SeasonContent() {
             <span className={`${styles.chip} ${styles.chipNow}`} aria-hidden="true">
               #
             </span>
-            this week
+            This Week
           </li>
           <li>
             <span className={`${styles.chip} ${styles.chipGain}`} aria-hidden="true">
               #
             </span>
-            muscle-gain week
+            Gain Week
           </li>
           <li>
             <span className={`${styles.chip} ${styles.chipRecovery}`} aria-hidden="true">
               #
             </span>
-            recovery week
+            Recovery Week
           </li>
         </ul>
         {gain.length ? (

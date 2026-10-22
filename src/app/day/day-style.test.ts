@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineItem } from "@/lib/engine/day-timeline";
-import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex } from "./day-style";
+import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex, targetChips } from "./day-style";
 
 const item = (time: string, kind: TimelineItem["kind"] = "meal"): TimelineItem => ({
   time,
@@ -50,5 +50,26 @@ describe("displayTitle", () => {
 
   it("leaves supplement names exactly as the owner typed them", () => {
     expect(displayTitle({ ...item("08:00", "supplement"), title: "vitamin D3 (with food)" })).toBe("vitamin D3 (with food)");
+  });
+});
+
+describe("targetChips", () => {
+  const n = { targets: { kcal: 2894.6, proteinG: 150.2, carbsG: 349.7, fatG: 80 }, water: { targetMl: 2957.35 } };
+  it("puts the unit on each value and has no hint", () => {
+    const chips = targetChips(n);
+    expect(chips.map((c) => [c.label, c.value])).toEqual([
+      ["Calories", "2,895 kcal"],
+      ["Protein", "150 g"],
+      ["Carbs", "350 g"],
+      ["Fat", "80 g"],
+      ["Water", "100 oz"],
+    ]);
+    expect(chips.every((c) => !("hint" in c))).toBe(true);
+    expect(chips[4].icon).toBe("drop");
+  });
+  it("shows no macro values without targets but keeps water", () => {
+    const chips = targetChips({ ...n, targets: null });
+    expect(chips.slice(0, 4).every((c) => c.value === null)).toBe(true);
+    expect(chips[4].value).toBe("100 oz");
   });
 });

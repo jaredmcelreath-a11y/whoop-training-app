@@ -59,7 +59,7 @@ function FormBody({
         <label className={styles.field}>
           <span className={styles.cardTitle}>Reference-Intake Profile</span>
           <select name="refProfile" defaultValue={settings.refProfile ?? ""} className={styles.select}>
-            <option value="">Not set (no micronutrient targets)</option>
+            <option value="">Not Set (No Micronutrient Targets)</option>
             {REF_PROFILES.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}

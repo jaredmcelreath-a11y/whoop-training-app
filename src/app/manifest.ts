@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Tri Coach",
-    short_name: "Tri Coach",
+    name: "Seventy3",
+    short_name: "Seventy3",
     description: "Personal training dashboard built on WHOOP data.",
     start_url: "/",
     display: "standalone",

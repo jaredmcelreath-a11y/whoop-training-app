@@ -1,4 +1,7 @@
 import { redirect } from "next/navigation";
+import { Reenter } from "@/components/reenter";
+import { getWeekly, getWeightTrend } from "@/lib/log/body";
+import { unlinkedWhoopCardio, weeklyBoxOpen } from "@/lib/log/log-boxes";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icon";
@@ -11,7 +14,7 @@ import { titleCase } from "@/lib/ui/title-case";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
-import { getWeekly } from "@/lib/log/body";
+
 import { localDate } from "@/lib/log/dates";
 import { WeeklyForm, WeightForm } from "./forms";
 import styles from "./log.module.css";
@@ -44,7 +47,12 @@ async function LogContent() {
   const db = getDb();
   const tz = getEnv().OWNER_TZ;
   const now = new Date();
-  const week = await getWeekly(db, localDate(now, tz));
+  const today = localDate(now, tz);
+  const week = await getWeekly(db, today);
+  const weight = await getWeightTrend(db, now, tz);
+  const weighedToday = weight.latest?.date === today ? weight.latest : null;
+  const weekOpen = weeklyBoxOpen(week ? { updatedLocalDate: localDate(week.updatedAt, tz) } : null, today);
+  const needDetails = await unlinkedWhoopCardio(db, now);
   const hub = await getLogHub(db, now, tz);
   let planned: ReturnType<typeof pickTodayLift> = null;
   try {
@@ -93,15 +101,53 @@ async function LogContent() {
       <Card>
         <section id="weight">
           <Cap>Weight</Cap>
-          <WeightForm />
+          {/* Remounts after each save so the box collapses once today's weight is in. */}
+          <Reenter
+            key={weighedToday ? `w-${weighedToday.loggedAt.getTime()}` : "w-none"}
+            open={!weighedToday}
+            summary={weighedToday ? `Logged ${weighedToday.lb.toFixed(1)} lb today` : null}
+          >
+            <WeightForm />
+          </Reenter>
         </section>
       </Card>
       <Card>
         <section id="weekly">
           <Cap>This Week</Cap>
-          <WeeklyForm vo2max={week?.vo2max ?? null} whoopAge={week?.whoopAge ?? null} />
+          <Reenter
+            key={week ? `wk-${week.updatedAt.getTime()}` : "wk-none"}
+            open={weekOpen}
+            summary={
+              week
+                ? `VO2 Max ${week.vo2max ?? "—"} · WHOOP Age ${week.whoopAge ?? "—"}`
+                : null
+            }
+          >
+            <WeeklyForm vo2max={week?.vo2max ?? null} whoopAge={week?.whoopAge ?? null} />
+          </Reenter>
         </section>
       </Card>
+
+      {needDetails.length ? (
+        <Card>
+          <Cap>WHOOP Workouts Missing Details</Cap>
+          <p className={styles.sub}>Add distance, pool length or watts so pace and power show in Progress.</p>
+          <ul className={styles.detailsList}>
+            {needDetails.map((w) => (
+              <li key={w.id} className={styles.detailsRow}>
+                <span>
+                  <Icon name={w.kind === "swim" ? "swim" : w.kind === "bike" ? "bike" : "run"} size={16} />{" "}
+                  {titleCase(w.kind)} · {w.durationMin} min ·{" "}
+                  {new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" }).format(w.start)}
+                </span>
+                <Link href={`/log/cardio?kind=${w.kind}&whoop=${encodeURIComponent(w.id)}`} className={styles.detailsLink}>
+                  Add Details
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
     </>
   );
 }

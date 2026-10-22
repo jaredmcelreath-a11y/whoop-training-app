@@ -3,7 +3,7 @@ import { RULES } from "@/lib/engine/rules/catalog";
 import type { Evidence } from "@/lib/engine/rules/types";
 import type { Phase, SeasonWeek } from "@/lib/engine/season";
 import { addDays, weekStart } from "@/lib/log/dates";
-import { parseNumber, toMeters } from "@/lib/log/units";
+import { fromMeters, parseNumber, toMeters } from "@/lib/log/units";
 import { PlanSettingsInput, type PlanSettings } from "./settings";
 
 const DAYS_PER_WEEK = 7;
@@ -397,8 +397,8 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
 
   const len = parseNumber(f.get("poolLength"));
   const unit = str(f, "poolUnit");
-  if (len === null || Number.isNaN(len) || len <= 0 || (unit !== "yd" && unit !== "m")) {
-    return { ok: false, error: "Pool length must be a positive number in yards or meters" };
+  if (len === null || Number.isNaN(len) || len <= 0 || (unit !== "yd" && unit !== "m" && unit !== "ft")) {
+    return { ok: false, error: "Pool length must be a positive number in yards, meters or feet" };
   }
 
   const jointStatus = str(f, "jointStatus");
@@ -419,6 +419,8 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     jointStatus,
     poolLengthM: Math.round(toMeters(len, unit) * PERCENT) / PERCENT,
     wakeTime: str(f, "wakeTime") || null,
+    painSide: ["left", "right", "both"].includes(str(f, "painSide")) ? str(f, "painSide") : null,
+    poolUnit: unit,
   });
   if (!parsed.success) {
     const msgs = parsed.error.issues.map((i) => {
@@ -428,5 +430,29 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     });
     return { ok: false, error: [...new Set(msgs)].join("; ") };
   }
-  return { ok: true, settings: { ...parsed.data, wakeTime: parsed.data.wakeTime ?? null } };
+  return {
+    ok: true,
+    settings: {
+      ...parsed.data,
+      wakeTime: parsed.data.wakeTime ?? null,
+      painSide: parsed.data.painSide ?? null,
+      poolUnit: parsed.data.poolUnit ?? "yd",
+    },
+  };
+}
+
+/** A stored pool length (m) shown in the owner's chosen unit, to at most 2 decimals. */
+export function poolDisplay(m: number, unit: "yd" | "m" | "ft"): { value: string; unit: "yd" | "m" | "ft" } {
+  return { value: String(Number(fromMeters(m, unit).toFixed(2))), unit };
+}
+
+/** Library filters: an area and an evidence level, each All when missing or unknown. */
+export function filterRules<R extends { area: string; evidence: Evidence }>(
+  rules: readonly R[],
+  area: string | undefined,
+  evidence: string | undefined,
+): R[] {
+  const a = area && rules.some((r) => r.area === area) ? area : null;
+  const e = evidence && (Object.keys(EVIDENCE_LABEL) as string[]).includes(evidence) ? evidence : null;
+  return rules.filter((r) => (a === null || r.area === a) && (e === null || r.evidence === e));
 }

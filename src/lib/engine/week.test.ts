@@ -18,6 +18,8 @@ const SETTINGS: PlanSettings = {
   jointStatus: "caution",
   poolLengthM: 25,
   wakeTime: null,
+  painSide: null,
+  poolUnit: "yd",
 };
 
 const WEEK = "2026-11-16"; // a Monday

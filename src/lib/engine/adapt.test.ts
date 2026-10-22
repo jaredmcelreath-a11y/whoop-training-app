@@ -551,6 +551,8 @@ const SETTINGS: PlanSettings = {
   jointStatus: "unrestricted",
   poolLengthM: 25,
   wakeTime: null,
+  painSide: null,
+  poolUnit: "yd",
 };
 const WEEKS: PlannedSessionDraft[][] = [
   buildWeek({

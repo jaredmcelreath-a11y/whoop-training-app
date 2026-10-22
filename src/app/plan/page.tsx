@@ -30,6 +30,7 @@ import {
   WEEKDAYS,
   type RxLine,
 } from "@/lib/plan/view";
+import { WeekPicker } from "./week-picker";
 import { PlanHeader } from "./plan-nav";
 import { StripBox } from "./strip-box";
 import styles from "./plan.module.css";
@@ -118,9 +119,7 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
           <Icon name="chevron-left" size={20} />
         </Link>
         <div className={styles.weekLabel}>
-          <div className={styles.weekRange}>
-            {shortDay(ws)} – {shortDay(addDays(ws, DAYS_PER_WEEK - 1))}
-          </div>
+          <WeekPicker key={ws} weekStart={ws} label={`${shortDay(ws)} – ${shortDay(addDays(ws, DAYS_PER_WEEK - 1))}`} />
           {meta ? (
             <div className={styles.weekMeta}>
               Week {meta.index + 1} · {PHASE_LABEL[meta.phase as keyof typeof PHASE_LABEL] ?? meta.phase}

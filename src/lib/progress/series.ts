@@ -5,10 +5,10 @@
 import { addDays, weekStart } from "@/lib/log/dates";
 
 export type Point = { date: string; value: number };
-export type Range = "12w" | "6m" | "1y";
+export type Range = "2w" | "4w" | "2m";
 
 /** Days shown per range, inclusive of today. */
-export const RANGE_DAYS: Record<Range, number> = { "12w": 84, "6m": 182, "1y": 365 };
+export const RANGE_DAYS: Record<Range, number> = { "2w": 14, "4w": 28, "2m": 61 };
 
 /** A gap longer than this many days breaks a chart line. */
 export const MAX_GAP_DAYS = 7;

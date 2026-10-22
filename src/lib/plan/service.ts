@@ -399,6 +399,21 @@ function servePrescription(stored: Row, s: AdaptedSession): AdaptedSession {
 }
 
 /**
+ * Read only: a past day's sessions exactly as stored, with no adaptation, completion marking,
+ * week generation or rule logging. An empty list means nothing was planned that day.
+ */
+export async function storedDaySessions(db: Db, date: string): Promise<DaySession[]> {
+  return (await rowsOfDay(db, date)).map((row) => ({
+    ...toDraft(row),
+    adjusted: false,
+    reasons: [],
+    id: row.id,
+    status: row.status,
+    completedRef: row.completedRef,
+  }));
+}
+
+/**
  * Display only (nothing is written): a later day of the current week under today's pain hold or
  * restricted joint status. Runs show as easy rides and plyometrics are removed (adapt step 1
  * only, via applyPainHold), with the plyometric lines stripped from the prescription as on

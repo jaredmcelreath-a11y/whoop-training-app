@@ -26,6 +26,8 @@ const SETTINGS: PlanSettings = {
   jointStatus: "caution",
   poolLengthM: 22.86,
   wakeTime: null,
+  painSide: null,
+  poolUnit: "yd",
 };
 
 beforeEach(() => {

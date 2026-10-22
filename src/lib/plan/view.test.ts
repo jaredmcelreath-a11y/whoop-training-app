@@ -3,6 +3,8 @@ import { RULES } from "@/lib/engine/rules/catalog";
 import { titleCase } from "@/lib/ui/title-case";
 import {
   weekStrip,
+  filterRules,
+  poolDisplay,
   AREA_LABEL,
   EVIDENCE_LABEL,
   INTENSITY_LABEL,
@@ -31,6 +33,8 @@ const CURRENT: PlanSettings = {
   jointStatus: "caution",
   poolLengthM: 22.86,
   wakeTime: null,
+  painSide: null,
+  poolUnit: "yd",
 };
 
 function form(entries: Record<string, string>): FormData {
@@ -292,5 +296,32 @@ describe("labels are Title Case", () => {
     for (const v of [...Object.values(PHASE_LABEL), ...Object.values(KIND_LABEL), ...Object.values(INTENSITY_LABEL), ...Object.values(AREA_LABEL), ...Object.values(EVIDENCE_LABEL)]) {
       expect(titleCase(v), v).toBe(v);
     }
+  });
+});
+
+describe("poolDisplay", () => {
+  it("shows the stored length in the chosen unit", () => {
+    expect(poolDisplay(22.86, "yd")).toEqual({ value: "25", unit: "yd" });
+    expect(poolDisplay(22.86, "ft")).toEqual({ value: "75", unit: "ft" });
+    expect(poolDisplay(25, "m")).toEqual({ value: "25", unit: "m" });
+  });
+});
+
+describe("filterRules", () => {
+  const rules = [
+    { id: "a", area: "supplements", evidence: "consensus" as const },
+    { id: "b", area: "supplements", evidence: "trial" as const },
+    { id: "c", area: "strength", evidence: "consensus" as const },
+  ];
+  it("keeps everything for All", () => {
+    expect(filterRules(rules, undefined, undefined).map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+  it("filters by area, by evidence, and by both", () => {
+    expect(filterRules(rules, "supplements", undefined).map((r) => r.id)).toEqual(["a", "b"]);
+    expect(filterRules(rules, undefined, "consensus").map((r) => r.id)).toEqual(["a", "c"]);
+    expect(filterRules(rules, "supplements", "consensus").map((r) => r.id)).toEqual(["a"]);
+  });
+  it("treats an unknown area or level as All", () => {
+    expect(filterRules(rules, "nope", "bogus")).toHaveLength(3);
   });
 });

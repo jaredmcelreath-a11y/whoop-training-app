@@ -1,5 +1,6 @@
 import type { IconName } from "@/components/icon";
 import type { TimelineItem, TimelineKind } from "@/lib/engine/day-timeline";
+import { mlToOz } from "@/lib/nutrition/fuel-view";
 import { titleCase } from "@/lib/ui/title-case";
 
 export type Edge = "accent" | "caution" | "info" | "sleep";
@@ -54,3 +55,22 @@ export function nextItemIndex(items: readonly TimelineItem[], nowHHMM: string | 
 
 /** The title shown for an item: Title Case, except supplement names, which stay as typed. */
 export const displayTitle = (it: TimelineItem): string => (it.kind === "supplement" ? it.title : titleCase(it.title));
+
+export type TargetChip = { label: string; value: string | null; icon?: IconName };
+
+const withUnit = (x: number, unit: string) => `${Math.round(x).toLocaleString("en-US")} ${unit}`;
+
+/** The Day targets row: each value carries its unit ("2,900 kcal"). Water shows even without targets. */
+export function targetChips(n: {
+  targets: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null;
+  water: { targetMl: number };
+}): TargetChip[] {
+  const t = n.targets;
+  return [
+    { label: "Calories", value: t ? withUnit(t.kcal, "kcal") : null },
+    { label: "Protein", value: t ? withUnit(t.proteinG, "g") : null },
+    { label: "Carbs", value: t ? withUnit(t.carbsG, "g") : null },
+    { label: "Fat", value: t ? withUnit(t.fatG, "g") : null },
+    { label: "Water", value: withUnit(mlToOz(n.water.targetMl), "oz"), icon: "drop" },
+  ];
+}

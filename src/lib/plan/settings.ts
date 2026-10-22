@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Db } from "@/db/client";
 import { planSettings } from "@/db/schema";
 import { addDays, localDate } from "@/lib/log/dates";
+import { fromMeters } from "@/lib/log/units";
 
 export type PlanSettings = {
   raceDate: string;
@@ -15,6 +16,10 @@ export type PlanSettings = {
   poolLengthM: number;
   /** "HH:MM", or null to derive wake from the first training window. */
   wakeTime: string | null;
+  /** The side pain is logged on; null asks each time. */
+  painSide: "left" | "right" | "both" | null;
+  /** Display unit for pool length. */
+  poolUnit: "yd" | "m" | "ft";
 };
 
 export const DEFAULT_RACE_DATE = "2027-10-17";
@@ -55,6 +60,8 @@ export const PlanSettingsInput = z
     jointStatus: z.enum(["unrestricted", "caution", "restricted"]),
     poolLengthM: z.number().positive(),
     wakeTime: hhmm.nullable().optional(),
+    painSide: z.enum(["left", "right", "both"]).nullable().optional(),
+    poolUnit: z.enum(["yd", "m", "ft"]).optional(),
   })
   .superRefine((v, ctx) => {
     const weeks = daysBetween(v.seasonStart, v.raceDate) / DAYS_PER_WEEK;
@@ -99,7 +106,18 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     jointStatus: r.jointStatus,
     poolLengthM: r.poolLengthM,
     wakeTime: r.wakeTime ?? null,
+    painSide: (r.painSide as PlanSettings["painSide"]) ?? null,
+    poolUnit: (r.poolUnit as PlanSettings["poolUnit"]) ?? legacyPoolUnit(r.poolLengthM),
   };
+}
+
+/** A stored length within this many yards of a whole number counts as a yard pool. */
+const WHOLE_YD_TOLERANCE = 0.01;
+
+/** Rows saved before pool_unit existed: the old form's rule (whole yards in yd, else m). */
+function legacyPoolUnit(m: number): "yd" | "m" {
+  const yd = fromMeters(m, "yd");
+  return Math.abs(yd - Math.round(yd)) < WHOLE_YD_TOLERANCE ? "yd" : "m";
 }
 
 export async function getPlanSettings(db: Db, now: Date, tz: string): Promise<PlanSettings> {
@@ -134,7 +152,13 @@ export async function updatePlanSettings(
   }
   const [updated] = await db
     .update(planSettings)
-    .set({ ...parsed.data, wakeTime: parsed.data.wakeTime ?? null, updatedAt: new Date() })
+    .set({
+      ...parsed.data,
+      wakeTime: parsed.data.wakeTime ?? null,
+      painSide: parsed.data.painSide ?? null,
+      poolUnit: parsed.data.poolUnit ?? "yd",
+      updatedAt: new Date(),
+    })
     .where(eq(planSettings.id, 1))
     .returning();
   return toSettings(updated);

@@ -182,6 +182,16 @@ describe("ensureEnergyEstimate", () => {
 });
 
 describe("getDayNutrition", () => {
+  it("a past day this week computes the burn estimate without storing it", async () => {
+    await seedCycles(14, addDays(THIS_WEEK, -1), 2600);
+    const n = await getDayNutrition(db, addDays(TODAY, -1), NOW, TZ);
+    expect(n.needs.some((x) => /burn/i.test(x))).toBe(false);
+    expect(await db.select().from(energyEstimates)).toHaveLength(0);
+    // Today still stores it.
+    await getDayNutrition(db, TODAY, NOW, TZ);
+    expect(await db.select().from(energyEstimates)).toHaveLength(1);
+  });
+
   it("weight unknown: null targets without throwing, water still returned", async () => {
     await seedCycles(14, addDays(THIS_WEEK, -1), 2600);
     await updateNutritionSettings(db, { refProfile: "male_19_30" });

@@ -60,8 +60,9 @@
 /* ---- targets --------------------------------------------------------------- */
 
 .targets {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   margin-top: 8px;
 }
 
@@ -81,14 +82,18 @@
 }
 
 .item {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.itemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  align-items: start;
+  margin-bottom: 4px;
 }
 
 .time {
-  padding-top: 24px;
   font-size: 12px;
   font-weight: 800;
   color: var(--accent);
@@ -206,4 +211,10 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--sub);
+}
+
+/* Values carry their unit ("2,900 kcal"), so they run smaller than a bare number. */
+.targets > * > p:first-child {
+  font-size: 15px;
+  overflow-wrap: normal;
 }

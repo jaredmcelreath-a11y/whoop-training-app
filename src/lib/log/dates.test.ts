@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { localDate, toZonedLocal, weekStart, zonedLocalToUtc } from "./dates";
+import { localDate, toZonedLocal, weekFromDate, weekStart, zonedLocalToUtc } from "./dates";
 
 describe("localDate", () => {
   it("uses the local date in CST, not UTC", () => {
@@ -51,5 +51,19 @@ describe("toZonedLocal", () => {
   it("round-trips through zonedLocalToUtc", () => {
     const local = toZonedLocal(new Date("2026-03-09T02:15:00Z"), "America/Chicago");
     expect(zonedLocalToUtc(local, "America/Chicago")).toBe("2026-03-09T02:15:00.000Z");
+  });
+});
+
+describe("weekFromDate", () => {
+  it("gives the Monday of a picked date", () => {
+    expect(weekFromDate("2026-10-22")).toBe("2026-10-19");
+    expect(weekFromDate("2026-10-25")).toBe("2026-10-19");
+    expect(weekFromDate("2026-10-26")).toBe("2026-10-26");
+    expect(weekFromDate("2027-01-01")).toBe("2026-12-28");
+  });
+  it("refuses empty and junk input", () => {
+    expect(weekFromDate("")).toBeNull();
+    expect(weekFromDate("2026-02-30")).toBeNull();
+    expect(weekFromDate("soon")).toBeNull();
   });
 });

@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import type { PlanSettings } from "@/lib/plan/settings";
+import { sideField } from "./side-field";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import { PAIN_AREAS } from "@/lib/log/validate";
 import styles from "../cardio/cardio.module.css";
@@ -8,7 +10,8 @@ import base from "../strength/strength.module.css";
 import { logPain, type PainState } from "./actions";
 
 /** One submit for every area; only areas with "log" ticked are written. */
-export function PainForm({ trends }: { trends: Record<string, string> }) {
+export function PainForm({ trends, painSide }: { trends: Record<string, string>; painSide: PlanSettings["painSide"] }) {
+  const side = sideField(painSide);
   const [state, action, pending] = useActionState<PainState, FormData>(logPain, {});
   return (
     <form
@@ -19,14 +22,14 @@ export function PainForm({ trends }: { trends: Record<string, string> }) {
     >
       {PAIN_AREAS.map((area) => (
         // Remounts after each save so ticks and sliders reset.
-        <AreaRow key={`${area}-${state.savedAt ?? 0}`} area={area} trend={trends[area]} />
+        <AreaRow key={`${area}-${state.savedAt ?? 0}`} area={area} trend={trends[area]} side={side} />
       ))}
       <label className={styles.field}>
         <span className={styles.label}>Context</span>
         <select name="context" defaultValue="daily" className={base.select}>
-          <option value="daily">daily</option>
-          <option value="before_run">before run</option>
-          <option value="after_run">after run</option>
+          <option value="daily">Daily</option>
+          <option value="before_run">Before Run</option>
+          <option value="after_run">After Run</option>
         </select>
       </label>
       <button type="submit" className={base.primary} disabled={pending}>
@@ -46,7 +49,7 @@ export function PainForm({ trends }: { trends: Record<string, string> }) {
   );
 }
 
-function AreaRow({ area, trend }: { area: string; trend: string }) {
+function AreaRow({ area, trend, side }: { area: string; trend: string; side: ReturnType<typeof sideField> }) {
   const [score, setScore] = useState(0);
   const [log, setLog] = useState(false);
   return (
@@ -79,14 +82,18 @@ function AreaRow({ area, trend }: { area: string; trend: string }) {
         />
         <output className={styles.sliderValue}>{score}</output>
       </label>
-      <label className={styles.field}>
-        <span className={base.srOnly}>{area} side</span>
-        <select name={`side_${area}`} defaultValue="both" className={base.select}>
-          <option value="both">both</option>
-          <option value="left">left</option>
-          <option value="right">right</option>
-        </select>
-      </label>
+      {side.hidden ? (
+        <input type="hidden" name={`side_${area}`} value={side.value} />
+      ) : (
+        <label className={styles.field}>
+          <span className={base.srOnly}>{area} side</span>
+          <select name={`side_${area}`} defaultValue="both" className={base.select}>
+            <option value="both">Both</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </label>
+      )}
       <p className={styles.trend}>
         <span className={styles.label}>14 days: </span>
         {trend}

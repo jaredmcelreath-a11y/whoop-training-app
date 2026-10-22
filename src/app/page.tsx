@@ -8,6 +8,7 @@ import { getTodaySummary, unscoredLabel, type TodaySummary } from "@/lib/today";
 import { recoveryBand } from "@/lib/ui/recovery";
 import { weightHint } from "@/lib/ui/weight-hint";
 import { ensureFresh } from "@/lib/whoop/ensure-fresh";
+import { addDays, localDate } from "@/lib/log/dates";
 import { Icon } from "@/components/icon";
 import { RecoveryRing } from "@/components/recovery-ring";
 import { TabBar } from "@/components/tab-bar";
@@ -15,9 +16,12 @@ import { Cap, Card, Page, PageGlow, StatChip } from "@/components/ui/ui";
 import styles from "./today.module.css";
 import { TodayFuel } from "./today-fuel";
 import { TodayTraining } from "./today-training";
+import { noonOf, parseTodayDate } from "./today-date";
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /** The page shell is static; everything that reads the session or the DB streams in. */
-export default function TodayPage() {
+export default function TodayPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <Page glow="none">
@@ -28,7 +32,7 @@ export default function TodayPage() {
           </Link>
         </header>
         <Suspense fallback={<TodaySkeleton />}>
-          <TodayContent />
+          <TodayContent searchParams={searchParams} />
         </Suspense>
       </Page>
       <TabBar active="today" />
@@ -36,20 +40,29 @@ export default function TodayPage() {
   );
 }
 
-async function TodayContent() {
+async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
   if (!(await requireSession())) redirect("/login");
+
+  const tz = getEnv().OWNER_TZ;
+  const realNow = new Date();
+  const today = localDate(realNow, tz);
+  const day = parseTodayDate((await searchParams).date, today);
+  if (day === null) redirect("/");
+  const { date, past } = day;
 
   const db = getDb();
   let syncFailed = false;
-  try {
-    await ensureFresh(db);
-  } catch (err) {
-    // A WHOOP outage must never break the page; show what is stored.
-    console.error("ensureFresh failed:", err);
-    syncFailed = true;
+  // A past day is read only: no WHOOP sync and no plan adaptation, just what is stored.
+  if (!past) {
+    try {
+      await ensureFresh(db);
+    } catch (err) {
+      // A WHOOP outage must never break the page; show what is stored.
+      console.error("ensureFresh failed:", err);
+      syncFailed = true;
+    }
   }
-  const tz = getEnv().OWNER_TZ;
-  const now = new Date();
+  const now = past ? noonOf(date, tz) : realNow;
   const t = await getTodaySummary(db, now, tz);
   const score = t.recovery?.score ?? null;
   const band = recoveryBand(score);
@@ -57,8 +70,31 @@ async function TodayContent() {
   return (
     <>
       <PageGlow glow={band ?? "accent"} />
-      <p className={styles.meta}>{formatDate(now, tz)}</p>
-      <Banner connection={t.connection} />
+      <nav className={styles.dayNav} aria-label="Day">
+        <Link href={`/?date=${addDays(date, -1)}`} className={styles.arrow} aria-label="Previous day">
+          <Icon name="chevron-left" size={20} />
+        </Link>
+        <div className={styles.dayLabel}>
+          <p className={styles.meta}>{formatDate(now, tz)}</p>
+          {past ? (
+            <Link href="/" className={styles.todayLink}>
+              Back to Today
+            </Link>
+          ) : null}
+        </div>
+        {past ? (
+          <Link
+            href={addDays(date, 1) === today ? "/" : `/?date=${addDays(date, 1)}`}
+            className={styles.arrow}
+            aria-label="Next day"
+          >
+            <Icon name="chevron-right" size={20} />
+          </Link>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+      </nav>
+      {past ? null : <Banner connection={t.connection} />}
       <RecoveryRing
         score={score}
         band={band}
@@ -73,12 +109,15 @@ async function TodayContent() {
         <WeightChip t={t} />
       </div>
       <HrvCard t={t} />
-      <TodayTraining db={db} now={now} tz={tz} />
-      <TodayFuel db={db} now={now} tz={tz} />
-      <p className={styles.sync}>
-        {t.lastSyncedAt ? `Last synced ${formatDateTime(t.lastSyncedAt, tz)}` : "Not synced yet"}
-        {syncFailed ? <span className={styles.syncFailed}> · Sync failed</span> : null}
-      </p>
+      {/* These two read `date` against the real clock, so a past day never adapts or generates. */}
+      <TodayTraining db={db} date={date} now={realNow} tz={tz} past={past} />
+      <TodayFuel db={db} date={date} now={realNow} tz={tz} past={past} />
+      {past ? null : (
+        <p className={styles.sync}>
+          {t.lastSyncedAt ? `Last synced ${formatDateTime(t.lastSyncedAt, tz)}` : "Not synced yet"}
+          {syncFailed ? <span className={styles.syncFailed}> · Sync failed</span> : null}
+        </p>
+      )}
     </>
   );
 }

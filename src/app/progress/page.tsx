@@ -79,9 +79,7 @@ async function ProgressContent({ searchParams }: { searchParams: SearchParams })
       <Section title="Body Scans" data={body}>
         {(b) => <ScansSection body={b} />}
       </Section>
-      <Section title="Labs" data={markers}>
-        {(m) => <LabsSection markers={m} />}
-      </Section>
+      <LabsCard markers={markers} />
       <Section title="Lifts" data={training}>
         {(t) => <LiftsSection lifts={t.lifts} range={range} />}
       </Section>
@@ -192,14 +190,35 @@ function ScansSection({ body }: { body: BodyProgress }) {
   );
 }
 
-function LabsSection({ markers }: { markers: MarkerSummary[] }) {
-  if (markers.length === 0) {
+/** Labs start closed: the marker list is long and read less often than the rest. */
+function LabsCard({ markers }: { markers: MarkerSummary[] | null }) {
+  if (markers === null || markers.length === 0) {
     return (
-      <Link href="/log/labs" className={styles.link}>
-        Log a lab panel
-      </Link>
+      <Section title="Labs" data={markers}>
+        {() => (
+          <Link href="/log/labs" className={styles.link}>
+            Log a Lab Panel
+          </Link>
+        )}
+      </Section>
     );
   }
+  return (
+    <Card>
+      <details className={styles.labs}>
+        <summary className={styles.labsSummary}>
+          <h2 className={styles.cardTitle}>Labs</h2>
+          <span className={styles.sub}>
+            {markers.length} {markers.length === 1 ? "marker" : "markers"}
+          </span>
+        </summary>
+        <LabsList markers={markers} />
+      </details>
+    </Card>
+  );
+}
+
+function LabsList({ markers }: { markers: MarkerSummary[] }) {
   return (
     <ul className={styles.list}>
       {markers.map((m) => (
@@ -233,13 +252,13 @@ function LiftsSection({ lifts, range }: { lifts: LiftSeries[]; range: Range }) {
   if (lifts.length === 0) {
     return (
       <Link href="/log/strength" className={styles.link}>
-        Log a strength session
+        Log a Strength Session
       </Link>
     );
   }
   return (
     <>
-      <p className={styles.sub}>Top set per week, last {RANGE_LABEL[range]}.</p>
+      <p className={styles.sub}>Top set per week, last {RANGE_LABEL[range].toLowerCase()}.</p>
       {lifts.map((l) => {
         const points: Point[] = l.weekly.flatMap((w) =>
           w.topWeightLb === null ? [] : [{ date: w.weekStart, value: w.topWeightLb }],

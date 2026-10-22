@@ -3,24 +3,14 @@
 import { useActionState } from "react";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import { SubmitButton } from "@/components/submit-button";
-import { fromMeters } from "@/lib/log/units";
 import type { PlanSettings } from "@/lib/plan/settings";
-import { JOINT_OPTIONS, WEEKDAYS } from "@/lib/plan/view";
+import { JOINT_OPTIONS, poolDisplay, WEEKDAYS } from "@/lib/plan/view";
 import styles from "../plan.module.css";
 import { savePlanSettings, type PlanSettingsState } from "./actions";
 
-/** A stored length within this many yards of a whole number is shown in yards. */
-const WHOLE_YD_TOLERANCE = 0.01;
-
-function poolDisplay(m: number): { value: string; unit: "yd" | "m" } {
-  const yd = fromMeters(m, "yd");
-  if (Math.abs(yd - Math.round(yd)) < WHOLE_YD_TOLERANCE) return { value: String(Math.round(yd)), unit: "yd" };
-  return { value: String(Number(m.toFixed(2))), unit: "m" };
-}
-
 export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
   const [state, action, pending] = useActionState<PlanSettingsState, FormData>(savePlanSettings, {});
-  const pool = poolDisplay(settings.poolLengthM);
+  const pool = poolDisplay(settings.poolLengthM, settings.poolUnit);
   const [w1, w2] = settings.windows;
 
   return (
@@ -81,11 +71,23 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
             className={styles.input}
           />
           <select name="poolUnit" aria-label="Pool length unit" defaultValue={pool.unit} className={styles.select}>
-            <option value="yd">yards</option>
-            <option value="m">meters</option>
+            <option value="yd">Yards</option>
+            <option value="m">Meters</option>
+            <option value="ft">Feet</option>
           </select>
         </div>
       </fieldset>
+
+      <label className={styles.field}>
+        <span className={styles.label}>Pain Side</span>
+        <select name="painSide" defaultValue={settings.painSide ?? ""} className={styles.select}>
+          <option value="">Not Set (Ask Each Time)</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+          <option value="both">Both</option>
+        </select>
+        <span className={styles.disclaimer}>When set, the pain log skips the side picker.</span>
+      </label>
 
       <SubmitButton className={styles.primary} pendingLabel="Saving and re-planning…">
         Save and re-plan

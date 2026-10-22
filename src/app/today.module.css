@@ -270,3 +270,38 @@
   font-size: 26px;
   font-weight: 800;
 }
+
+/* ---- day navigation (past days) ------------------------------------------ */
+
+.dayNav {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.dayLabel {
+  text-align: center;
+  min-width: 0;
+}
+
+.todayLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}

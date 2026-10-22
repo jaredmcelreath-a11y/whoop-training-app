@@ -35,7 +35,15 @@ function Status({ state, pending }: { state: { ok?: true; error?: string }; pend
 }
 
 /** `defaultStart` is "now" in OWNER_TZ as a datetime-local value, minted by the server page. */
-export function CardioForm({ defaultStart, initialKind = "run" }: { defaultStart: string; initialKind?: Kind }) {
+export function CardioForm({
+  defaultStart,
+  initialKind = "run",
+  defaultDurationMin,
+}: {
+  defaultStart: string;
+  initialKind?: Kind;
+  defaultDurationMin?: number;
+}) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [unit, setUnit] = useState(UNITS[initialKind][0]);
   const [state, action, pending] = useActionState<CardioState, FormData>(logCardio, {});
@@ -88,6 +96,7 @@ export function CardioForm({ defaultStart, initialKind = "run" }: { defaultStart
               inputMode="decimal"
               autoComplete="off"
               placeholder="30"
+              defaultValue={defaultDurationMin ?? ""}
               className={base.input}
               required
             />
@@ -219,7 +228,7 @@ function AfterRunPrompt({ runId }: { runId: string }) {
         <label key={area} className={styles.areaRow}>
           <span className={styles.areaName}>{area}</span>
           <select name={`score_${area}`} defaultValue="skip" className={base.select}>
-            <option value="skip">skip</option>
+            <option value="skip">Skip</option>
             {Array.from({ length: 11 }, (_, n) => (
               <option key={n} value={n}>
                 {n}

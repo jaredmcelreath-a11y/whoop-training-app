@@ -29,11 +29,8 @@ export function RecoveryRing({ score, band, pendingLabel }: { score: number | nu
             transform="rotate(-90 75 75)"
           />
         ) : null}
-        <text x="75" y={scored ? 82 : 80} textAnchor="middle" className={scored ? styles.value : styles.pending}>
+        <text x="75" y={scored ? 89 : 87} textAnchor="middle" className={scored ? styles.value : styles.pending}>
           {scored ? `${Math.round(pct)}%` : "—"}
-        </text>
-        <text x="75" y="104" textAnchor="middle" className={styles.caption}>
-          RECOVERY
         </text>
       </svg>
       <p className={styles.label} data-band={band ?? "none"}>

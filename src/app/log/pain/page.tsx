@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getPlanSettings } from "@/lib/plan/settings";
 import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -48,7 +49,7 @@ async function PainContent() {
   return (
     <section className={base.card}>
       <h2 className={base.cardTitle}>How does it feel? (0–10)</h2>
-      <PainForm trends={trends} />
+      <PainForm trends={trends} painSide={(await getPlanSettings(db, now, tz)).painSide} />
     </section>
   );
 }

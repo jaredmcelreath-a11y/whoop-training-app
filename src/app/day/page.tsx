@@ -6,7 +6,7 @@ import { TabBar } from "@/components/tab-bar";
 import { Cap, Card, StatChip } from "@/components/ui/ui";
 import { AppPage } from "@/components/ui/app-page";
 import { clock12, withClock12 } from "@/lib/ui/clock";
-import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex } from "./day-style";
+import { EDGE_FOR_KIND, ICON_FOR_ITEM, displayTitle, nextItemIndex, targetChips } from "./day-style";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { anchorBedtime, buildTimeline, mergeActual, supplementNote, supplementRuleIds } from "@/lib/engine/day-timeline";
@@ -14,7 +14,6 @@ import { RULES } from "@/lib/engine/rules/catalog";
 import { getEnv } from "@/lib/env";
 import { addDays, localDate } from "@/lib/log/dates";
 import { actualWorkouts, latestSleepNeedMin, parseDateParam, sleepAnchorInputs, withDuringFluid } from "@/lib/nutrition/day-view";
-import { mlToOz } from "@/lib/nutrition/fuel-view";
 import { getDayNutrition } from "@/lib/nutrition/service";
 import { getNutritionSettings } from "@/lib/nutrition/settings";
 import { getPlanSettings } from "@/lib/plan/settings";
@@ -26,9 +25,9 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const RULE_WHY = RULES as Record<string, { why: string } | undefined>;
 const TIMING_LABEL: Record<string, string> = {
   morning: "Morning",
-  with_meal: "With a meal",
-  pre_workout: "Before training",
-  post_workout: "After training",
+  with_meal: "With a Meal",
+  pre_workout: "Before Training",
+  post_workout: "After Training",
   evening: "Evening",
 };
 
@@ -107,13 +106,9 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
       <Card>
         <Cap>Targets</Cap>
         <div className={styles.targets}>
-          <StatChip label="Calories" value={n.targets ? `${Math.round(n.targets.kcal)}` : null} hint="kcal" />
-          <StatChip label="Protein" value={n.targets ? `${Math.round(n.targets.proteinG)}` : null} hint="g" />
-          <StatChip label="Carbs" value={n.targets ? `${Math.round(n.targets.carbsG)}` : null} hint="g" />
-        </div>
-        <div className={styles.targets}>
-          <StatChip label="Fat" value={n.targets ? `${Math.round(n.targets.fatG)}` : null} hint="g" />
-          <StatChip label="Water" icon="drop" value={`${Math.round(mlToOz(n.water.targetMl))}`} hint="oz" />
+          {targetChips(n).map((c) => (
+            <StatChip key={c.label} label={c.label} value={c.value} icon={c.icon} />
+          ))}
         </div>
         {n.needs.length ? (
           <ul className={styles.needs}>
@@ -129,10 +124,12 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
       <ol className={styles.timeline}>
         {items.map((it, i) => (
           <li key={`${it.time}-${it.kind}-${i}`} className={styles.item}>
-            <span className={styles.time}>{clock12(it.time)}</span>
             <Card hot={i === next} className={styles.body}>
               <div className={styles.edge} data-edge={EDGE_FOR_KIND[it.kind]} aria-hidden="true" />
-              {i === next ? <Cap>Up Next</Cap> : null}
+              <div className={styles.itemTop}>
+                <span className={styles.time}>{clock12(it.time)}</span>
+                {i === next ? <Cap>Up Next</Cap> : null}
+              </div>
               <div className={styles.itemHead}>
                 <Icon name={ICON_FOR_ITEM[it.kind]} size={16} className={styles.itemIcon} />
                 <span className={styles.itemTitle}>{displayTitle(it)}</span>

@@ -58,13 +58,6 @@
   font-weight: 700;
 }
 
-.caption {
-  fill: var(--accent);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 2px;
-}
-
 .label {
   font-size: 12px;
   font-weight: 800;

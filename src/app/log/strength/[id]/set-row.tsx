@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import { addExerciseAction, addSetAction, type SetState } from "../actions";
 import styles from "../strength.module.css";
+import { CATEGORY_LABEL, type Category } from "@/lib/log/exercise-catalog";
 
 /**
  * The "add set" row. Its clientId lives in action state: a double-tap submits the same id twice
@@ -82,7 +83,7 @@ export function SetRow({
   );
 }
 
-const CATEGORIES = ["strength", "bodyweight", "plyo", "core", "mobility"] as const;
+const CATEGORIES = Object.keys(CATEGORY_LABEL) as Category[];
 
 /** `exList` is the current `?ex=` list; the new exercise is appended to it. */
 export function AddExerciseForm({ sessionId, exList }: { sessionId: string; exList: string }) {
@@ -105,7 +106,7 @@ export function AddExerciseForm({ sessionId, exList }: { sessionId: string; exLi
         <select name="category" aria-label="Category" className={styles.select} defaultValue="strength">
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {c}
+              {CATEGORY_LABEL[c]}
             </option>
           ))}
         </select>

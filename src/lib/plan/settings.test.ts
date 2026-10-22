@@ -45,6 +45,29 @@ describe("getPlanSettings", () => {
   });
 });
 
+describe("pain side and pool unit", () => {
+  it("default to unset and yards", async () => {
+    const s0 = await getPlanSettings(db, NOW, TZ);
+    expect(s0.painSide).toBeNull();
+    expect(s0.poolUnit).toBe("yd");
+  });
+
+  it("can be set", async () => {
+    await getPlanSettings(db, NOW, TZ);
+    const s1 = await updatePlanSettings(db, { painSide: "left", poolUnit: "ft" });
+    expect(s1.painSide).toBe("left");
+    expect(s1.poolUnit).toBe("ft");
+  });
+
+  it("an unset unit keeps the old display: whole yards in yards, else meters", async () => {
+    await getPlanSettings(db, NOW, TZ);
+    await db.update(planSettings).set({ poolLengthM: 25, poolUnit: null });
+    expect((await getPlanSettings(db, NOW, TZ)).poolUnit).toBe("m");
+    await db.update(planSettings).set({ poolLengthM: 22.86 });
+    expect((await getPlanSettings(db, NOW, TZ)).poolUnit).toBe("yd");
+  });
+});
+
 describe("wake time", () => {
   it("defaults to none, so the Day timeline derives it from the first window", async () => {
     expect((await getPlanSettings(db, NOW, TZ)).wakeTime).toBeNull();
@@ -71,6 +94,11 @@ describe("updatePlanSettings", () => {
 });
 
 describe("PlanSettingsInput", () => {
+  it("accepts a pain side or none, and rejects other values", () => {
+    for (const v of [null, "left", "right", "both"]) expect(PlanSettingsInput.safeParse({ ...base, painSide: v }).success, String(v)).toBe(true);
+    expect(PlanSettingsInput.safeParse({ ...base, painSide: "middle" }).success).toBe(false);
+  });
+
   it("accepts an HH:MM wake time or none, and rejects other text", () => {
     expect(PlanSettingsInput.safeParse({ ...base, wakeTime: "07:00" }).success).toBe(true);
     expect(PlanSettingsInput.safeParse({ ...base, wakeTime: null }).success).toBe(true);

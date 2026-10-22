@@ -9,17 +9,17 @@ const TOKEN_TAIL = 4;
 const MASK = "••••";
 
 export const REF_PROFILES: readonly { value: NonNullable<NutritionSettings["refProfile"]>; label: string }[] = [
-  { value: "male_19_30", label: "Adult male, 19–30 (DRI reference)" },
-  { value: "female_19_30", label: "Adult female, 19–30 (DRI reference)" },
-  { value: "male_31_50", label: "Adult male, 31–50 (DRI reference)" },
-  { value: "female_31_50", label: "Adult female, 31–50 (DRI reference)" },
+  { value: "male_19_30", label: "Adult Male, 19–30 (DRI Reference)" },
+  { value: "female_19_30", label: "Adult Female, 19–30 (DRI Reference)" },
+  { value: "male_31_50", label: "Adult Male, 31–50 (DRI Reference)" },
+  { value: "female_31_50", label: "Adult Female, 31–50 (DRI Reference)" },
 ];
 
 export const TIMINGS: readonly { value: NutritionSettings["supplements"][number]["timing"]; label: string }[] = [
   { value: "morning", label: "Morning" },
-  { value: "with_meal", label: "With a meal" },
-  { value: "pre_workout", label: "Before a workout" },
-  { value: "post_workout", label: "After a workout" },
+  { value: "with_meal", label: "With a Meal" },
+  { value: "pre_workout", label: "Before a Workout" },
+  { value: "post_workout", label: "After a Workout" },
   { value: "evening", label: "Evening" },
 ];
 

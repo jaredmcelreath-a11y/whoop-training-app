@@ -31,6 +31,7 @@ import {
   markCompletionThrough,
   regenerateFuture,
   remainingTargets,
+  storedDaySessions,
 } from "./service";
 
 // All values below are invented test data.
@@ -807,5 +808,41 @@ describe("markCompletionThrough (final review E)", () => {
     await getDayPlan(db, TODAY, NOW, TZ);
     const [monRow] = await rowsBetween("2026-10-19", "2026-10-20");
     expect(monRow.status).toBe("done");
+  });
+});
+
+describe("storedDaySessions", () => {
+  it("returns a past day's stored rows in slot order and writes nothing", async () => {
+    const day = addDays(TODAY, -2);
+    await db.insert(plannedSessions).values(
+      (["run", "strength"] as const).map((kind, i) => ({
+        localDate: day,
+        slot: 1 - i,
+        kind,
+        title: kind,
+        durationMin: 30,
+        intensity: kind === "strength" ? ("strength" as const) : ("z2" as const),
+        details: {},
+        ruleIds: [],
+        weekStart: weekStart(day),
+        status: kind === "run" ? ("done" as const) : ("planned" as const),
+      })),
+    );
+    const before = {
+      log: (await db.select().from(recommendationLog)).length,
+      rows: await db.select().from(plannedSessions).orderBy(asc(plannedSessions.id)),
+    };
+    const sessions = await storedDaySessions(db, day);
+    expect(sessions.map((s) => [s.kind, s.status, s.adjusted, s.reasons.length])).toEqual([
+      ["strength", "planned", false, 0],
+      ["run", "done", false, 0],
+    ]);
+    expect((await db.select().from(recommendationLog)).length).toBe(before.log);
+    expect(await db.select().from(plannedSessions).orderBy(asc(plannedSessions.id))).toEqual(before.rows);
+  });
+
+  it("returns nothing for a day with no stored plan, without generating one", async () => {
+    expect(await storedDaySessions(db, addDays(TODAY, -40))).toEqual([]);
+    expect((await db.select().from(plannedSessions)).length).toBe(0);
   });
 });

@@ -127,7 +127,7 @@ async function Workout({
             {exParam ? <input type="hidden" name="ex" value={exParam} /> : null}
             <select name="ex" aria-label="Exercise" className={styles.select} required defaultValue="">
               <option value="" disabled>
-                Pick an exercise
+                Pick an Exercise
               </option>
               {pickable.map((e) => (
                 <option key={e.id} value={e.id}>

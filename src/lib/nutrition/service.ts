@@ -244,9 +244,16 @@ async function computeEstimate(
  * backfilled with today's inputs. Otherwise it is computed from completed days before the week
  * (and before today), then inserted with on-conflict-do-nothing and re-selected. A future week
  * is computed the same way but not stored, so it is calibrated on its full previous week once
- * it starts. Null when there is no previous estimate and initialTdee has nothing to work from.
+ * it starts; so is any week when `store` is false (a past day's read-only view). Null when there
+ * is no previous estimate and initialTdee has nothing to work from.
  */
-export async function ensureEnergyEstimate(db: Db, weekStart: string, now: Date, tz: string): Promise<EnergyEstimate | null> {
+export async function ensureEnergyEstimate(
+  db: Db,
+  weekStart: string,
+  now: Date,
+  tz: string,
+  { store = true }: { store?: boolean } = {},
+): Promise<EnergyEstimate | null> {
   const select = async () => {
     const [row] = await db.select().from(energyEstimates).where(eq(energyEstimates.weekStart, weekStart));
     return (row as EnergyEstimate | undefined) ?? null;
@@ -258,7 +265,7 @@ export async function ensureEnergyEstimate(db: Db, weekStart: string, now: Date,
   if (weekStart < weekStartOf(today)) return null;
   const est = await computeEstimate(db, weekStart, today, tz, await getNutritionSettings(db));
   if (!est) return null;
-  if (weekStart > weekStartOf(today)) return { ...est, updatedAt: now };
+  if (!store || weekStart > weekStartOf(today)) return { ...est, updatedAt: now };
   await db.insert(energyEstimates).values({ ...est, updatedAt: now }).onConflictDoNothing({ target: energyEstimates.weekStart });
   return select();
 }
@@ -417,7 +424,8 @@ export async function getDayNutrition(db: Db, date: string, now: Date, tz: strin
   else if (surplusWeek && weight) need(NEED.gainWeight);
 
   // Energy. A past week keeps whatever estimate it had; syncing now cannot give it one.
-  const estimate = await ensureEnergyEstimate(db, ws, now, tz);
+  // A past day is read only: its week's estimate is computed if missing, never stored.
+  const estimate = await ensureEnergyEstimate(db, ws, now, tz, { store: date >= today });
   const usable = estimate !== null && isPos(estimate.tdeeKcal);
   if (!usable && ws >= weekStartOf(today)) need(NEED.burn);
 

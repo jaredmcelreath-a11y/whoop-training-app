@@ -14,13 +14,13 @@ const delta = (leanLb: number | null, fatLb: number | null, leanSharePct: number
 
 describe("parseRange", () => {
   it("accepts known ranges", () => {
-    expect(parseRange("6m")).toBe("6m");
-    expect(parseRange("1y")).toBe("1y");
-    expect(parseRange(["12w"])).toBe("12w");
+    expect(parseRange("2w")).toBe("2w");
+    expect(parseRange("2m")).toBe("2m");
+    expect(parseRange(["4w"])).toBe("4w");
   });
-  it("defaults to 12w", () => {
-    expect(parseRange("x")).toBe("12w");
-    expect(parseRange(undefined)).toBe("12w");
+  it("defaults to 4w", () => {
+    expect(parseRange("x")).toBe("4w");
+    expect(parseRange(undefined)).toBe("4w");
   });
 });
 

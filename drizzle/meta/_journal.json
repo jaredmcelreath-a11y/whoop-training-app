@@ -43,6 +43,13 @@
       "when": 1792690067946,
       "tag": "0005_huge_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792706595104,
+      "tag": "0006_famous_mystique",
+      "breakpoints": true
     }
   ]
 }

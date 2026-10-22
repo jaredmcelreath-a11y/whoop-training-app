@@ -22,3 +22,10 @@ describe("units", () => {
     expect(parseNumber("abc")).toBeNaN();
   });
 });
+
+describe("feet", () => {
+  it("converts a 75 ft pool to 22.86 m and back", () => {
+    expect(toMeters(75, "ft")).toBeCloseTo(22.86, 5);
+    expect(fromMeters(22.86, "ft")).toBeCloseTo(75, 5);
+  });
+});

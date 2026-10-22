@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { weightHint } from "./weight-hint";
 
-const latest = { date: "2026-03-05", lb: 170.4 };
+const latest = { date: "2026-03-05", lb: 170.4, loggedAt: new Date("2026-03-05T13:00:00Z") };
 
 describe("weightHint (Today's weight chip)", () => {
   it("shows the weigh-in date when there is no two-week trend", () => {

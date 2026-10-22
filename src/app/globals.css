@@ -64,3 +64,21 @@ button,
 input {
   font: inherit;
 }
+
+/* Controls never outgrow their card; iOS Safari gives date and time inputs a fixed intrinsic width. */
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+}

@@ -116,8 +116,39 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--info);
-  font-size: 14px;
+  padding: 0 16px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--card);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.labsSummary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.labsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.labsSummary::after {
+  content: "Show";
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.labs[open] > .labsSummary::after {
+  content: "Hide";
 }
 
 /* ---- tables -------------------------------------------------------------- */

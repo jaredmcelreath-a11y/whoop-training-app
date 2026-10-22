@@ -32,6 +32,7 @@ describe("RecoveryRing", () => {
     expect(html).toMatch(new RegExp(`stroke-dasharray="${arc} `));
     expect(html).toContain("78%");
     expect(html).toContain("High Recovery");
+    expect(html).not.toContain("RECOVERY<");
     expect(html).not.toContain("NaN");
   });
 });

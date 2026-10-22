@@ -7,7 +7,7 @@ describe("iPhone Home Screen metadata", () => {
   it("declares a standalone web app with a translucent status bar", () => {
     expect(metadata.appleWebApp).toMatchObject({
       capable: true,
-      title: "Tri Coach",
+      title: "Seventy3",
       statusBarStyle: "black-translucent",
     });
   });

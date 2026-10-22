@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Db } from "@/db/client";
-import { localDate } from "@/lib/log/dates";
 import { confidenceNote, fuelNeeds, fuelRows, syncedLabel, type FuelRow } from "@/lib/nutrition/fuel-view";
 import { getDayNutrition, type DayNutrition } from "@/lib/nutrition/service";
 import { getNutritionSettings, type NutritionSettings } from "@/lib/nutrition/settings";
@@ -10,11 +9,23 @@ import styles from "./today.module.css";
 import { WaterButton } from "./water-button";
 
 /** "Today's fuel": calories, protein, carbs and water against target. Never breaks the page. */
-export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string }) {
+export async function TodayFuel({
+  db,
+  date,
+  now,
+  tz,
+  past,
+}: {
+  db: Db;
+  date: string;
+  now: Date;
+  tz: string;
+  past: boolean;
+}) {
   let n: DayNutrition;
   let waterSource: NutritionSettings["waterSource"];
   try {
-    n = await getDayNutrition(db, localDate(now, tz), now, tz);
+    n = await getDayNutrition(db, date, now, tz);
     waterSource = (await getNutritionSettings(db)).waterSource;
   } catch (err) {
     console.error("getDayNutrition failed:", err);
@@ -48,7 +59,11 @@ export async function TodayFuel({ db, now, tz }: { db: Db; now: Date; tz: string
         ))}
         {t ? null : <p className={styles.small}>No food targets yet. Finish setup below.</p>}
       </Link>
-      {waterSource !== "cronometer" ? <WaterButton /> : <p className={styles.small}>Water is counted from Cronometer.</p>}
+      {past ? null : waterSource !== "cronometer" ? (
+        <WaterButton />
+      ) : (
+        <p className={styles.small}>Water is counted from Cronometer.</p>
+      )}
       <p className={styles.small}>{syncedLabel(n.lastSyncedAt, tz)}</p>
       {note ? <p className={styles.small}>{note}</p> : null}
       {needs.length ? (

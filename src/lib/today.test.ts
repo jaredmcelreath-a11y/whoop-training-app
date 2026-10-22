@@ -182,7 +182,7 @@ describe("getTodaySummary", () => {
       { localDate: "2026-10-12", weightLb: 164.8 },
     ]);
     const t = await getTodaySummary(db, new Date("2026-10-20T13:00:00Z"), TZ);
-    expect(t.weight).toEqual({ latest: { date: "2026-10-20", lb: 165.2 }, avg7: 165.2, avg7Prev: 164.8 });
+    expect(t.weight).toEqual({ latest: { date: "2026-10-20", lb: 165.2, loggedAt: expect.any(Date) }, avg7: 165.2, avg7Prev: 164.8 });
   });
 
   it("reports needs_reconnect and the last sync time", async () => {

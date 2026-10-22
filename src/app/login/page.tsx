@@ -13,7 +13,7 @@ export default function LoginPage() {
           <span className={styles.mark}>
             <Icon name="pulse" size={30} />
           </span>
-          <h1 className={styles.name}>Tri Coach</h1>
+          <h1 className={styles.name}>Seventy3</h1>
           <p className={styles.tagline}>Sign In to Continue</p>
         </div>
         <Card>

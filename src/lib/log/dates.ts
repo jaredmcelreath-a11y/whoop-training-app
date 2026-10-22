@@ -17,6 +17,14 @@ export function weekStart(localDateStr: string): string {
   return dt.toISOString().slice(0, 10);
 }
 
+/** Monday of a picked YYYY-MM-DD date (from a date input), or null when it isn't a real date. */
+export function weekFromDate(date: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const ms = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== date) return null;
+  return weekStart(date);
+}
+
 /** Wall-clock fields of `at` in `tz`, with hours 0-23. */
 function wallParts(at: Date, tz: string) {
   const parts = new Intl.DateTimeFormat("en-US", {

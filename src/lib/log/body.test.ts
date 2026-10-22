@@ -42,7 +42,7 @@ describe("getWeightTrend", () => {
       await upsertWeight(db, new Date(now.getTime() - k * DAY), TZ, 160 + k);
     }
     const t = await getWeightTrend(db, now, TZ);
-    expect(t.latest).toEqual({ date: "2026-10-20", lb: 160 });
+    expect(t.latest).toEqual({ date: "2026-10-20", lb: 160, loggedAt: expect.any(Date) });
     expect(t.avg7).toBe(163); // 160..166
     expect(t.avg7Prev).toBe(168); // 167..169
   });
@@ -51,7 +51,7 @@ describe("getWeightTrend", () => {
     const now = new Date("2026-10-20T12:00:00-05:00");
     await upsertWeight(db, new Date(now.getTime() - 20 * DAY), TZ, 170);
     let t = await getWeightTrend(db, now, TZ);
-    expect(t).toEqual({ latest: { date: "2026-09-30", lb: 170 }, avg7: null, avg7Prev: null });
+    expect(t).toEqual({ latest: { date: "2026-09-30", lb: 170, loggedAt: expect.any(Date) }, avg7: null, avg7Prev: null });
 
     await upsertWeight(db, new Date(now.getTime() - 1 * DAY), TZ, 165);
     await upsertWeight(db, new Date(now.getTime() - 2 * DAY), TZ, 165.1);
@@ -73,7 +73,7 @@ describe("upsertWeekly", () => {
     const rows = await db.select().from(weeklyMetrics);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ weekStart: "2026-10-19", vo2max: 48.5, whoopAge: 31.2 });
-    expect(await getWeekly(db, "2026-10-25")).toEqual({ vo2max: 48.5, whoopAge: 31.2 });
+    expect(await getWeekly(db, "2026-10-25")).toMatchObject({ vo2max: 48.5, whoopAge: 31.2 });
     expect(await getWeekly(db, "2026-10-26")).toBeNull();
   });
 });

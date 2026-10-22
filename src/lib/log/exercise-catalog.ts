@@ -1,5 +1,14 @@
 export type Category = "strength" | "bodyweight" | "plyo" | "core" | "mobility";
 
+/** Picker labels; the stored values stay lowercase. */
+export const CATEGORY_LABEL: Record<Category, string> = {
+  strength: "Strength",
+  bodyweight: "Bodyweight",
+  plyo: "Plyometrics",
+  core: "Core",
+  mobility: "Mobility",
+};
+
 export const DEFAULT_EXERCISES: { name: string; category: Category }[] = [
   { name: "Lat Pulldown", category: "strength" },
   { name: "Seated Row", category: "strength" },

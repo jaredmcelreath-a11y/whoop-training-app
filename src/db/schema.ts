@@ -275,6 +275,10 @@ export const planSettings = pgTable(
     poolLengthM: doublePrecision("pool_length_m").notNull(),
     /** "HH:MM"; null derives wake from the first training window. */
     wakeTime: text("wake_time"),
+    /** "left" | "right" | "both"; null shows the side picker on the pain form. */
+    painSide: text("pain_side"),
+    /** How the pool length is shown: "yd" | "m" | "ft"; storage stays in meters. */
+    poolUnit: text("pool_unit"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],

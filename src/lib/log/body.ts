@@ -4,7 +4,7 @@ import { weeklyMetrics, weightEntries } from "@/db/schema";
 import { localDate, weekStart } from "./dates";
 
 export type WeightTrend = {
-  latest: { date: string; lb: number } | null;
+  latest: { date: string; lb: number; loggedAt: Date } | null;
   avg7: number | null;
   avg7Prev: number | null;
 };
@@ -47,7 +47,7 @@ export async function getWeightTrend(db: Db, now: Date, tz: string): Promise<Wei
     .where(and(gte(weightEntries.localDate, addDays(today, -13)), lte(weightEntries.localDate, today)));
   const cut = addDays(today, -6);
   return {
-    latest: latest ? { date: latest.localDate, lb: latest.weightLb } : null,
+    latest: latest ? { date: latest.localDate, lb: latest.weightLb, loggedAt: latest.loggedAt } : null,
     avg7: avg1(rows.filter((r) => r.localDate >= cut).map((r) => r.weightLb)),
     avg7Prev: avg1(rows.filter((r) => r.localDate < cut).map((r) => r.weightLb)),
   };
@@ -76,9 +76,9 @@ export async function upsertWeekly(
 export async function getWeekly(
   db: Db,
   localDateStr: string,
-): Promise<{ vo2max: number | null; whoopAge: number | null } | null> {
+): Promise<{ vo2max: number | null; whoopAge: number | null; updatedAt: Date } | null> {
   const [row] = await db
-    .select({ vo2max: weeklyMetrics.vo2max, whoopAge: weeklyMetrics.whoopAge })
+    .select({ vo2max: weeklyMetrics.vo2max, whoopAge: weeklyMetrics.whoopAge, updatedAt: weeklyMetrics.updatedAt })
     .from(weeklyMetrics)
     .where(eq(weeklyMetrics.weekStart, weekStart(localDateStr)));
   return row ?? null;

@@ -5,12 +5,12 @@ const SECONDS_PER_MINUTE = 60;
 const PAD_SECONDS = 2;
 
 export const RANGES = Object.keys(RANGE_DAYS) as Range[];
-export const RANGE_LABEL: Record<Range, string> = { "12w": "12 weeks", "6m": "6 months", "1y": "1 year" };
+export const RANGE_LABEL: Record<Range, string> = { "2w": "2 Weeks", "4w": "4 Weeks", "2m": "2 Months" };
 
-/** The `?range=` value when it is a known range, else "12w". */
+/** The `?range=` value when it is a known range, else "4w". */
 export function parseRange(raw: string | string[] | undefined): Range {
   const v = Array.isArray(raw) ? raw[0] : raw;
-  return v !== undefined && (RANGES as string[]).includes(v) ? (v as Range) : "12w";
+  return v !== undefined && (RANGES as string[]).includes(v) ? (v as Range) : "4w";
 }
 
 /** "2026-10-03" -> "Oct 3" (read as UTC so the day never shifts). */

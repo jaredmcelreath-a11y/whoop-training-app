@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ScrollToHash } from "@/components/scroll-to-hash";
 import { AppPage } from "@/components/ui/app-page";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { requireSession } from "@/lib/auth/session";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { EVIDENCE_ORDER, type Citation, type Evidence } from "@/lib/engine/rules/types";
-import { AREA_LABEL, EVIDENCE_LABEL, EVIDENCE_TEXT, humanizeParams, type ParamItem } from "@/lib/plan/view";
+import { AREA_LABEL, EVIDENCE_LABEL, EVIDENCE_TEXT, filterRules, humanizeParams, type ParamItem } from "@/lib/plan/view";
 import { PlanHeader } from "../plan-nav";
 import styles from "../plan.module.css";
 
@@ -30,13 +32,16 @@ type AnyRule = {
 };
 
 /** Static shell; the content streams in once the session is checked. */
-export default function LibraryPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
+
+export default function LibraryPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <AppPage>
         <PlanHeader active="library" title="Library" />
         <Suspense fallback={<p className={styles.sub}>Loading…</p>}>
-          <LibraryContent />
+          <LibraryContent searchParams={searchParams} />
         </Suspense>
       </AppPage>
       <TabBar active="plan" />
@@ -48,9 +53,21 @@ function EvidenceBadge({ level }: { level: Evidence }) {
   return <span className={EVIDENCE_CLASS[level]}>{EVIDENCE_LABEL[level]}</span>;
 }
 
-async function LibraryContent() {
+async function LibraryContent({ searchParams }: { searchParams: SearchParams }) {
   if (!(await requireSession())) redirect("/login");
-  const rules = Object.values(RULES) as readonly AnyRule[];
+  const sp = await searchParams;
+  const all = Object.values(RULES) as readonly AnyRule[];
+  const area = one(sp.area);
+  const evidence = one(sp.evidence);
+  const rules = filterRules(all, area, evidence);
+  const href = (a: string | undefined, e: string | undefined) => {
+    const q = new URLSearchParams();
+    if (a) q.set("area", a);
+    if (e) q.set("evidence", e);
+    const s = q.toString();
+    return s ? `/plan/library?${s}` : "/plan/library";
+  };
+  const allAreas = Object.keys(AREA_LABEL).filter((a) => all.some((r) => r.area === a));
   const areas = Object.keys(AREA_LABEL).filter((a) => rules.some((r) => r.area === a));
   const other = [...new Set(rules.map((r) => r.area))].filter((a) => !(a in AREA_LABEL));
 
@@ -78,7 +95,30 @@ async function LibraryContent() {
         </p>
       </section>
 
-      {[...areas, ...other].map((area) => (
+      <ScrollToHash />
+      <nav className={styles.filters} aria-label="Filter by group">
+        <Link href={href(undefined, evidence)} className={!area ? styles.filterOn : styles.filter}>
+          All Groups
+        </Link>
+        {allAreas.map((a) => (
+          <Link key={a} href={href(a, evidence)} className={area === a ? styles.filterOn : styles.filter}>
+            {AREA_LABEL[a]}
+          </Link>
+        ))}
+      </nav>
+      <nav className={styles.filters} aria-label="Filter by evidence">
+        <Link href={href(area, undefined)} className={!evidence ? styles.filterOn : styles.filter}>
+          All Evidence
+        </Link>
+        {EVIDENCE_ORDER.map((e) => (
+          <Link key={e} href={href(area, e)} className={evidence === e ? styles.filterOn : styles.filter}>
+            {EVIDENCE_LABEL[e]}
+          </Link>
+        ))}
+      </nav>
+      {rules.length === 0 ? <p className={styles.sub}>No rules match these filters.</p> : null}
+
+      {[...areas, ...other].filter((a) => rules.some((r) => r.area === a)).map((area) => (
         <section key={area} className={styles.card} aria-labelledby={`area-${area}`}>
           <h2 id={`area-${area}`} className={styles.cardTitle}>
             {AREA_LABEL[area] ?? area}

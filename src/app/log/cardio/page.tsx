@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { whoopPrefill } from "@/lib/log/log-boxes";
 import { AppPage } from "@/components/ui/app-page";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -17,7 +18,7 @@ import { CardioForm, DeleteCardioButton } from "./cardio-form";
 import styles from "./cardio.module.css";
 
 /** Static shell; the form's default time and the recent list stream in. */
-export default function CardioPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
+export default function CardioPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[]; whoop?: string | string[] }> }) {
   return (
     <>
       <AppPage>
@@ -36,16 +37,23 @@ export default function CardioPage({ searchParams }: { searchParams: Promise<{ k
   );
 }
 
-async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
+async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: string | string[]; whoop?: string | string[] }> }) {
   if (!(await requireSession())) redirect("/login");
-  const kind = parseCardioKind((await searchParams).kind);
+  const sp = await searchParams;
+  const kind = parseCardioKind(sp.kind);
   const entries = await recentCardio(getDb(), 10);
+  // "Add Details" from Log: start time and length come from the WHOOP workout; saving links it.
+  const prefill = await whoopPrefill(getDb(), typeof sp.whoop === "string" ? sp.whoop : undefined);
 
   return (
     <>
       <section className={base.card}>
         <h2 className={base.cardTitle}>Log Cardio</h2>
-        <CardioForm initialKind={kind} defaultStart={toZonedLocal(new Date(), getEnv().OWNER_TZ)} />
+        <CardioForm
+          initialKind={kind}
+          defaultStart={toZonedLocal(prefill?.start ?? new Date(), getEnv().OWNER_TZ)}
+          defaultDurationMin={prefill?.durationMin}
+        />
       </section>
       <section className={base.card}>
         <h2 className={base.cardTitle}>Recent</h2>
