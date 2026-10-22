@@ -32,7 +32,7 @@
 import { ML_PER_FL_OZ } from "@/lib/engine/nutrients";
 import { RULES, type RuleId } from "@/lib/engine/rules/catalog";
 
-export type TimelineKind = "wake" | "supplement" | "meal" | "snack" | "session" | "bedtime";
+export type TimelineKind = "wake" | "supplement" | "routine" | "meal" | "snack" | "session" | "bedtime";
 
 export type TimelineItem = {
   /** "HH:MM", local clock (an item after midnight wraps). */
@@ -75,7 +75,7 @@ const NUDGE_MIN = 5;
 const ROUND_MIN = NUDGE_MIN;
 
 /** Tie order at the same minute: supplements follow their anchor and precede bedtime. */
-const KIND_ORDER: Record<TimelineKind, number> = { wake: 0, session: 1, meal: 2, snack: 3, supplement: 4, bedtime: 5 };
+const KIND_ORDER: Record<TimelineKind, number> = { wake: 0, session: 1, meal: 2, snack: 3, supplement: 4, routine: 5, bedtime: 6 };
 
 const toMin = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -476,6 +476,16 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
       ruleIds: ids.length ? ids : ["supplements.evidence"],
     });
   }
+
+  // Morning light (and quiet time) by the lamp, before breakfast is eaten in front of it.
+  const ML = RULES["recovery.morningLight"].params;
+  supps.push({
+    at: wake + TL.morningLightAfterWakeMin,
+    kind: "routine",
+    title: "Morning Light and Quiet Time",
+    detail: `Lamp on: about ${ML.lampMin} min at its rated distance, facing it without staring. Quiet time and reading as long as you need, and eat breakfast in front of it. On a clear morning after sunrise, about ${ML.outdoorMin.clear} min outside works too.`,
+    ruleIds: ["recovery.morningLight"],
+  });
 
   for (const s of i.supplements) {
     let at: number | null = null;

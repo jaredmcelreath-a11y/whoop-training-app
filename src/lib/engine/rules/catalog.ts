@@ -437,6 +437,7 @@ type TimelineParams = {
   morningSupplementsAfterWakeMin: number;
   firstMealAfterWakeMin: number;
   eveningSupplementsBeforeBedMin: number;
+  morningLightAfterWakeMin: number;
 };
 type ExerciseKind = "swim" | "bike" | "run" | "strength" | "lower_leg" | "core" | "mobility";
 type ExerciseKcalParams = {
@@ -461,6 +462,7 @@ type MagnesiumParams = { rdaMgMen: { "19-30": number; "31+": number }; ageBands:
 type VitaminK2Params = { aiUgMen: number; interactionFromUg: number };
 type CollagenParams = { peptidesGPerDay: number; gelatinG: Range; vitaminCMg: number; hoursBefore: number; jointPainGPerDay: Range };
 
+type MorningLightParams = { lampLux: number; lampMin: number; outdoorMin: { clear: number; cloudy: number; overcast: Range }; dimHoursBeforeBed: number };
 type AnchorBedtimeParams = { baselineDays: number; maxEarlierMin: number; minNights: number };
 type SupplementsParams = {
   creatine: { gPerDay: Range };
@@ -818,6 +820,169 @@ export const RULES = deepFreeze({
     citations: [PLEWS_2013, GALPIN_RECOVERY_2023],
     caveat:
       "Galpin waits until a decline lasts more than seven days, then cuts to ~50%. The 3-day trigger and 60% are practice (spec §7), more cautious than that.",
+  }),
+
+  "recovery.morningLight": rule<MorningLightParams>({
+    id: "recovery.morningLight",
+    area: "recovery",
+    statement:
+      "Get bright light soon after waking. With a 10,000-lux lamp, sit about 30 min each morning at the lamp's rated distance, facing it without staring. Outside, about 10 min on clear days, 20 when cloudy and 30-60 when very overcast. Keep light dim for the 3 h before bed.",
+    why: "Morning light sets your body clock earlier and steadies sleep; evening light pushes it later.",
+    params: { lampLux: 10000, lampMin: 30, outdoorMin: { clear: 10, cloudy: 20, overcast: [30, 60] }, dimHoursBeforeBed: 3 },
+    evidence: "consensus",
+    citations: [
+      {
+        authors: "Khalsa SBS, Jewett ME, Cajochen C, Czeisler CA",
+        year: 2003,
+        title: "A phase response curve to single bright light pulses in human subjects",
+        venue: "J Physiol 549(Pt 3):945-952",
+        url: "https://doi.org/10.1113/jphysiol.2003.040477",
+        doi: "10.1113/jphysiol.2003.040477",
+        evidence: "trial",
+      },
+      {
+        authors: "St Hilaire MA, Gooley JJ, Khalsa SBS, Kronauer RE, et al.",
+        year: 2012,
+        title: "Human phase response curve to a 1 h pulse of bright white light",
+        venue: "J Physiol 590(13):3035-3045",
+        url: "https://doi.org/10.1113/jphysiol.2012.227892",
+        doi: "10.1113/jphysiol.2012.227892",
+        evidence: "trial",
+      },
+      {
+        authors: "Wright KP Jr, McHill AW, Birks BR, Griffin BR, Rusterholz T, Chinoy ED",
+        year: 2013,
+        title: "Entrainment of the human circadian clock to the natural light-dark cycle",
+        venue: "Curr Biol 23(16):1554-1558",
+        url: "https://doi.org/10.1016/j.cub.2013.06.039",
+        doi: "10.1016/j.cub.2013.06.039",
+        evidence: "trial",
+      },
+      {
+        authors: "van Maanen A, Meijer AM, van der Heijden KB, Oort FJ",
+        year: 2016,
+        title: "The effects of light therapy on sleep problems: a systematic review and meta-analysis",
+        venue: "Sleep Med Rev 29:52-62",
+        url: "https://doi.org/10.1016/j.smrv.2015.08.009",
+        doi: "10.1016/j.smrv.2015.08.009",
+        evidence: "meta-analysis",
+      },
+      {
+        authors: "Lam RW, Levitt AJ, Levitan RD, Michalak EE, et al.",
+        year: 2016,
+        title: "Efficacy of Bright Light Treatment, Fluoxetine, and the Combination in Patients With Nonseasonal Major Depressive Disorder: A Randomized Clinical Trial",
+        venue: "JAMA Psychiatry 73(1):56-63",
+        url: "https://doi.org/10.1001/jamapsychiatry.2015.2235",
+        doi: "10.1001/jamapsychiatry.2015.2235",
+        evidence: "trial",
+      },
+      {
+        authors: "Penders TM, Stanciu CN, Schoemann AM, Ninan PT, et al.",
+        year: 2016,
+        title: "Bright Light Therapy as Augmentation of Pharmacotherapy for Treatment of Depression: A Systematic Review and Meta-Analysis",
+        venue: "Prim Care Companion CNS Disord 18(5)",
+        url: "https://doi.org/10.4088/PCC.15r01906",
+        doi: "10.4088/PCC.15r01906",
+        evidence: "meta-analysis",
+      },
+      {
+        authors: "Brown TM, Brainard GC, Cajochen C, Czeisler CA, et al.",
+        year: 2022,
+        title: "Recommendations for daytime, evening, and nighttime indoor light exposure to best support physiology, sleep, and wakefulness in healthy adults",
+        venue: "PLoS Biol 20(3):e3001571",
+        url: "https://doi.org/10.1371/journal.pbio.3001571",
+        doi: "10.1371/journal.pbio.3001571",
+        evidence: "consensus",
+      },
+      {
+        authors: "Chang AM, Aeschbach D, Duffy JF, Czeisler CA",
+        year: 2015,
+        title: "Evening use of light-emitting eReaders negatively affects sleep, circadian timing, and next-morning alertness",
+        venue: "Proc Natl Acad Sci USA 112(4):1232-1237",
+        url: "https://doi.org/10.1073/pnas.1418490112",
+        doi: "10.1073/pnas.1418490112",
+        evidence: "trial",
+      },
+      {
+        authors: "Windred DP, Burns AC, Lane JM, Olivier P, Rutter MK, Saxena R, Phillips AJK, Cain SW",
+        year: 2024,
+        title: "Brighter nights and darker days predict higher mortality risk: a prospective analysis of personal light exposure in >88,000 individuals",
+        venue: "Proc Natl Acad Sci USA 121(43):e2405924121",
+        url: "https://doi.org/10.1073/pnas.2405924121",
+        doi: "10.1073/pnas.2405924121",
+        evidence: "trial",
+        role: "context",
+      },
+      {
+        authors: "Burns AC, Windred DP, Rutter MK, Olivier P, Vetter C, et al.",
+        year: 2023,
+        title: "Day and night light exposure are associated with psychiatric disorders: an objective light study in >85,000 people",
+        venue: "Nat Ment Health 1(11):853-862",
+        url: "https://doi.org/10.1038/s44220-023-00135-8",
+        doi: "10.1038/s44220-023-00135-8",
+        evidence: "trial",
+        role: "context",
+      },
+      {
+        authors: "Knaier R, Schäfer J, Rossmeissl A, Klenk C, et al.",
+        year: 2017,
+        title: "Prime time light exposures do not seem to improve maximal physical performance in male elite athletes, but enhance end-spurt performance",
+        venue: "Front Physiol 8:264",
+        url: "https://doi.org/10.3389/fphys.2017.00264",
+        doi: "10.3389/fphys.2017.00264",
+        evidence: "trial",
+        role: "context",
+      },
+      {
+        authors: "Brouwer A, Nguyen HT, Snoek FJ, van Raalte DH, et al.",
+        year: 2017,
+        title: "Light therapy: is it safe for the eyes?",
+        venue: "Acta Psychiatr Scand 136(6):534-548",
+        url: "https://doi.org/10.1111/acps.12785",
+        doi: "10.1111/acps.12785",
+        evidence: "meta-analysis",
+        role: "context",
+      },
+      {
+        authors: "Terman M, Terman JS",
+        year: 2005,
+        title: "Light therapy for seasonal and nonseasonal depression: efficacy, protocol, safety, and side effects",
+        venue: "CNS Spectr 10(8):647-663",
+        url: "https://doi.org/10.1017/s1092852900019611",
+        doi: "10.1017/s1092852900019611",
+        evidence: "expert",
+        role: "context",
+      },
+      {
+        authors: "Huberman A",
+        year: 2023,
+        title: "Toolkit for Sleep",
+        venue: "Huberman Lab newsletter",
+        url: "https://www.hubermanlab.com/newsletter/toolkit-for-sleep",
+        evidence: "expert",
+        role: "context",
+      },
+      {
+        authors: "Attia P (host), Huberman A (guest)",
+        year: 2024,
+        title: "Journal club with Andrew Huberman: light exposure and mental health",
+        venue: "The Drive podcast (show notes)",
+        url: "https://peterattiamd.com/andrewhuberman3",
+        evidence: "expert",
+        role: "context",
+      },
+      {
+        authors: "Bryan Johnson",
+        year: 2026,
+        title: "Blueprint protocol: morning light",
+        venue: "protocol.bryanjohnson.com (self-experiment, accessed 2026-10-22)",
+        url: "https://protocol.bryanjohnson.com",
+        evidence: "n-of-1",
+        role: "context",
+      },
+    ],
+    caveat:
+      "Morning light shifting the clock earlier, and evening light shifting it later, is well shown (Khalsa 2003, St Hilaire 2012, Wright 2013). Light therapy helps sleep problems moderately (van Maanen 2016). The 10,000 lux for 30 min dose comes from treatment trials (Lam 2016, for depression; Penders 2016). Brown 2022 sets the evening target of 10 lux or less from 3 h before bed; Chang 2015 found screens before bed delay sleep. The health links (Windred 2024, Burns 2023, context) are observational studies of older adults, not proof that light causes them. There is no direct evidence that morning light improves training or WHOOP recovery; the only athlete trial (Knaier 2017, context) used evening light and found no gain. The outdoor minutes come from Huberman (expert, context); Attia (context) notes windows block most of the effect; Bryan Johnson (n-of-1, context) uses a lamp for only 3-4 min. Brouwer 2017 found no eye harm in healthy users. Skip or ask a clinician with bipolar history, eye disease or light-sensitizing medication (Terman 2005). Never look directly at the sun. Not medical advice.",
   }),
 
   "recovery.anchorBedtime": rule<AnchorBedtimeParams>({
@@ -1536,11 +1701,12 @@ export const RULES = deepFreeze({
       morningSupplementsAfterWakeMin: 10,
       firstMealAfterWakeMin: 20,
       eveningSupplementsBeforeBedMin: 60,
+      morningLightAfterWakeMin: 15,
     },
     evidence: "practice",
     citations: [],
     caveat:
-      "All six values are scheduling practice, not studied numbers. Morning supplements are grouped 10 min after waking, breakfast is 20 min after waking, and evening supplements come 60 min before bed. The 960-min awake day only spaces meals when no bedtime can be shown; it is not a sleep recommendation.",
+      "All seven values are scheduling practice, not studied numbers. Morning supplements are grouped 10 min after waking, morning light starts 15 min after waking, breakfast is 20 min after waking, and evening supplements come 60 min before bed. The 960-min awake day only spaces meals when no bedtime can be shown; it is not a sleep recommendation.",
   }),
 
   "nutrition.exerciseKcal": rule<ExerciseKcalParams>({

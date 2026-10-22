@@ -51,7 +51,7 @@ const REQUIRED: Record<string, string[]> = {
   "nutrition.preWorkout": ["minSessionMin", "carbsGPerKg", "hoursBefore", "swimNoHeavyMealMin"],
   "nutrition.postWorkout": ["withinHours", "carbsGPerKg", "proteinGPerKg"],
   "nutrition.micros": ["profiles"],
-  "nutrition.timeline": ["wakeBeforeWindowMin", "snackAfterWakeMin", "fallbackAwakeMin", "morningSupplementsAfterWakeMin", "firstMealAfterWakeMin", "eveningSupplementsBeforeBedMin"],
+  "nutrition.timeline": ["wakeBeforeWindowMin", "snackAfterWakeMin", "fallbackAwakeMin", "morningSupplementsAfterWakeMin", "firstMealAfterWakeMin", "eveningSupplementsBeforeBedMin", "morningLightAfterWakeMin"],
   "nutrition.exerciseKcal": ["defaultMet", "historyMinWorkouts", "historyLookbackDays"],
   "hydration.daily": ["totalWaterL", "beverageShare"],
   "hydration.exercise": ["maxBodyMassLossPct", "defaultLph", "minLph", "maxLph", "minSessionMin"],
@@ -94,6 +94,8 @@ const TEXT_NUMBER_ALLOWLIST: Record<string, number[]> = {
   "supplements.omega3": [3],
   // "K2" is the vitamin's form, not a number.
   "supplements.vitaminK2": [2],
+  // "10,000-lux" is written with a thousands comma, which the number scan reads as 10 and 0.
+  "recovery.morningLight": [0],
 };
 
 const isJohnson = (c: { authors: string; url: string }) =>

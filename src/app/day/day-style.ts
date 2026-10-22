@@ -8,6 +8,7 @@ export type Edge = "accent" | "caution" | "info" | "sleep";
 export const EDGE_FOR_KIND: Record<TimelineKind, Edge> = {
   wake: "accent",
   supplement: "accent",
+  routine: "sleep",
   meal: "caution",
   snack: "caution",
   session: "info",
@@ -17,6 +18,7 @@ export const EDGE_FOR_KIND: Record<TimelineKind, Edge> = {
 export const ICON_FOR_ITEM: Record<TimelineKind, IconName> = {
   wake: "sun",
   supplement: "pill",
+  routine: "sun",
   meal: "meal",
   snack: "bolt",
   session: "flag",

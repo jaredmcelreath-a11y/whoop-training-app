@@ -779,6 +779,21 @@ The app's drink baseline is `totalWaterL × beverageShare`.
 - **Galpin 2023** (expert, supports): "about 125%".
 - **Shirreffs SM, Taylor AJ, Leiper JB, Maughan RJ (1996).** *Med Sci Sports Exerc* 28(10):1260-71. https://doi.org/10.1097/00005768-199610000-00009 (trial, 12 men, **context**). A drink volume larger than the sweat loss restores balance only if it contains enough sodium.
 
+## recovery.morningLight
+
+**Params:** `{ lampLux: 10000, lampMin: 30, outdoorMin: { clear: 10, cloudy: 20, overcast: [30, 60] }, dimHoursBeforeBed: 3 }`. **Evidence:** consensus.
+
+- **Khalsa SBS, et al. (2003).** *J Physiol* 549:945-952. https://doi.org/10.1113/jphysiol.2003.040477 (trial). Phase response curve: light after the overnight temperature low shifts the clock earlier.
+- **St Hilaire MA, et al. (2012).** *J Physiol* 590(13):3035-3045. https://doi.org/10.1113/jphysiol.2012.227892 (trial). Same pattern with a 1 h pulse.
+- **Wright KP Jr, et al. (2013).** *Curr Biol* 23(16):1554-1558. https://doi.org/10.1016/j.cub.2013.06.039 (trial). Natural light aligned the internal night with sunset and sunrise.
+- **van Maanen A, et al. (2016).** *Sleep Med Rev* 29:52-62. https://doi.org/10.1016/j.smrv.2015.08.009 (meta-analysis). Light therapy and sleep problems, g = 0.39.
+- **Lam RW, et al. (2016).** *JAMA Psychiatry* 73(1):56-63. https://doi.org/10.1001/jamapsychiatry.2015.2235 (trial). 10,000 lux for 30 min each early morning beat placebo for depression.
+- **Penders TM, et al. (2016).** *Prim Care Companion CNS Disord* 18(5). https://doi.org/10.4088/PCC.15r01906 (meta-analysis). ≥5,000 lux for ≥30 min, effect ≈ 0.5.
+- **Brown TM, et al. (2022).** *PLoS Biol* 20(3):e3001571. https://doi.org/10.1371/journal.pbio.3001571 (consensus). ≥250 lux at the eye by day; ≤10 lux from 3 h before bed; ≤1 lux asleep.
+- **Chang AM, et al. (2015).** *PNAS* 112(4):1232-1237. https://doi.org/10.1073/pnas.1418490112 (trial). Evening e-readers delayed sleep and the clock.
+- Context: Windred 2024 (*PNAS*, 10.1073/pnas.2405924121) and Burns 2023 (*Nat Ment Health*, 10.1038/s44220-023-00135-8), observational UK Biobank cohorts; Knaier 2017 (*Front Physiol*, 10.3389/fphys.2017.00264), the only athlete light trial, evening light, no performance gain; Brouwer 2017 (*Acta Psychiatr Scand*, 10.1111/acps.12785), eye safety; Terman 2005 (*CNS Spectr*, 10.1017/s1092852900019611), protocol and hypomania caution; Huberman "Toolkit for Sleep" newsletter (expert; outdoor minutes by sky); Attia with Huberman, Jan 2024 (expert); Bryan Johnson's protocol (n-of-1; 3–4 min lamp).
+- The 15-min start after waking is scheduling practice. The outdoor minutes by sky are expert opinion, not studied values.
+
 ## recovery.anchorBedtime
 
 **Params:** `{ baselineDays: 14, maxEarlierMin: 30, minNights: 3 }`. **Evidence:** consensus.

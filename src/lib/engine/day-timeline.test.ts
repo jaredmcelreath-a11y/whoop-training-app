@@ -623,3 +623,27 @@ describe("anchor bedtime", () => {
     expect(earlier.detail).toMatch(/22 min earlier/);
   });
 });
+
+describe("morning light and quiet time", () => {
+  const L = RULES["recovery.morningLight"].params;
+  const items = buildTimeline(
+    input({ wakeTime: "07:00", sessions: [], supplements: [{ name: "Creatine", timing: "morning" }] }),
+  );
+  const light = items.find((i) => i.kind === "routine")!;
+
+  it("comes after the morning supplements and before breakfast", () => {
+    expect(light.time).toBe("07:15");
+    expect(min(light.time)).toBe(min("07:00") + TL.morningLightAfterWakeMin);
+    const supp = items.find((i) => i.title === "Morning Supplements")!;
+    expect(min(supp.time)).toBeLessThan(min(light.time));
+    expect(min(light.time)).toBeLessThan(min(of(items, "meal")[0].time));
+  });
+
+  it("names the lamp dose, quiet time and breakfast in front of the light, with its rule", () => {
+    expect(light.title).toBe("Morning Light and Quiet Time");
+    expect(light.detail).toContain(`${L.lampMin} min`);
+    expect(light.detail).toMatch(/quiet time/i);
+    expect(light.detail).toMatch(/breakfast/i);
+    expect(light.ruleIds).toEqual(["recovery.morningLight"]);
+  });
+});
