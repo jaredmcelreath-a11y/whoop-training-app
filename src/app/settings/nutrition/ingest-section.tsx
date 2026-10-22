@@ -5,9 +5,8 @@ import { useState } from "react";
 import { revealIngestToken } from "./actions";
 import styles from "./nutrition.module.css";
 
-const INGEST_PATH = "/api/ingest/health";
-
-export function IngestSection({ masked }: { masked: string }) {
+/** `url`: the full ingest URL built from the request host (ingestUrl). */
+export function IngestSection({ masked, url }: { masked: string; url: string }) {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,9 +45,9 @@ export function IngestSection({ masked }: { masked: string }) {
     <section className={styles.card}>
       <h2 className={styles.cardTitle}>Apple Health ingest</h2>
       <p className={styles.text}>
-        Your iPhone Shortcut posts Cronometer&apos;s Apple Health totals to this endpoint on the app&apos;s address:
+        Your iPhone Shortcut posts Cronometer&apos;s Apple Health totals to this address:
       </p>
-      <code className={styles.code}>POST {INGEST_PATH}</code>
+      <code className={styles.code}>POST {url}</code>
       <p className={styles.label}>Token (sent as Authorization: Bearer)</p>
       <div className={styles.tokenRow}>
         <code className={styles.token} data-testid="token">

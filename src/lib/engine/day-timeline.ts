@@ -12,7 +12,11 @@
  *   bound (nutrition.timeline); if even that is not before the session, there is no snack.
  * - Meals: mealsPerDay slots spread evenly from wake + snackAfterWakeMin to bedtime. A meal that
  *   falls in a group's no-meal zone (the session itself, the snack lead time before a fuelled
- *   group, swimNoHeavyMealMin before a swim) moves to the group's end.
+ *   group, swimNoHeavyMealMin before a swim) moves to the group's end. When that would land after
+ *   bedtime − snackAfterWakeMin, the meal moves instead to the latest free 5-min slot before
+ *   the group's zone (after wake + snackAfterWakeMin and after the previous meal); with no such
+ *   slot it is left out, and the last meal says so. After the collision nudge the swim zones
+ *   are checked again, the same way. Bedtime may share a minute with a snack.
  * - Post-workout: the first meal within withinHours after a group becomes its recovery meal;
  *   otherwise a recovery snack is placed at the group's end.
  * - Protein: the day's protein minus recovery snacks, split evenly across meals, each at least
@@ -192,18 +196,50 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
   const n = Math.max(1, Math.floor(i.mealsPerDay));
   const dayEnd = bed ?? wake + TL.fallbackAwakeMin;
   const spacing = (dayEnd - earliestFood) / n;
-  const meals = Array.from({ length: n }, (_, k) => ({ at: round5(earliestFood + k * spacing), moved: null as Group | null }));
-  // Move meals out of no-meal zones; a second pass catches a move into a later group's zone.
-  for (let pass = 0; pass < groups.length + 1; pass++) {
-    for (const m of meals) {
-      const g = groups.find((x) => m.at >= x.zoneStart && m.at < x.end);
-      if (g) {
-        m.at = g.end;
-        m.moved = g;
-      }
+  const latestMeal = bed !== null ? bed - TL.snackAfterWakeMin : null;
+  const zoneAt = (at: number, swimOnly = false) => groups.find((x) => (!swimOnly || x.swim) && at >= x.zoneStart && at < x.end);
+  /**
+   * Moves `at` out of every no-meal zone to the group's end; repeated passes catch a move into a
+   * later group's zone. A move past latestMeal is dropped (`kept` names the group).
+   */
+  const relocate = (at: number): { at: number; moved: Group | null; kept: Group | null } => {
+    let t = at;
+    let moved: Group | null = null;
+    for (let pass = 0; pass < groups.length + 1; pass++) {
+      const g = zoneAt(t);
+      if (!g) break;
+      t = g.end;
+      moved = g;
     }
+    if (moved && latestMeal !== null && t > latestMeal) return { at, moved: null, kept: moved };
+    return { at: t, moved, kept: null };
+  };
+  /** The latest free grid minute before g's zone, after `after` and not before earliestFood; else null. */
+  const beforeZone = (g: Group, after: number, taken: (t: number) => boolean): number | null => {
+    for (let t = g.zoneStart - NUDGE_MIN; t > after && t >= earliestFood; t -= NUDGE_MIN) {
+      if (!zoneAt(t) && !taken(t)) return t;
+    }
+    return null;
+  };
+  type MealSlot = { at: number; moved: Group | null; early: Group | null };
+  const meals: MealSlot[] = [];
+  let leftOut = 0;
+  for (let k = 0; k < n; k++) {
+    const r = relocate(round5(earliestFood + k * spacing));
+    if (!r.kept) {
+      meals.push({ at: r.at, moved: r.moved, early: null });
+      continue;
+    }
+    const prev = Math.max(-Infinity, ...meals.map((m) => m.at));
+    const t = beforeZone(r.kept, prev, (x) => meals.some((m) => m.at === x));
+    if (t === null) leftOut++;
+    else meals.push({ at: t, moved: null, early: r.kept });
   }
   meals.sort((a, b) => a.at - b.at);
+  const mealCount = Math.max(1, meals.length);
+  const earlyText = (g: Group) => `Moved before ${g.titles[0]}: after it would be too close to bedtime.`;
+  const movedText = (g: Group) => `Moved after ${g.titles[g.titles.length - 1]}.`;
+  const leftOutText = (k: number) => `${k} meal${k === 1 ? "" : "s"} left out: no time outside training before bedtime.`;
 
   // Post-workout: a meal within withinHours after, else a recovery snack.
   const postCarbs = kg !== null ? Math.round(POST.carbsGPerKg * kg) : undefined;
@@ -233,10 +269,10 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
 
   // Meal amounts.
   const minProtein = kg !== null ? Math.ceil(PPM.gPerKgPerMeal * kg) : null;
-  const evenProtein = known(i.proteinG) ? Math.round((i.proteinG - postSnackProtein) / n) : null;
+  const evenProtein = known(i.proteinG) ? Math.round((i.proteinG - postSnackProtein) / mealCount) : null;
   const perMealProtein = minProtein !== null && evenProtein !== null ? Math.max(evenProtein, minProtein) : (evenProtein ?? minProtein);
   const raised = minProtein !== null && evenProtein !== null && evenProtein < minProtein;
-  const perMealCarbs = known(i.carbsG) ? Math.max(0, Math.round((i.carbsG - snackCarbs - postSnackCarbs) / n)) : null;
+  const perMealCarbs = known(i.carbsG) ? Math.max(0, Math.round((i.carbsG - snackCarbs - postSnackCarbs) / mealCount)) : null;
 
   meals.forEach((m, k) => {
     const g = recoveryOf.get(k);
@@ -250,9 +286,12 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
     );
     if (raised) parts.push(`Each meal has at least ${PPM.gPerKgPerMeal} g/kg of protein.`);
     if (g) parts.push(`Recovery: ${recoveryText(g)}`);
-    if (m.moved && m.moved !== g) parts.push(`Moved after ${m.moved.titles[m.moved.titles.length - 1]}.`);
+    if (m.moved && m.moved !== g) parts.push(movedText(m.moved));
+    if (m.early) parts.push(earlyText(m.early));
+    if (leftOut > 0 && k === meals.length - 1) parts.push(leftOutText(leftOut));
     const ruleIds: RuleId[] = ["nutrition.proteinPerMeal"];
-    if (m.moved) ruleIds.push("nutrition.preWorkout");
+    if (m.moved || m.early) ruleIds.push("nutrition.preWorkout");
+    if (m.early || (leftOut > 0 && k === meals.length - 1)) ruleIds.push("nutrition.timeline");
     if (g) ruleIds.push("nutrition.postWorkout");
     drafts.push({
       at: m.at,
@@ -266,9 +305,44 @@ export function buildTimeline(i: TimelineInput): TimelineItem[] {
   });
 
   // Order, then the collision rule: a later non-supplement item sharing a minute moves +NUDGE_MIN.
-  drafts.sort((a, b) => a.at - b.at || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
-  for (let k = 1; k < drafts.length; k++) {
-    if (drafts[k].at <= drafts[k - 1].at) drafts[k].at = drafts[k - 1].at + NUDGE_MIN;
+  // Bedtime is a fixed point: it may share its minute with a snack (e.g. a recovery snack).
+  const settle = () => {
+    drafts.sort((a, b) => a.at - b.at || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
+    for (let k = 1; k < drafts.length; k++) {
+      const shareOk = drafts[k].kind === "bedtime" && drafts[k - 1].kind === "snack" && drafts[k].at === drafts[k - 1].at;
+      if (!shareOk && drafts[k].at <= drafts[k - 1].at) drafts[k].at = drafts[k - 1].at + NUDGE_MIN;
+    }
+  };
+  settle();
+  // A nudge can push a meal into a swim's no-meal zone: move it out again, then re-settle.
+  for (let pass = 0; pass < groups.length + 1; pass++) {
+    let changed = false;
+    for (const d of [...drafts]) {
+      if (d.kind !== "meal" || !zoneAt(d.at, true)) continue;
+      const r = relocate(d.at);
+      const others = drafts.filter((x) => x.kind === "meal" && x !== d);
+      if (r.moved) {
+        d.at = r.at;
+        d.detail = `${d.detail} ${movedText(r.moved)}`;
+      } else {
+        // After the swim would pass bedtime: the latest free slot before its zone, else leave it out.
+        const g = r.kept as Group;
+        const prev = Math.max(-Infinity, ...others.filter((x) => x.at < g.zoneStart).map((x) => x.at));
+        const t = beforeZone(g, prev, (x) => drafts.some((o) => o !== d && o.kind !== "supplement" && o.at === x));
+        if (t !== null) {
+          d.at = t;
+          d.detail = `${d.detail} ${earlyText(g)}`;
+        } else {
+          drafts.splice(drafts.indexOf(d), 1);
+          const last = others[others.length - 1];
+          if (last) last.detail = `${last.detail} ${leftOutText(1)}`;
+        }
+      }
+      if (drafts.includes(d) && !d.ruleIds.includes("nutrition.preWorkout")) d.ruleIds.push("nutrition.preWorkout");
+      changed = true;
+    }
+    if (!changed) break;
+    settle();
   }
 
   // Supplements, anchored to the final times; they may share a minute.

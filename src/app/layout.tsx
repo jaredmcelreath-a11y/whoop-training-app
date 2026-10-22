@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Tri Coach",
   description: "Personal training dashboard built on WHOOP data.",
   appleWebApp: { capable: true, title: "Tri Coach", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   // Next emits only the newer mobile-web-app-capable; older iOS reads this one.
   other: { "apple-mobile-web-app-capable": "yes" },
 };

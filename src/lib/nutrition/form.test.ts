@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskToken, nutritionPatchFromForm } from "./form";
+import { INGEST_PATH, ingestUrl, maskToken, nutritionPatchFromForm } from "./form";
 
 function fd(entries: [string, string][]): FormData {
   const f = new FormData();
@@ -78,5 +78,35 @@ describe("maskToken", () => {
   it("shows no characters for very short input", () => {
     expect(maskToken("abcd")).toBe("••••");
     expect(maskToken("")).toBe("••••");
+  });
+});
+
+describe("ingestUrl", () => {
+  const h = (o: Record<string, string>) => new Headers(o);
+
+  it("builds the full URL from the request host, https by default", () => {
+    expect(ingestUrl(h({ host: "app.example.com" }))).toBe(`https://app.example.com${INGEST_PATH}`);
+    expect(INGEST_PATH).toBe("/api/ingest/health");
+  });
+
+  it("prefers the proxy's forwarded host and protocol", () => {
+    expect(ingestUrl(h({ host: "internal:8080", "x-forwarded-host": "app.example.com", "x-forwarded-proto": "https" }))).toBe(
+      "https://app.example.com/api/ingest/health",
+    );
+    expect(ingestUrl(h({ "x-forwarded-host": "a.example.com, b.example.com", "x-forwarded-proto": "https,http" }))).toBe(
+      "https://a.example.com/api/ingest/health",
+    );
+  });
+
+  it("uses http for a local dev host", () => {
+    expect(ingestUrl(h({ host: "localhost:3000" }))).toBe("http://localhost:3000/api/ingest/health");
+    expect(ingestUrl(h({ host: "127.0.0.1:3000" }))).toBe("http://127.0.0.1:3000/api/ingest/health");
+    expect(ingestUrl(h({ host: "192.168.1.20:3000", "x-forwarded-proto": "http" }))).toBe("http://192.168.1.20:3000/api/ingest/health");
+  });
+
+  it("falls back to the bare path for a missing or malformed host", () => {
+    expect(ingestUrl(h({}))).toBe(INGEST_PATH);
+    expect(ingestUrl(h({ host: "evil.example.com/<script>" }))).toBe(INGEST_PATH);
+    expect(ingestUrl(h({ host: "app.example.com", "x-forwarded-proto": "javascript" }))).toBe("https://app.example.com/api/ingest/health");
   });
 });

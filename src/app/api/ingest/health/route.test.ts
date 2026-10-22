@@ -3,6 +3,7 @@ import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { nutritionDays } from "@/db/schema";
 import { resetEnvCache } from "@/lib/env";
+import { MAX_BODY_BYTES } from "@/lib/nutrition/ingest";
 
 let db: Db;
 vi.mock("@/db/client", () => ({ getDb: () => db }));
@@ -67,6 +68,38 @@ describe("POST /api/ingest/health", () => {
     expect(await rows()).toHaveLength(0);
   });
 
+  it("413 for a chunked oversize body without a content-length, reading no more than the limit", async () => {
+    let pulled = 0;
+    const chunk = new TextEncoder().encode(" ".repeat(16 * 1024));
+    const stream = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (pulled >= 1000) return c.close();
+        pulled++;
+        c.enqueue(chunk);
+      },
+    });
+    const req = new Request("http://localhost:3000/api/ingest/health", {
+      method: "POST",
+      body: stream,
+      headers: { authorization: `Bearer ${TOKEN}` },
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+    expect(req.headers.get("content-length")).toBeNull();
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(pulled * chunk.byteLength).toBeLessThanOrEqual(MAX_BODY_BYTES + 2 * chunk.byteLength);
+    expect(await rows()).toHaveLength(0);
+  });
+
+  it("caps the ignored-keys echo at 20 keys plus a count", async () => {
+    const junk = Object.fromEntries(Array.from({ length: 25 }, (_, k) => [`x${k}`, 1]));
+    const res = await post(body({ energy_kcal: 1800, ...junk }));
+    expect(res.status).toBe(200);
+    const out = await res.json();
+    expect(out.ignoredKeys).toHaveLength(20);
+    expect(out.ignoredKeyCount).toBe(25);
+  });
+
   it("400 for invalid JSON, negative values and 4 days; nothing written", async () => {
     expect((await post("not json")).status).toBe(400);
     expect((await post(body({ energy_kcal: -5 }))).status).toBe(400);
@@ -88,7 +121,7 @@ describe("POST /api/ingest/health", () => {
   it("200 writes, reports unknown keys, and does not store them", async () => {
     const res = await post(body({ energy_kcal: 1800, mystery: 3 }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ written: 1, ignoredKeys: ["mystery"] });
+    expect(await res.json()).toEqual({ written: 1, ignoredKeys: ["mystery"], ignoredKeyCount: 1 });
     const [row] = await rows();
     expect(row.kcal).toBe(1800);
     expect(JSON.stringify(row)).not.toContain("mystery");

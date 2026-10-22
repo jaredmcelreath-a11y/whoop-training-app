@@ -205,6 +205,13 @@ const KEY_LABEL: Record<string, { label: string; unit?: string }> = {
   kcalPerMetKgHour: { label: "kcal per MET per kg per hour", unit: "" },
 };
 
+/**
+ * A tier `maxMin` at or above a day's minutes is an open-ended sentinel (no day plans that
+ * much), shown as "over" the previous tier's max.
+ */
+const OPEN_ENDED_MIN = 24 * 60;
+const maxMinOf = (x: unknown) => (x && typeof x === "object" ? (x as { maxMin?: unknown }).maxMin : undefined);
+
 /** Rule params as readable label/value pairs (nested objects become nested lists). */
 export function humanizeParams(params: unknown, inherited?: UnitFn): ParamItem[] {
   if (!params || typeof params !== "object") return [];
@@ -221,7 +228,19 @@ export function humanizeParams(params: unknown, inherited?: UnitFn): ParamItem[]
     const pct = PERCENT_KEYS.test(key) && typeof first === "number" && own === undefined;
     const unit = unitFn && typeof first === "number" ? unitFn(Array.isArray(v) ? 2 : first) : "";
     if (Array.isArray(v) && v.some((x) => x && typeof x === "object")) {
-      return { label, children: v.map((x, i) => ({ label: `${i + 1}`, children: humanizeParams(x, sfx?.unit) })) };
+      return {
+        label,
+        children: v.map((x, i) => {
+          const children = humanizeParams(x, sfx?.unit);
+          const max = maxMinOf(x);
+          const prev = i > 0 ? maxMinOf(v[i - 1]) : undefined;
+          if (typeof max !== "number" || max < OPEN_ENDED_MIN || typeof prev !== "number") return { label: `${i + 1}`, children };
+          const keys = Object.keys(x as object);
+          const at = keys.indexOf("maxMin");
+          children[at] = { label: "Planned endurance", value: `over ${prev} min` };
+          return { label: `${i + 1}`, children };
+        }),
+      };
     }
     if (Array.isArray(v)) {
       const parts = v.map((x) => scalar(x, "", pct));

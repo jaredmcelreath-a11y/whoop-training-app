@@ -8,7 +8,7 @@ const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: "day", label: "Day", href: "/day" },
   { key: "plan", label: "Plan", href: "/plan" },
   { key: "log", label: "Log", href: "/log" },
-  { key: "progress", label: "Progress" },
+  { key: "progress", label: "Progress", href: "/progress" },
 ];
 
 /** Bottom navigation. Tabs without an href are disabled placeholders. */

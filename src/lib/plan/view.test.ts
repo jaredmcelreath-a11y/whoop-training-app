@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RULES } from "@/lib/engine/rules/catalog";
 import {
   dayHeading,
   detailNotes,
@@ -150,6 +151,30 @@ describe("humanizeParams with lists of objects", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("humanizeParams open-ended tiers", () => {
+  it("shows a last tier's sentinel maxMin as 'over' the previous tier's max", () => {
+    const out = humanizeParams({ tiers: [{ maxMin: 90, gPerKg: [6, 8] }, { maxMin: 240 }, { maxMin: 9999, gPerKg: [8, 12] }] });
+    const tiers = (out[0] as { children: { children: { label: string; value?: string }[] }[] }).children;
+    expect(tiers[1].children[0]).toEqual({ label: "Planned endurance up to", value: "240 min" });
+    expect(tiers[2].children[0]).toEqual({ label: "Planned endurance", value: "over 240 min" });
+    expect(tiers[2].children[1]).toEqual({ label: "Per kg of bodyweight", value: "8–12 g" });
+    expect(JSON.stringify(out)).not.toContain("9999");
+  });
+
+  it("renders the catalog's carb tiers without 9999", () => {
+    const tiers = RULES["nutrition.carbsByLoad"].params.tiers;
+    const prev = tiers[tiers.length - 2].maxMin;
+    const text = JSON.stringify(humanizeParams(RULES["nutrition.carbsByLoad"].params));
+    expect(text).not.toContain("9999");
+    expect(text).toContain(`over ${prev} min`);
+  });
+
+  it("leaves an ordinary last tier (or a lone tier) alone", () => {
+    expect(JSON.stringify(humanizeParams({ tiers: [{ maxMin: 30 }, { maxMin: 75 }] }))).toContain("75 min");
+    expect(JSON.stringify(humanizeParams({ tiers: [{ maxMin: 9999 }] }))).toContain("9999 min");
   });
 });
 

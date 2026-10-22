@@ -138,7 +138,7 @@ Yesterday is re-sent so that late edits in Cronometer are synced.
     - **Request Body**: JSON. Add two fields to match step 17: a Text field `sentAt` (value: the `sentAt`
       variable) and an Array field `days` (items: `todayDay` and `yesterdayDay`).
 20. Optional but handy: add **Show Result** (or **Show Notification**) at the end to see the app's reply while testing,
-    and remove it before scheduling. A successful reply looks like `{"written":2,"ignoredKeys":[]}`.
+    and remove it before scheduling. A successful reply looks like `{"written":2,"ignoredKeys":[],"ignoredKeyCount":0}`.
 
 ### Optional shorter build: loops (advanced)
 
@@ -181,7 +181,7 @@ curl -i -X POST "http://localhost:3000/api/ingest/health" \
   -d '{"sentAt":"2026-01-15T19:00:00-06:00","days":[{"date":"2026-01-15","totals":{"energy_kcal":2100,"protein_g":120}}]}'
 ```
 
-Expect `HTTP/1.1 200` and `{"written":1,"ignoredKeys":[]}`.
+Expect `HTTP/1.1 200` and `{"written":1,"ignoredKeys":[],"ignoredKeyCount":0}`.
 
 ## Troubleshooting
 

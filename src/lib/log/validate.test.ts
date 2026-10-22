@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CardioInput, LabInput, PAIN_AREAS, PainInput, ScanInput, SetInput,
-  WeeklyInput, WeightInput, formError,
+  SweatInput, WeeklyInput, WeightInput, formError,
 } from "./validate";
 import { parseNumber } from "./units";
 
@@ -93,6 +93,24 @@ describe("LabInput", () => {
     expect(LabInput.safeParse({ drawnOn: "2026-10-20", results: [r] }).success).toBe(true);
     expect(LabInput.safeParse({ drawnOn: "2026-10-20", source: "quest", results: [r] }).success).toBe(true);
     expect(LabInput.safeParse({ drawnOn: "2026-10-20", results: [] }).success).toBe(false);
+  });
+});
+
+describe("SweatInput", () => {
+  const ok = { testedOn: "2026-10-20", kind: "run", preLb: 160, postLb: 158, fluidOz: 16, durationMin: 60 };
+  it("accepts a valid test", () => expect(SweatInput.safeParse(ok).success).toBe(true));
+  it("rejects bad values", () => {
+    expect(SweatInput.safeParse({ ...ok, durationMin: 0 }).success).toBe(false);
+    expect(SweatInput.safeParse({ ...ok, preLb: 500 }).success).toBe(false);
+    expect(SweatInput.safeParse({ ...ok, testedOn: "2026-13-45" }).success).toBe(false);
+  });
+  it("rejects a test below the rule's minimum length", () => {
+    expect(SweatInput.safeParse({ ...ok, durationMin: 10 }).success).toBe(false);
+  });
+  it("rejects a test that shows no sweat loss", () => {
+    const r = SweatInput.safeParse({ ...ok, preLb: 160, postLb: 162, fluidOz: 0 });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues[0].message).toBe("Check the weights: this shows no sweat loss.");
   });
 });
 

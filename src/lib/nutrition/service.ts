@@ -21,6 +21,7 @@ import {
   microTargets,
   plannedExerciseKcal,
   weeklyCalorieTarget,
+  weeklyGainPct,
   type DayTargetsResult,
   type ExerciseKind,
   type MicroTargets,
@@ -174,7 +175,26 @@ async function computeEstimate(
     .orderBy(desc(energyEstimates.weekStart))
     .limit(1);
 
+  const initial = async () => {
+    const ip = RULES["nutrition.initialTdee"].params;
+    const scan = await latestScan(db, today);
+    const body = await whoopBody(db);
+    const meanLb = await latestMeanLb(db, today);
+    const weightKg = meanLb !== null ? meanLb * KG_PER_LB : isPos(scan?.weightLb) ? scan.weightLb * KG_PER_LB : body.weightKg;
+    return initialTdee({
+      whoopKcalDaily: await whoopKcalDaily(db, addDays(through, -(ip.whoopWindowDays - 1)), through, tz),
+      bmrKcal: isPos(scan?.bmrKcal) ? scan.bmrKcal : null,
+      weightKg,
+      heightCm: body.heightCm,
+      ageYears: null, // No birth date is stored, so Mifflin-St Jeor cannot run.
+      sex: sexOf(settings.refProfile),
+    });
+  };
+
   if (prev) {
+    // An unusable stored burn (not a positive finite number) restarts from the initial estimate.
+    const fallbackTdee = isPos(prev.tdeeKcal) ? null : (await initial()).tdee;
+    if (!isPos(prev.tdeeKcal) && fallbackTdee === null) return null;
     const cp = RULES["nutrition.calibration"].params;
     const days = dateRange(addDays(through, -(Math.max(cp.windowDays, cp.highConfidenceDays) - 1)), through);
     const intakeRows = await db
@@ -188,7 +208,7 @@ async function computeEstimate(
     });
     const weights = await weightsBetween(db, addDays(days[0], -(DAYS_PER_WEEK - 1)), through);
     const weightLbTrend = trailingMeans(weights, days);
-    const c = calibrateTdee({ previousTdee: prev.tdeeKcal, intakeKcal, weightLbTrend, windowDays: cp.windowDays });
+    const c = calibrateTdee({ previousTdee: prev.tdeeKcal, fallbackTdee, intakeKcal, weightLbTrend, windowDays: cp.windowDays });
     return {
       weekStart,
       tdeeKcal: c.tdee,
@@ -197,6 +217,7 @@ async function computeEstimate(
       inputs: {
         previousWeekStart: prev.weekStart,
         previousTdee: prev.tdeeKcal,
+        ...(fallbackTdee !== null ? { fallbackTdee } : {}),
         throughDate: through,
         days: days.length,
         changed: c.changed,
@@ -206,19 +227,7 @@ async function computeEstimate(
     };
   }
 
-  const ip = RULES["nutrition.initialTdee"].params;
-  const scan = await latestScan(db, today);
-  const body = await whoopBody(db);
-  const meanLb = await latestMeanLb(db, today);
-  const weightKg = meanLb !== null ? meanLb * KG_PER_LB : isPos(scan?.weightLb) ? scan.weightLb * KG_PER_LB : body.weightKg;
-  const i = initialTdee({
-    whoopKcalDaily: await whoopKcalDaily(db, addDays(through, -(ip.whoopWindowDays - 1)), through, tz),
-    bmrKcal: isPos(scan?.bmrKcal) ? scan.bmrKcal : null,
-    weightKg,
-    heightCm: body.heightCm,
-    ageYears: null, // No birth date is stored, so Mifflin-St Jeor cannot run.
-    sex: sexOf(settings.refProfile),
-  });
+  const i = await initial();
   if (i.tdee === null) return null;
   return {
     weekStart,
@@ -231,10 +240,11 @@ async function computeEstimate(
 
 /**
  * The week's burn estimate. An existing row is returned unchanged (past weeks are never
- * rewritten). Otherwise it is computed from completed days before the week (and before today),
- * then inserted with on-conflict-do-nothing and re-selected. A future week is computed the same
- * way but not stored, so it is calibrated on its full previous week once it starts. Null when
- * there is no previous estimate and initialTdee has nothing to work from.
+ * rewritten). A week before the current local week with no stored row returns null: it is never
+ * backfilled with today's inputs. Otherwise it is computed from completed days before the week
+ * (and before today), then inserted with on-conflict-do-nothing and re-selected. A future week
+ * is computed the same way but not stored, so it is calibrated on its full previous week once
+ * it starts. Null when there is no previous estimate and initialTdee has nothing to work from.
  */
 export async function ensureEnergyEstimate(db: Db, weekStart: string, now: Date, tz: string): Promise<EnergyEstimate | null> {
   const select = async () => {
@@ -245,6 +255,7 @@ export async function ensureEnergyEstimate(db: Db, weekStart: string, now: Date,
   if (existing) return existing;
 
   const today = localDate(now, tz);
+  if (weekStart < weekStartOf(today)) return null;
   const est = await computeEstimate(db, weekStart, today, tz, await getNutritionSettings(db));
   if (!est) return null;
   if (weekStart > weekStartOf(today)) return { ...est, updatedAt: now };
@@ -386,13 +397,15 @@ export async function getDayNutrition(db: Db, date: string, now: Date, tz: strin
   const ffmKg = isPos(scan?.leanMassLb) ? scan.leanMassLb * KG_PER_LB : null;
   if (ffmKg === null) need(NEED.scan);
 
-  // Gain goal.
+  // Gain goal. Its needs only matter in a week that can have a surplus (gain phase, or a base or
+  // build week while the goal remains).
+  const surplusWeek = seasonWeek !== null && weeklyGainPct({ ...seasonWeek, remainingGoalLb: ns.gainGoalLb }) > 0;
   let startLb = ns.gainStartWeightLb;
   if (!isPos(startLb)) {
     const [first] = await db
       .select({ lb: weightEntries.weightLb })
       .from(weightEntries)
-      .where(and(gte(weightEntries.localDate, ps.seasonStart), gt(weightEntries.weightLb, 0)))
+      .where(and(gte(weightEntries.localDate, ps.seasonStart), lte(weightEntries.localDate, asOf), gt(weightEntries.weightLb, 0)))
       .orderBy(asc(weightEntries.localDate))
       .limit(1);
     startLb = first?.lb ?? null;
@@ -400,18 +413,17 @@ export async function getDayNutrition(db: Db, date: string, now: Date, tz: strin
   let remainingGoalLb = ns.gainGoalLb;
   if (isPos(startLb) && meanLb !== null) remainingGoalLb = ns.gainGoalLb - (meanLb - startLb);
   // Logged weights but none since season_start: logging more won't help, a start weight will.
-  else if (meanLb !== null) need(NEED.gainStart);
-  else if (weight) need(NEED.gainWeight);
+  else if (surplusWeek && meanLb !== null) need(NEED.gainStart);
+  else if (surplusWeek && weight) need(NEED.gainWeight);
 
-  // Energy.
+  // Energy. A past week keeps whatever estimate it had; syncing now cannot give it one.
   const estimate = await ensureEnergyEstimate(db, ws, now, tz);
-  if (!estimate) {
-    need(NEED.burn);
-  }
+  const usable = estimate !== null && isPos(estimate.tdeeKcal);
+  if (!usable && ws >= weekStartOf(today)) need(NEED.burn);
 
   let targets: DayTargetsResult | null = null;
   let energy: DayNutrition["energy"] = null;
-  if (estimate && weight) {
+  if (estimate && usable && weight) {
     const weekly = seasonWeek
       ? weeklyCalorieTarget({
           tdee: estimate.tdeeKcal,

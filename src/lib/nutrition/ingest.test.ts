@@ -2,7 +2,16 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { nutritionDays } from "@/db/schema";
-import { IngestPayload, ingestDays, MAX_SENT_AT_AHEAD_MS, sentAtTooFarAhead, type IngestPayloadT } from "./ingest";
+import {
+  IngestPayload,
+  ingestDays,
+  MAX_BODY_BYTES,
+  MAX_IGNORED_KEYS,
+  MAX_SENT_AT_AHEAD_MS,
+  readBodyCapped,
+  sentAtTooFarAhead,
+  type IngestPayloadT,
+} from "./ingest";
 
 let db: Db;
 beforeAll(async () => {
@@ -72,6 +81,76 @@ describe("ingestDays", () => {
     const r = await ingestDays(db, p);
     expect(r.ignoredKeys).toEqual(["zzz"]);
     expect(r.written).toBe(2);
+  });
+});
+
+describe("ignored-keys echo cap", () => {
+  it("echoes at most MAX_IGNORED_KEYS unknown keys, plus the full count", async () => {
+    const totals = Object.fromEntries(Array.from({ length: 30 }, (_, k) => [`junk_${k}`, 1]));
+    const r = await ingestDays(db, payload("2026-03-02T10:00:00Z", { energy_kcal: 1800, ...totals }));
+    expect(r.ignoredKeys).toHaveLength(MAX_IGNORED_KEYS);
+    expect(MAX_IGNORED_KEYS).toBe(20);
+    expect(r.ignoredKeys[0]).toBe("junk_0");
+    expect(r.ignoredKeyCount).toBe(30);
+    expect(r.written).toBe(1);
+  });
+
+  it("counts every unknown key when under the cap", async () => {
+    const r = await ingestDays(db, payload("2026-03-02T10:00:00Z", { a: 1, b: 2 }));
+    expect(r).toMatchObject({ ignoredKeys: ["a", "b"], ignoredKeyCount: 2 });
+  });
+});
+
+describe("readBodyCapped", () => {
+  const enc = new TextEncoder();
+  /** A stream of `chunks` chunks of `size` bytes; counts how many were pulled. */
+  function chunked(chunks: number, size: number) {
+    const state = { pulled: 0, cancelled: false };
+    const stream = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (state.pulled >= chunks) return c.close();
+        state.pulled++;
+        c.enqueue(enc.encode("a".repeat(size)));
+      },
+      cancel() {
+        state.cancelled = true;
+      },
+    });
+    return { stream, state };
+  }
+
+  it("returns the text of a body within the limit, split across chunks", async () => {
+    const { stream } = chunked(4, 1024);
+    expect(await readBodyCapped(stream, MAX_BODY_BYTES)).toBe("a".repeat(4096));
+  });
+
+  it("returns null at exactly one byte over, and the full body at the limit", async () => {
+    expect(await readBodyCapped(chunked(1, MAX_BODY_BYTES + 1).stream, MAX_BODY_BYTES)).toBeNull();
+    expect(await readBodyCapped(chunked(1, MAX_BODY_BYTES).stream, MAX_BODY_BYTES)).toHaveLength(MAX_BODY_BYTES);
+  });
+
+  it("stops reading and cancels the stream once past the limit", async () => {
+    const { stream, state } = chunked(1000, 16 * 1024);
+    expect(await readBodyCapped(stream, MAX_BODY_BYTES)).toBeNull();
+    expect(state.pulled).toBeLessThanOrEqual(MAX_BODY_BYTES / (16 * 1024) + 2);
+    expect(state.cancelled).toBe(true);
+  });
+
+  it("an empty or missing body is the empty string", async () => {
+    expect(await readBodyCapped(null, MAX_BODY_BYTES)).toBe("");
+    expect(await readBodyCapped(chunked(0, 1).stream, MAX_BODY_BYTES)).toBe("");
+  });
+
+  it("decodes multi-byte characters split across chunks", async () => {
+    const bytes = enc.encode("µg");
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(bytes.slice(0, 1));
+        c.enqueue(bytes.slice(1));
+        c.close();
+      },
+    });
+    expect(await readBodyCapped(stream, MAX_BODY_BYTES)).toBe("µg");
   });
 });
 

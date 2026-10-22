@@ -28,6 +28,7 @@ const r0 = (x: number) => Math.round(x);
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 const isPos = (x: number | null | undefined): x is number => typeof x === "number" && Number.isFinite(x) && x > 0;
 const mean = (xs: readonly number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+const cap = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
 // ---------------------------------------------------------------------------
 // Initial TDEE
@@ -94,9 +95,11 @@ export function initialTdee(i: InitialTdeeInput): InitialTdeeResult {
 
 export type CalibrateInput = {
   previousTdee: number;
-  /** Daily intake kcal, oldest first; null = not logged. */
+  /** Used in place of previousTdee when that is not a positive finite number (e.g. the initial TDEE). */
+  fallbackTdee?: number | null;
+  /** Daily intake kcal, oldest first; null, zero, negative or non-finite = not logged. */
   intakeKcal: readonly (number | null)[];
-  /** Smoothed daily weight trend in lb, same days as intakeKcal; null = no trend value. */
+  /** Smoothed daily weight trend in lb, same days as intakeKcal; null, zero, negative or non-finite = no trend value. */
   weightLbTrend: readonly (number | null)[];
   /** The estimate uses the last windowDays days. Confidence counts paired days over everything passed. */
   windowDays: number;
@@ -111,6 +114,9 @@ export type CalibrateResult = {
 };
 
 const finite = (x: number | null | undefined): x is number => typeof x === "number" && Number.isFinite(x);
+const fail = (what: string, x: unknown): never => {
+  throw new RangeError(`${what} must be a finite number: ${x}`);
+};
 
 /** Least-squares slope of value vs day index (lb/day). Needs ≥ 2 points. */
 function slopePerDay(points: { x: number; y: number }[]): number {
@@ -128,26 +134,31 @@ function slopePerDay(points: { x: number; y: number }[]): number {
 /**
  * Re-estimate burn from intake and weight trend: mean intake − (Δlb/day × kcalPerLbChange),
  * moved at most ±maxWeeklyStepKcal from previousTdee. Δlb/day is the least-squares slope of the
- * trend over the window (robust to a missing day). Too few paired days → previousTdee, "low".
+ * trend over the window (robust to a missing day). Too few paired days → the previous estimate, "low".
+ * Zero or negative intake and weight values count as missing. A previousTdee that is not a
+ * positive finite number is replaced by fallbackTdee; with neither, it throws a RangeError.
  */
 export function calibrateTdee(i: CalibrateInput): CalibrateResult {
   const id = "nutrition.calibration" as const;
   const p = RULES[id].params;
+  const prevOk = isPos(i.previousTdee);
+  const prev = prevOk ? i.previousTdee : isPos(i.fallbackTdee) ? i.fallbackTdee : fail("previousTdee or fallbackTdee", i.previousTdee);
+  const from = prevOk ? `${r0(prev)} kcal` : `${r0(prev)} kcal (the initial estimate; the previous one was unusable)`;
   const n = Math.min(i.intakeKcal.length, i.weightLbTrend.length);
-  const pairedAll = Array.from({ length: n }, (_, k) => k).filter((k) => finite(i.intakeKcal[k]) && finite(i.weightLbTrend[k]));
+  const pairedAll = Array.from({ length: n }, (_, k) => k).filter((k) => isPos(i.intakeKcal[k]) && isPos(i.weightLbTrend[k]));
   const start = Math.max(0, n - Math.max(1, Math.floor(i.windowDays)));
   const paired = pairedAll.filter((k) => k >= start);
 
-  if (!finite(i.previousTdee) || paired.length < p.minDaysWithData) {
+  if (paired.length < p.minDaysWithData) {
     return {
-      tdee: i.previousTdee,
+      tdee: prev,
       confidence: "low",
-      changed: false,
+      changed: !prevOk,
       ruleIds: [id],
       reasons: [
         {
           ruleId: id,
-          text: `Only ${paired.length} days with both intake and weight in the last ${i.windowDays} (needs ${p.minDaysWithData}); the burn estimate stays at ${r0(i.previousTdee)} kcal.`,
+          text: `Only ${paired.length} days with both intake and weight in the last ${i.windowDays} (needs ${p.minDaysWithData}); the burn estimate stays at ${from}.`,
         },
       ],
     };
@@ -155,25 +166,25 @@ export function calibrateTdee(i: CalibrateInput): CalibrateResult {
 
   const meanIntake = mean(paired.map((k) => i.intakeKcal[k] as number));
   const weightPts = Array.from({ length: n - start }, (_, j) => start + j)
-    .filter((k) => finite(i.weightLbTrend[k]))
+    .filter((k) => isPos(i.weightLbTrend[k]))
     .map((k) => ({ x: k, y: i.weightLbTrend[k] as number }));
   const lbPerDay = slopePerDay(weightPts);
   const estimate = meanIntake - lbPerDay * p.kcalPerLbChange;
   const step = p.maxWeeklyStepKcal;
-  const tdee = clamp(estimate, i.previousTdee - step, i.previousTdee + step);
+  const tdee = clamp(estimate, prev - step, prev + step);
   const confidence = pairedAll.length >= p.highConfidenceDays ? "high" : "medium";
   const clamped = tdee !== estimate;
   return {
     tdee,
     confidence,
-    changed: tdee !== i.previousTdee,
+    changed: !prevOk || tdee !== prev,
     ruleIds: [id],
     reasons: [
       {
         ruleId: id,
         text:
           `Mean intake ${r0(meanIntake)} kcal over ${paired.length} days minus weight trend ${lbPerDay.toFixed(2)} lb/day × ${p.kcalPerLbChange} kcal/lb = ${r0(estimate)} kcal` +
-          (clamped ? `, capped at ±${step} kcal from ${r0(i.previousTdee)}: ${r0(tdee)} kcal.` : ".") +
+          (clamped ? `, capped at ±${step} kcal from ${from}: ${r0(tdee)} kcal.` : ".") +
           ` Confidence ${confidence} (${pairedAll.length} days of data; high from ${p.highConfidenceDays}).`,
       },
     ],
@@ -188,13 +199,27 @@ export type WeeklyTargetInput = { tdee: number; weightLb: number; gainPhase: boo
 export type WeeklyTargetResult = { kcal: number; surplusKcal: number; ruleIds: RuleId[]; reasons: Reason[] };
 
 /**
+ * The weekly gain target as a percentage of bodyweight: 0 once the goal is reached or in a
+ * peak, taper or race week; pctBodyweightPerWeek in the gain phase; minPct in other weeks.
+ */
+export function weeklyGainPct(i: Pick<WeeklyTargetInput, "gainPhase" | "phase" | "remainingGoalLb">): number {
+  const p = RULES["nutrition.gainRate"].params;
+  if (i.remainingGoalLb <= 0) return 0;
+  if (i.phase === "peak" || i.phase === "taper" || i.phase === "race") return 0;
+  return i.gainPhase ? p.pctBodyweightPerWeek : p.minPct;
+}
+
+/**
  * Weekly average daily calories. Goal reached, or peak/taper/race week → TDEE (no surplus).
  * Gain phase → pctBodyweightPerWeek surplus; other base/build weeks → minPct.
  * Surplus kcal/day = weightLb × pct/100 × kcalPerLbChange / 7.
+ * Throws a RangeError on a non-finite tdee or remainingGoalLb, or a weight that is not positive.
  */
 export function weeklyCalorieTarget(i: WeeklyTargetInput): WeeklyTargetResult {
+  if (!finite(i.tdee)) fail("tdee", i.tdee);
+  if (!isPos(i.weightLb)) throw new RangeError(`weightLb must be positive: ${i.weightLb}`);
+  if (!finite(i.remainingGoalLb)) fail("remainingGoalLb", i.remainingGoalLb);
   const id = "nutrition.gainRate" as const;
-  const p = RULES[id].params;
   const kcalPerLb = RULES["nutrition.calibration"].params.kcalPerLbChange;
   const none = (why: string): WeeklyTargetResult => ({
     kcal: i.tdee,
@@ -202,9 +227,8 @@ export function weeklyCalorieTarget(i: WeeklyTargetInput): WeeklyTargetResult {
     ruleIds: [id],
     reasons: [{ ruleId: id, text: `${why}: no surplus, target is the burn estimate ${r0(i.tdee)} kcal.` }],
   });
-  if (i.remainingGoalLb <= 0) return none("Gain goal reached");
-  if (i.phase === "peak" || i.phase === "taper" || i.phase === "race") return none(`${i.phase[0].toUpperCase()}${i.phase.slice(1)} week`);
-  const pct = i.gainPhase ? p.pctBodyweightPerWeek : p.minPct;
+  const pct = weeklyGainPct(i);
+  if (pct === 0) return none(i.remainingGoalLb <= 0 ? "Gain goal reached" : `${cap(i.phase)} week`);
   const surplusKcal = (i.weightLb * pct * kcalPerLb) / PERCENT / DAYS_PER_WEEK;
   return {
     kcal: i.tdee + surplusKcal,
@@ -213,7 +237,7 @@ export function weeklyCalorieTarget(i: WeeklyTargetInput): WeeklyTargetResult {
     reasons: [
       {
         ruleId: id,
-        text: `${i.gainPhase ? "Gain phase" : `${i.phase} week after the gain phase`}: gain ${pct}% of ${r0(i.weightLb)} lb a week × ${kcalPerLb} kcal/lb ÷ ${DAYS_PER_WEEK} = +${r0(surplusKcal)} kcal/day on ${r0(i.tdee)} kcal.`,
+        text: `${i.gainPhase ? "Gain phase: gain" : `${cap(i.phase)} week after the gain phase with goal remaining, so the ${RULES[id].params.minPct}% rate: gain`} ${pct}% of ${r0(i.weightLb)} lb a week × ${kcalPerLb} kcal/lb ÷ ${DAYS_PER_WEEK} = +${r0(surplusKcal)} kcal/day on ${r0(i.tdee)} kcal.`,
       },
     ],
   };
@@ -232,19 +256,21 @@ export type PlannedSessionLite = { kind: ExerciseKind | "rest"; durationMin: num
  * history has it (callers include a sport only with ≥ historyMinWorkouts workouts in the last
  * historyLookbackDays days), else MET × kcalPerMetKgHour × weightKg × hours. Intensity is
  * accepted but not used: the default METs are easy-to-moderate efforts.
- * Used only for the energy-availability floor; never added on top of a TDEE.
+ * Used only for the energy-availability floor; never added on top of a TDEE. Throws a RangeError
+ * on a weight that is not positive; a session with a non-finite duration counts as zero.
  */
 export function plannedExerciseKcal(
   sessions: readonly PlannedSessionLite[],
   weightKg: number,
   history?: Partial<Record<ExerciseKind, number>>,
 ): { kcal: number; ruleIds: RuleId[]; reasons: Reason[] } {
+  if (!isPos(weightKg)) throw new RangeError(`weightKg must be positive: ${weightKg}`);
   const id = "nutrition.exerciseKcal" as const;
   const p = RULES[id].params;
   let kcal = 0;
   const parts: string[] = [];
   for (const s of sessions) {
-    if (s.kind === "rest" || !(s.durationMin > 0)) continue;
+    if (s.kind === "rest" || !isPos(s.durationMin)) continue;
     const hist = history?.[s.kind];
     if (isPos(hist)) {
       const k = s.durationMin * hist;
@@ -289,6 +315,8 @@ export type DayTargetsResult = {
   floorApplied: boolean;
   /** The fat minimum raised kcal (carbs were already at the tier's lower bound). */
   fatRaisedKcal: boolean;
+  /** Every rule behind the targets, once each, in reason order. */
+  ruleIds: RuleId[];
   reasons: Reason[];
 };
 
@@ -420,7 +448,8 @@ export function dayTargets(i: DayTargetsInput): DayTargetsResult {
     F = fMin;
     C = Math.max(0, Math.floor((K - KCAL_PER_G_PROTEIN * P - KCAL_PER_G_FAT * F) / KCAL_PER_G_CARB));
   }
-  return { kcal: K, proteinG: P, carbsG: C, fatG: F, floorApplied, fatRaisedKcal, reasons };
+  const ruleIds = [...new Set(reasons.map((x) => x.ruleId))];
+  return { kcal: K, proteinG: P, carbsG: C, fatG: F, floorApplied, fatRaisedKcal, ruleIds, reasons };
 }
 
 // ---------------------------------------------------------------------------

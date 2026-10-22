@@ -14,6 +14,8 @@ export const MAX_MACRO_G = 2000;
 export const MAX_MICRO = 100000; // in each micro's canonical unit
 export const MAX_DAYS = 3;
 export const MAX_BODY_BYTES = 65536;
+/** At most this many unknown keys are echoed back; `ignoredKeyCount` has the full count. */
+export const MAX_IGNORED_KEYS = 20;
 /**
  * Clock-skew tolerance for `sentAt`. A post dated further ahead would lock its days (later real
  * posts look older and are ignored), so it is rejected instead.
@@ -23,6 +25,29 @@ export const MAX_SENT_AT_AHEAD_MS = 5 * 60_000;
 /** True when `sentAt` (a valid ISO datetime) is more than MAX_SENT_AT_AHEAD_MS after `now`. */
 export function sentAtTooFarAhead(sentAt: string, now: Date): boolean {
   return Date.parse(sentAt) - now.getTime() > MAX_SENT_AT_AHEAD_MS;
+}
+
+/**
+ * Reads a request body as UTF-8 text, counting bytes as they arrive. Past `maxBytes` it stops,
+ * cancels the stream and returns null, so an oversize body is never fully buffered.
+ */
+export async function readBodyCapped(body: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<string | null> {
+  if (!body) return "";
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
 }
 
 const MACRO_KEYS: ReadonlySet<NutrientKey> = new Set(["protein_g", "carbs_g", "fat_g", "fiber_g"]);
@@ -76,13 +101,14 @@ const COLUMN: Partial<Record<NutrientKey, "kcal" | "proteinG" | "carbsG" | "fatG
 };
 
 /**
- * Replace each day's totals (never sum). One statement per day; the WHERE makes an
+ * Replace each day's totals (never sum). Unknown keys are echoed (the first MAX_IGNORED_KEYS)
+ * and counted, never stored. One statement per day; the WHERE makes an
  * older/duplicate post a no-op, so out-of-order delivery cannot clobber newer data.
  */
 export async function ingestDays(
   db: Db,
   payload: IngestPayloadT,
-): Promise<{ written: number; ignoredKeys: string[] }> {
+): Promise<{ written: number; ignoredKeys: string[]; ignoredKeyCount: number }> {
   const sentAt = new Date(payload.sentAt);
   const ignored = new Set<string>();
   let written = 0;
@@ -117,5 +143,5 @@ export async function ingestDays(
       .returning({ localDate: nutritionDays.localDate });
     written += rows.length;
   }
-  return { written, ignoredKeys: [...ignored] };
+  return { written, ignoredKeys: [...ignored].slice(0, MAX_IGNORED_KEYS), ignoredKeyCount: ignored.size };
 }

@@ -181,6 +181,176 @@ describe("buildTimeline", () => {
     for (const i of items) expect(i.ruleIds.length).toBeGreaterThan(0);
   });
 
+  it("re-checks the swim no-meal zone after the collision nudge", () => {
+    // Wake 06:00, bed 22:00, 5 meals: 06:10, 09:20, 12:30, 15:40, 18:50. Meal 1 sits in the long
+    // run and moves to its end (09:20), on top of meal 2; the nudge then pushes one of them to
+    // 09:25, the first minute of the swim's no-meal zone (10:55 − 90 min).
+    const items = buildTimeline(
+      input({
+        wakeTime: "06:00",
+        mealsPerDay: 5,
+        windows: [
+          { start: "06:10", end: "09:30" },
+          { start: "10:55", end: "12:00" },
+        ],
+        sessions: [
+          { title: "Long run", kind: "run", durationMin: 190, window: 0, intensity: "z2" },
+          { title: "Swim", kind: "swim", durationMin: 30, window: 1, intensity: "z2" },
+        ],
+      }),
+    );
+    const swimStart = min("10:55");
+    const meals = of(items, "meal");
+    expect(meals).toHaveLength(5);
+    for (const m of meals) {
+      const t = min(m.time);
+      expect(t >= swimStart - PRE.swimNoHeavyMealMin && t < swimStart + 30, `${m.title} at ${m.time}`).toBe(false);
+    }
+    const nonSupp = items.filter((i) => i.kind !== "supplement").map((i) => i.time);
+    expect(new Set(nonSupp).size).toBe(nonSupp.length);
+  });
+
+  it("a meal whose move would land within snackAfterWakeMin of bedtime moves before the session's zone instead", () => {
+    // Bed 22:00. The 18:50 meal falls in the evening run's pre-workout zone (18:00-21:55);
+    // moving it to the run's end (21:55) would put it after bedtime − snackAfterWakeMin.
+    const items = buildTimeline(
+      input({
+        wakeTime: "06:00",
+        mealsPerDay: 5,
+        windows: [
+          { start: "06:00", end: "09:00" },
+          { start: "19:00", end: "22:00" },
+        ],
+        sessions: [{ title: "Evening run", kind: "run", durationMin: 175, window: 1, intensity: "z2" }],
+      }),
+    );
+    const bed = min("22:00");
+    expect(of(items, "bedtime")[0].time).toBe("22:00");
+    const meals = of(items, "meal");
+    expect(meals).toHaveLength(5);
+    for (const m of meals) expect(min(m.time), `${m.title} at ${m.time}`).toBeLessThanOrEqual(bed - TL.snackAfterWakeMin);
+    const last = meals[meals.length - 1];
+    expect(min(last.time)).toBeLessThan(min("19:00") - PRE.hoursBefore[0] * 60);
+    expect(last.detail).toMatch(/before Evening run.*bedtime/i);
+  });
+
+  it("never leaves a meal inside a session when the move after it would pass bedtime", () => {
+    for (const [start, durationMin] of [
+      ["18:00", 240],
+      ["18:40", 200],
+      ["17:00", 300],
+    ] as const) {
+      for (const kind of ["run", "swim"]) {
+        const items = buildTimeline(
+          input({
+            wakeTime: "06:00",
+            mealsPerDay: 5,
+            windows: [
+              { start: "06:00", end: "09:00" },
+              { start, end: "23:00" },
+            ],
+            sessions: [{ title: "Evening", kind, durationMin, window: 1, intensity: "z2" }],
+          }),
+        );
+        const s0 = min(start);
+        const zone = kind === "swim" ? Math.max(PRE.swimNoHeavyMealMin, PRE.hoursBefore[0] * 60) : 0;
+        const meals = of(items, "meal");
+        expect(meals.length, `${kind} ${start}/${durationMin}`).toBeGreaterThan(0);
+        for (const m of meals) {
+          const t = min(m.time);
+          const label = `${kind} ${start}/${durationMin}: ${m.title} ${m.time}`;
+          expect(t >= s0 - zone && t < s0 + durationMin, label).toBe(false);
+          expect(m.detail, label).not.toMatch(/Kept before/);
+        }
+      }
+    }
+  });
+
+  it("drops a meal with no slot outside training before bedtime, and says so", () => {
+    // Training 06:10-21:55 leaves no time for meals between wake and bedtime − snackAfterWakeMin
+    // except right after wake, before the first session's zone.
+    const items = buildTimeline(
+      input({
+        wakeTime: "04:00",
+        mealsPerDay: 3,
+        windows: [{ start: "06:00", end: "23:00" }],
+        sessions: [{ title: "Ultra", kind: "run", durationMin: 955, window: 0, intensity: "z2" }],
+      }),
+    );
+    const meals = of(items, "meal");
+    for (const m of meals) expect(min(m.time)).toBeLessThan(min("06:00"));
+    expect(meals.length).toBeLessThan(3);
+    expect(meals.some((m) => /left out/i.test(m.detail))).toBe(true);
+  });
+
+  it("a meal nudged into a late swim's zone, with no way out before bedtime, leaves no meal in the zone", () => {
+    // Slots 06:10, 09:20, 12:30, 15:40, 18:50. The 15:40 meal moves to the run's end (18:50), on
+    // top of meal 5; the nudge pushes one to 18:55, the start of the 20:25 swim's 90-min zone.
+    // Moving after the swim (21:55) passes bedtime − snackAfterWakeMin (21:50).
+    const items = buildTimeline(
+      input({
+        wakeTime: "06:00",
+        mealsPerDay: 5,
+        windows: [
+          { start: "15:40", end: "19:00" },
+          { start: "20:25", end: "22:00" },
+        ],
+        sessions: [
+          { title: "Run", kind: "run", durationMin: 190, window: 0, intensity: "z2" },
+          { title: "Swim", kind: "swim", durationMin: 90, window: 1, intensity: "z2" },
+        ],
+      }),
+    );
+    const swimStart = min("20:25");
+    for (const m of of(items, "meal")) {
+      const t = min(m.time);
+      expect(t >= swimStart - PRE.swimNoHeavyMealMin && t < swimStart + 90, `${m.title} at ${m.time}`).toBe(false);
+      expect(t).toBeLessThanOrEqual(min("22:00") - TL.snackAfterWakeMin);
+    }
+    expect(of(items, "meal").some((m) => /left out|before Swim/i.test(m.detail))).toBe(true);
+  });
+
+  it("bedtime shares its minute with a recovery snack instead of moving", () => {
+    // Run 19:00-22:00 ends at bedtime: its recovery snack is at 22:00.
+    const items = buildTimeline(
+      input({
+        wakeTime: "06:00",
+        mealsPerDay: 5,
+        windows: [
+          { start: "06:00", end: "09:00" },
+          { start: "19:00", end: "22:00" },
+        ],
+        sessions: [{ title: "Evening run", kind: "run", durationMin: 180, window: 1, intensity: "z2" }],
+      }),
+    );
+    expect(of(items, "bedtime")[0].time).toBe("22:00");
+    expect(of(items, "snack").some((s) => s.title === "Recovery snack" && s.time === "22:00")).toBe(true);
+  });
+
+  it("never moves a meal past bedtime, over many evening sessions", () => {
+    for (let startMin = min("16:00"); startMin <= min("21:30"); startMin += 5) {
+      for (const durationMin of [30, 60, 90, 120, 180]) {
+        for (const kind of ["run", "swim"]) {
+          const start = `${String(Math.floor(startMin / 60)).padStart(2, "0")}:${String(startMin % 60).padStart(2, "0")}`;
+          const items = buildTimeline(
+            input({
+              wakeTime: "06:00",
+              mealsPerDay: 5,
+              windows: [
+                { start: "06:00", end: "09:00" },
+                { start, end: "23:00" },
+              ],
+              sessions: [{ title: "Evening", kind, durationMin, window: 1, intensity: "z2" }],
+            }),
+          );
+          for (const m of of(items, "meal")) {
+            expect(min(m.time), `${kind} ${durationMin} at ${start}: ${m.title} ${m.time}`).toBeLessThanOrEqual(min("22:00") - TL.snackAfterWakeMin);
+          }
+        }
+      }
+    }
+  });
+
   it("places supplements by timing: with_meal at the first meal, morning at wake, evening at bedtime", () => {
     const items = buildTimeline(
       input({

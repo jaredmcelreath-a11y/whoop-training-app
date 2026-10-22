@@ -131,6 +131,70 @@ describe("calibrateTdee", () => {
   });
 });
 
+describe("calibrateTdee hardening (Plan 5 Task 7)", () => {
+  const flat = (n: number, v: number) => Array<number>(n).fill(v);
+
+  it("treats intake ≤ 0 as not logged", () => {
+    // 14 days of weight, but only 6 real intake days: the zeros and negatives are missing, not 0 kcal.
+    const intake = [...flat(6, 3000), 0, 0, -50, 0, 0, 0, 0, 0];
+    const r = calibrateTdee({ previousTdee: 2700, intakeKcal: intake, weightLbTrend: flat(14, 165), windowDays: 14 });
+    expect(r).toMatchObject({ tdee: 2700, confidence: "low", changed: false });
+  });
+
+  it("treats weight ≤ 0 as no trend value", () => {
+    const weight = [...flat(6, 165), ...flat(8, 0)];
+    const r = calibrateTdee({ previousTdee: 2700, intakeKcal: flat(14, 3000), weightLbTrend: weight, windowDays: 14 });
+    expect(r).toMatchObject({ tdee: 2700, confidence: "low", changed: false });
+  });
+
+  it("ignores zero weights in the slope (a 0 lb day is not a 165 lb jump)", () => {
+    // Counted, the 0 lb first day is a steep "gain" and drags the estimate down to the −150 cap.
+    const weight = [0, ...flat(13, 165)];
+    const r = calibrateTdee({ previousTdee: 2900, intakeKcal: flat(14, 3000), weightLbTrend: weight, windowDays: 14 });
+    expect(r.tdee).toBe(3000);
+  });
+
+  it("a non-finite previousTdee falls back to the given initial TDEE", () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 0, -100]) {
+      const low = calibrateTdee({ previousTdee: bad, fallbackTdee: 2600, intakeKcal: [], weightLbTrend: [], windowDays: 14 });
+      expect(low).toMatchObject({ tdee: 2600, confidence: "low" });
+      expect(Number.isFinite(low.tdee)).toBe(true);
+      expect(low.reasons[0].text).not.toMatch(/NaN|Infinity/);
+      const cal = calibrateTdee({ previousTdee: bad, fallbackTdee: 2600, intakeKcal: flat(14, 3000), weightLbTrend: flat(14, 165), windowDays: 14 });
+      expect(cal.tdee).toBe(2600 + CAL.maxWeeklyStepKcal);
+    }
+  });
+
+  it("throws a RangeError with neither a usable previous nor a fallback TDEE", () => {
+    expect(() => calibrateTdee({ previousTdee: Number.NaN, intakeKcal: [], weightLbTrend: [], windowDays: 14 })).toThrow(RangeError);
+    expect(() =>
+      calibrateTdee({ previousTdee: Number.NaN, fallbackTdee: Number.NaN, intakeKcal: [], weightLbTrend: [], windowDays: 14 }),
+    ).toThrow(RangeError);
+  });
+});
+
+describe("non-finite input guards", () => {
+  const base = { tdee: 2800, weightLb: 160, remainingGoalLb: 10, gainPhase: true, phase: "base" as const };
+
+  it("weeklyCalorieTarget throws a RangeError on a non-finite tdee, weight or remaining goal", () => {
+    expect(() => weeklyCalorieTarget({ ...base, tdee: Number.NaN })).toThrow(RangeError);
+    expect(() => weeklyCalorieTarget({ ...base, weightLb: Number.POSITIVE_INFINITY })).toThrow(RangeError);
+    expect(() => weeklyCalorieTarget({ ...base, weightLb: 0 })).toThrow(RangeError);
+    expect(() => weeklyCalorieTarget({ ...base, remainingGoalLb: Number.NaN })).toThrow(RangeError);
+  });
+
+  it("plannedExerciseKcal throws a RangeError on a non-finite or non-positive weight", () => {
+    const s = [{ kind: "run" as const, durationMin: 60, intensity: "z2" }];
+    expect(() => plannedExerciseKcal(s, Number.NaN)).toThrow(RangeError);
+    expect(() => plannedExerciseKcal(s, 0)).toThrow(RangeError);
+  });
+
+  it("plannedExerciseKcal skips a session with a non-finite duration", () => {
+    const r = plannedExerciseKcal([{ kind: "run", durationMin: Number.POSITIVE_INFINITY, intensity: "z2" }], 70);
+    expect(r.kcal).toBe(0);
+  });
+});
+
 describe("weeklyCalorieTarget (surplus by phase)", () => {
   const base = { tdee: 2800, weightLb: 160, remainingGoalLb: 10 };
   const surplus = (pct: number) => (160 * pct * CAL.kcalPerLbChange) / 100 / 7;
@@ -151,6 +215,15 @@ describe("weeklyCalorieTarget (surplus by phase)", () => {
     for (const phase of ["peak", "taper", "race"] as const) {
       expect(weeklyCalorieTarget({ ...base, gainPhase: false, phase }).kcal).toBe(2800);
     }
+  });
+
+  it("a base or build week after the gain phase names the minPct rate in its reason", () => {
+    for (const phase of ["base", "build"] as const) {
+      const text = weeklyCalorieTarget({ ...base, gainPhase: false, phase }).reasons[0].text;
+      expect(text).toMatch(new RegExp(`^${phase[0].toUpperCase()}${phase.slice(1)} week after the gain phase`));
+      expect(text).toContain(`the ${GR.minPct}% rate`);
+    }
+    expect(weeklyCalorieTarget({ ...base, gainPhase: true, phase: "base" }).reasons[0].text).toContain(`${GR.pctBodyweightPerWeek}%`);
   });
 
   it("goal reached → none", () => {
@@ -312,6 +385,12 @@ describe("dayTargets", () => {
       expect(Math.abs(avg - weeklyAvgKcal) / weeklyAvgKcal).toBeLessThanOrEqual(0.01);
     }
     expect(checked).toBeGreaterThan(500);
+  });
+
+  it("returns a top-level ruleIds listing every reason's rule once", () => {
+    const r = dayTargets(day(3));
+    expect(r.ruleIds).toEqual([...new Set(r.reasons.map((x) => x.ruleId))]);
+    expect(r.ruleIds).toContain("nutrition.energyAvailability");
   });
 
   it("returns reasons with rule ids", () => {

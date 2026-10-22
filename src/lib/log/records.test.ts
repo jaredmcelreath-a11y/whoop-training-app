@@ -9,8 +9,10 @@ import {
   deleteScan,
   getLabPanel,
   listLabPanels,
+  listMarkers,
   listScans,
   markerHistory,
+  markerResults,
 } from "./records";
 
 const TZ = "America/Chicago";
@@ -96,6 +98,74 @@ describe("lab panels", () => {
         markerCount: 2,
         ageDays: 182,
       }),
+    ]);
+  });
+});
+
+describe("listMarkers", () => {
+  it("groups case-insensitively with the latest spelling and count", async () => {
+    await addLabPanel(db, {
+      drawnOn: "2026-01-01",
+      results: [{ marker: "LDL", value: 100, unit: "mg/dL" }],
+    });
+    await addLabPanel(db, {
+      drawnOn: "2026-05-01",
+      results: [{ marker: " ldl ", value: 90, unit: "mg/dL", flag: "" }],
+    });
+    const out = await listMarkers(db);
+    expect(out).toHaveLength(1);
+    expect(out[0].marker).toBe("ldl");
+    expect(out[0].count).toBe(2);
+    expect(out[0].latest).toEqual({
+      drawnOn: "2026-05-01",
+      value: 90,
+      unit: "mg/dL",
+      flag: null,
+    });
+  });
+
+  it("sorts flagged markers before unflagged, then alphabetically", async () => {
+    await addLabPanel(db, {
+      drawnOn: "2026-02-01",
+      results: [
+        { marker: "Albumin", value: 4, unit: "g/dL" },
+        { marker: "Zinc", value: 50, unit: "ug/dL", flag: "L" },
+        { marker: "Ferritin", value: 30, unit: "ng/mL" },
+      ],
+    });
+    const out = await listMarkers(db);
+    expect(out.map((m) => m.marker)).toEqual(["Zinc", "Albumin", "Ferritin"]);
+    expect(out[0].latest.flag).toBe("L");
+  });
+});
+
+describe("markerHistory trimming", () => {
+  it("matches stored names with surrounding whitespace", async () => {
+    await addLabPanel(db, {
+      drawnOn: "2026-01-01",
+      results: [{ marker: " ldl ", value: 100, unit: "mg/dL" }],
+    });
+    await addLabPanel(db, {
+      drawnOn: "2026-05-01",
+      results: [{ marker: "LDL", value: 90, unit: "mg/dL" }],
+    });
+    expect(await markerHistory(db, "ldl")).toHaveLength(2);
+  });
+});
+
+describe("markerResults", () => {
+  it("returns flags and stored names, oldest first, matching like markerHistory", async () => {
+    await addLabPanel(db, {
+      drawnOn: "2026-05-01",
+      results: [{ marker: "Zinc ", value: 50, unit: "ug/dL", flag: "L" }],
+    });
+    await addLabPanel(db, {
+      drawnOn: "2026-01-01",
+      results: [{ marker: "zinc", value: 80, unit: "ug/dL", flag: "" }],
+    });
+    expect(await markerResults(db, " ZINC")).toEqual([
+      { drawnOn: "2026-01-01", value: 80, unit: "ug/dL", flag: null, marker: "zinc" },
+      { drawnOn: "2026-05-01", value: 50, unit: "ug/dL", flag: "L", marker: "Zinc " },
     ]);
   });
 });

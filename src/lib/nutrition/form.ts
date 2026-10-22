@@ -29,6 +29,28 @@ export function maskToken(token: string): string {
   return MASK + token.slice(-TOKEN_TAIL);
 }
 
+export const INGEST_PATH = "/api/ingest/health";
+/** A host[:port] with nothing else in it (no path, spaces or markup). */
+const HOST_RE = /^(\[[0-9a-f:.]+\]|[a-z0-9.-]+)(:\d{1,5})?$/i;
+const LOCAL_RE = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
+/** First value of a possibly comma-separated proxy header. */
+const first = (v: string | null) => v?.split(",")[0].trim() || null;
+
+/**
+ * The full ingest URL from the request's headers: the proxy's x-forwarded-host/-proto when
+ * set, else Host; http for a local dev host, https otherwise. The bare path when the host is
+ * missing or malformed.
+ */
+export function ingestUrl(h: Pick<Headers, "get">): string {
+  // x-forwarded-host only shapes this display string; it is never used for routing or auth.
+  const host = first(h.get("x-forwarded-host")) ?? first(h.get("host"));
+  if (!host || !HOST_RE.test(host)) return INGEST_PATH;
+  const fwd = first(h.get("x-forwarded-proto"))?.toLowerCase();
+  const proto = fwd === "http" || fwd === "https" ? fwd : LOCAL_RE.test(host) ? "http" : "https";
+  return `${proto}://${host}${INGEST_PATH}`;
+}
+
 export type FormParse = { ok: true; patch: Partial<NutritionSettings> } | { ok: false; error: string };
 
 function text(fd: FormData, name: string): string {

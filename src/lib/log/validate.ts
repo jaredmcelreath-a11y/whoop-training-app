@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { KG_PER_LB, ML_PER_FL_OZ } from "@/lib/engine/nutrients";
+import { RULES } from "@/lib/engine/rules/catalog";
 import { toMeters } from "./units";
 
 export const PAIN_AREAS = ["knee", "ankle", "shin"] as const;
@@ -128,6 +130,22 @@ export const LabInput = z.object({
     .min(1),
 });
 export type LabInput = z.infer<typeof LabInput>;
+
+export const SweatInput = z
+  .object({
+    testedOn: isoDate,
+    kind: z.enum(["run", "bike", "swim"]),
+    preLb: num(60, 400),
+    postLb: num(60, 400),
+    fluidOz: num(0, 200),
+    durationMin: num(RULES["hydration.sweatTest"].params.minDurationMin, 600),
+    notes: z.string().max(500).optional(),
+  })
+  .refine(
+    (v) => (v.preLb - v.postLb) * KG_PER_LB + (v.fluidOz * ML_PER_FL_OZ) / 1000 > 0,
+    { message: "Check the weights: this shows no sweat loss." },
+  );
+export type SweatInput = z.infer<typeof SweatInput>;
 
 export function formError(e: z.ZodError): string {
   const issue = e.issues[0];

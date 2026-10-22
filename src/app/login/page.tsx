@@ -4,7 +4,7 @@ import { LoginForm } from "./form";
 // per-user. (A blocking connection() call would fail the cacheComponents build.)
 export default function LoginPage() {
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: "calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))" }}>
       <h1>Sign in</h1>
       <LoginForm />
     </main>

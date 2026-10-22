@@ -1,9 +1,12 @@
 export type Unit = "yd" | "m" | "mi" | "km";
 
+export const METERS_PER_YARD = 0.9144;
+export const METERS_PER_MILE = 1609.344;
+
 const METERS_PER: Record<Unit, number> = {
-  yd: 0.9144,
+  yd: METERS_PER_YARD,
   m: 1,
-  mi: 1609.344,
+  mi: METERS_PER_MILE,
   km: 1000,
 };
 

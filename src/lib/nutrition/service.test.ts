@@ -279,3 +279,78 @@ describe("getDayNutrition", () => {
     ]);
   });
 });
+
+describe("hardening (Plan 5 Task 7)", () => {
+  it("never persists a week before the current week: no stored row → null", async () => {
+    await seedCycles(14, addDays(LAST_WEEK, -1), 2600);
+    expect(await ensureEnergyEstimate(db, LAST_WEEK, NOW, TZ)).toBeNull();
+    expect(await db.select().from(energyEstimates)).toHaveLength(0);
+  });
+
+  it("a past week with a stored row still returns it", async () => {
+    await db.insert(energyEstimates).values({ weekStart: LAST_WEEK, tdeeKcal: 2450, confidence: "low", method: "initial" });
+    expect((await ensureEnergyEstimate(db, LAST_WEEK, NOW, TZ))!.tdeeKcal).toBe(2450);
+  });
+
+  it("a past day without a stored estimate renders null targets, writes nothing and does not ask to sync WHOOP", async () => {
+    await seedCycles(14, addDays(LAST_WEEK, -1), 2600);
+    await db.insert(bodyScans).values({ scannedOn: "2026-10-01", leanMassLb: 140, weightLb: 170, source: "test" });
+    const n = await getDayNutrition(db, addDays(LAST_WEEK, 2), NOW, TZ);
+    expect(n.targets).toBeNull();
+    expect(n.energy).toBeNull();
+    expect(n.needs).not.toContain(NEED.burn);
+    expect(await db.select().from(energyEstimates)).toHaveLength(0);
+  });
+
+  it("bounds the season start weight by the day's asOf date", async () => {
+    // A pre-season weight gives the trend; the only in-season weight is after the viewed day.
+    await seedDays("2026-10-08", "2026-10-08", () => ({ lb: 160 }));
+    await seedDays(TODAY, TODAY, () => ({ lb: 165 }));
+    const n = await getDayNutrition(db, "2026-10-13", NOW, TZ);
+    expect(n.needs).toContain(NEED.gainStart);
+  });
+
+  it("lists a gain-goal need only in a gain or surplus week (not in a taper week)", async () => {
+    await updatePlanSettings(db, { seasonStart: "2026-04-06", raceDate: addDays(THIS_WEEK, 7 * RULES["season.phases"].params.taperWeeks) });
+    await seedCycles(14, addDays(THIS_WEEK, -1), 2600);
+    await db.insert(bodyScans).values({ scannedOn: "2026-10-01", leanMassLb: 140, weightLb: 170, source: "test" });
+    const n = await getDayNutrition(db, TOMORROW, NOW, TZ);
+    expect(n.targets).not.toBeNull();
+    expect(n.energy!.surplusKcal).toBe(0);
+    expect(n.needs).not.toContain(NEED.gainWeight);
+    expect(n.needs).not.toContain(NEED.gainStart);
+  });
+
+  it("lists no gain-goal need outside the season calendar", async () => {
+    await seedDays("2026-10-01", "2026-10-01", () => ({ lb: 160 }));
+    const n = await getDayNutrition(db, "2026-10-05", NOW, TZ);
+    expect(n.needs).not.toContain(NEED.gainStart);
+    expect(n.needs).not.toContain(NEED.gainWeight);
+  });
+
+  it("excludes an open (unfinished) WHOOP cycle from the initial estimate", async () => {
+    await seedCycles(13, addDays(THIS_WEEK, -2), 2600);
+    const start = new Date(zonedLocalToUtc(`${addDays(THIS_WEEK, -2)}T22:00`, TZ));
+    await db.insert(cycles).values({ id: 9000, start, end: null, timezoneOffset: "-05:00", scoreState: "PENDING_SCORE", kcal: 9000 });
+    const e = await ensureEnergyEstimate(db, THIS_WEEK, NOW, TZ);
+    expect(e!.inputs.initialMethod).toBe("whoop");
+    expect(e!.tdeeKcal).toBe(2600);
+  });
+
+  it("a stored estimate with an unusable burn gives null targets instead of throwing", async () => {
+    await db.insert(energyEstimates).values({ weekStart: THIS_WEEK, tdeeKcal: Number.NaN, confidence: "low", method: "initial" });
+    await db.insert(bodyScans).values({ scannedOn: "2026-10-01", leanMassLb: 140, weightLb: 170, source: "test" });
+    const n = await getDayNutrition(db, TOMORROW, NOW, TZ);
+    expect(n.targets).toBeNull();
+    expect(n.needs).toContain(NEED.burn);
+  });
+
+  it("calibrates from the initial estimate when the previous week's burn is unusable", async () => {
+    await db.insert(energyEstimates).values({ weekStart: LAST_WEEK, tdeeKcal: Number.NaN, confidence: "low", method: "initial" });
+    await seedCycles(14, addDays(THIS_WEEK, -1), 2600);
+    const e = await ensureEnergyEstimate(db, THIS_WEEK, NOW, TZ);
+    expect(e!.method).toBe("calibrated");
+    expect(e!.tdeeKcal).toBe(2600);
+    expect(e!.inputs.fallbackTdee).toBe(2600);
+  });
+});

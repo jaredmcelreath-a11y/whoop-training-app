@@ -129,8 +129,70 @@ export async function markerHistory(
     })
     .from(labResults)
     .innerJoin(labPanels, eq(labPanels.id, labResults.panelId))
-    .where(sql`lower(${labResults.marker}) = lower(${marker.trim()})`)
+    .where(sql`lower(trim(${labResults.marker})) = lower(${marker.trim()})`)
     .orderBy(asc(labPanels.drawnOn));
+}
+
+/** Like markerHistory, plus each result's flag (blank becomes null) and stored marker name. */
+export async function markerResults(
+  db: Db,
+  marker: string,
+): Promise<{ drawnOn: string; value: number; unit: string; flag: string | null; marker: string }[]> {
+  const rows = await db
+    .select({
+      drawnOn: labPanels.drawnOn,
+      value: labResults.value,
+      unit: labResults.unit,
+      flag: labResults.flag,
+      marker: labResults.marker,
+    })
+    .from(labResults)
+    .innerJoin(labPanels, eq(labPanels.id, labResults.panelId))
+    .where(sql`lower(trim(${labResults.marker})) = lower(${marker.trim()})`)
+    .orderBy(asc(labPanels.drawnOn), asc(labPanels.id));
+  return rows.map((r) => ({ ...r, flag: r.flag || null }));
+}
+
+export type MarkerSummary = {
+  marker: string;
+  latest: { drawnOn: string; value: number; unit: string; flag: string | null };
+  count: number;
+};
+
+/** Every lab marker once (case-insensitive, latest spelling): flagged first, then A to Z. */
+export async function listMarkers(db: Db): Promise<MarkerSummary[]> {
+  const rows = await db
+    .select({
+      marker: labResults.marker,
+      value: labResults.value,
+      unit: labResults.unit,
+      flag: labResults.flag,
+      drawnOn: labPanels.drawnOn,
+    })
+    .from(labResults)
+    .innerJoin(labPanels, eq(labPanels.id, labResults.panelId))
+    .orderBy(asc(labPanels.drawnOn), asc(labPanels.id));
+  const byKey = new Map<string, MarkerSummary>();
+  for (const r of rows) {
+    const name = r.marker.trim();
+    const key = name.toLowerCase();
+    const prev = byKey.get(key);
+    byKey.set(key, {
+      marker: name,
+      latest: {
+        drawnOn: r.drawnOn,
+        value: r.value,
+        unit: r.unit,
+        flag: r.flag || null,
+      },
+      count: (prev?.count ?? 0) + 1,
+    });
+  }
+  return [...byKey.values()].sort(
+    (a, b) =>
+      Number(b.latest.flag !== null) - Number(a.latest.flag !== null) ||
+      a.marker.localeCompare(b.marker),
+  );
 }
 
 export async function deleteLabPanel(db: Db, id: string): Promise<void> {

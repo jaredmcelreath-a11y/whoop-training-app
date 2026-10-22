@@ -16,6 +16,7 @@ const SECTIONS: { href: string; label: string }[] = [
   { href: "/log/pain", label: "Pain" },
   { href: "/log/scans", label: "Scans" },
   { href: "/log/labs", label: "Labs" },
+  { href: "/log/sweat", label: "Sweat test" },
 ];
 
 /** The page shell is static; everything that reads the session or the DB streams in. */

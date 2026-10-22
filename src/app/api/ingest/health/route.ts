@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { getEnv } from "@/lib/env";
-import { IngestPayload, ingestDays, MAX_BODY_BYTES, sentAtTooFarAhead } from "@/lib/nutrition/ingest";
+import { IngestPayload, ingestDays, MAX_BODY_BYTES, readBodyCapped, sentAtTooFarAhead } from "@/lib/nutrition/ingest";
 
 /**
  * PUBLIC route (listed in the proxy's PUBLIC_PATHS). The bearer INGEST_TOKEN is its
@@ -24,8 +24,9 @@ export async function POST(req: Request) {
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     return new NextResponse("Payload too large", { status: 413 });
   }
-  const raw = await req.text();
-  if (Buffer.byteLength(raw) > MAX_BODY_BYTES) {
+  // Counted as it streams in: a missing or false content-length cannot make the server buffer more.
+  const raw = await readBodyCapped(req.body, MAX_BODY_BYTES);
+  if (raw === null) {
     return new NextResponse("Payload too large", { status: 413 });
   }
 
