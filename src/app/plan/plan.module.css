@@ -175,7 +175,7 @@
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin: 16px 0 12px;
 }
 
 .weekArrow {

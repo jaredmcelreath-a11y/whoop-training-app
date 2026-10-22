@@ -72,9 +72,9 @@ async function TodayContent() {
         <StrainChip t={t} />
         <WeightChip t={t} />
       </div>
+      <HrvCard t={t} />
       <TodayTraining db={db} now={now} tz={tz} />
       <TodayFuel db={db} now={now} tz={tz} />
-      <HrvCard t={t} />
       <p className={styles.sync}>
         {t.lastSyncedAt ? `Last synced ${formatDateTime(t.lastSyncedAt, tz)}` : "Not synced yet"}
         {syncFailed ? <span className={styles.syncFailed}> · Sync failed</span> : null}
