@@ -69,6 +69,7 @@ export async function logLabPanel(
   const values = formData.getAll("value");
   const units = formData.getAll("unit").map(String);
   const flags = formData.getAll("flag").map(String);
+  const ranges = formData.getAll("refRange").map(String);
   const results: unknown[] = [];
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i].trim();
@@ -84,6 +85,7 @@ export async function logLabPanel(
       value,
       unit: units[i] ?? "",
       flag: flags[i]?.trim() || undefined,
+      refRange: ranges[i]?.trim() || undefined,
     });
   }
   const source = String(formData.get("source") ?? "").trim();

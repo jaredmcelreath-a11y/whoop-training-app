@@ -123,8 +123,10 @@ export const LabInput = z.object({
       z.object({
         marker: z.string().trim().min(1).max(100),
         value: z.number().min(-1e9).max(1e9),
-        unit: z.string().trim().min(1).max(30),
+        // Ratios and indices have no unit.
+        unit: z.string().trim().max(30),
         flag: z.string().trim().max(30).optional(),
+        refRange: z.string().trim().max(40).optional(),
       }),
     )
     .min(1),

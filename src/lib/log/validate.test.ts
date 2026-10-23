@@ -94,6 +94,14 @@ describe("LabInput", () => {
     expect(LabInput.safeParse({ drawnOn: "2026-10-20", source: "quest", results: [r] }).success).toBe(true);
     expect(LabInput.safeParse({ drawnOn: "2026-10-20", results: [] }).success).toBe(false);
   });
+  it("allows a result with no unit (ratios, indices)", () => {
+    expect(LabInput.safeParse({ drawnOn: "2026-10-20", results: [{ marker: "A/G Ratio", value: 1.8, unit: "" }] }).success).toBe(true);
+  });
+  it("caps a reference range at 40 characters", () => {
+    const r = (refRange: string) => ({ drawnOn: "2026-10-20", results: [{ marker: "LDL", value: 90, unit: "mg/dL", refRange }] });
+    expect(LabInput.safeParse(r("0–99")).success).toBe(true);
+    expect(LabInput.safeParse(r("x".repeat(41))).success).toBe(false);
+  });
 });
 
 describe("SweatInput", () => {

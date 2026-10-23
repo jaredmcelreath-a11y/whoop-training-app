@@ -63,6 +63,7 @@ export async function addLabPanel(
         value: r.value,
         unit: r.unit,
         flag: r.flag || null,
+        refRange: r.refRange || null,
       })),
     )
     .onConflictDoUpdate({
@@ -71,6 +72,7 @@ export async function addLabPanel(
         value: sql`excluded.value`,
         unit: sql`excluded.unit`,
         flag: sql`excluded.flag`,
+        refRange: sql`excluded.ref_range`,
       },
     });
   return { id: panel.id };
@@ -110,6 +112,7 @@ export async function getLabPanel(db: Db, id: string) {
       value: labResults.value,
       unit: labResults.unit,
       flag: labResults.flag,
+      refRange: labResults.refRange,
     })
     .from(labResults)
     .where(eq(labResults.panelId, id))

@@ -56,6 +56,20 @@ describe("lab panels", () => {
     expect(p?.results[0].value).toBe(120);
   });
 
+  it("stores a reference range, and a repeated marker replaces it", async () => {
+    const { id } = await addLabPanel(db, {
+      drawnOn: "2026-05-02",
+      results: [
+        { marker: "Vitamin D", value: 30, unit: "ng/mL", refRange: "20–80" },
+        { marker: "Vitamin D", value: 32, unit: "ng/mL", refRange: "30–100" },
+        { marker: "Iron", value: 85, unit: "ug/dL" },
+      ],
+    });
+    const p = await getLabPanel(db, id);
+    expect(p?.results.find((r) => r.marker === "Vitamin D")).toMatchObject({ value: 32, refRange: "30–100" });
+    expect(p?.results.find((r) => r.marker === "Iron")?.refRange).toBeNull();
+  });
+
   it("markerHistory is case-insensitive, oldest first", async () => {
     await addLabPanel(db, {
       drawnOn: "2026-05-01",

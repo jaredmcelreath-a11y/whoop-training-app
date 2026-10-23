@@ -70,7 +70,10 @@ async function PanelContent({ params }: { params: Promise<{ id: string }> }) {
                     </div>
                   ) : null}
                 </td>
-                <td>{r.value}</td>
+                <td>
+                  {r.value}
+                  {r.refRange ? <div className={styles.itemSub}>Range {r.refRange}</div> : null}
+                </td>
                 <td>{r.unit}</td>
                 <td>{r.flag ?? ""}</td>
               </tr>

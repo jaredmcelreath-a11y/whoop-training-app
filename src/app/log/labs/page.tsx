@@ -7,7 +7,7 @@ import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { localDate } from "@/lib/log/dates";
-import { listLabPanels } from "@/lib/log/records";
+import { listLabPanels, listMarkers } from "@/lib/log/records";
 import { deleteLabPanelAction } from "../records-actions";
 import styles from "../records.module.css";
 import { DeleteButton } from "../scans/scan-form";
@@ -47,6 +47,7 @@ async function LabsContent() {
   const tz = getEnv().OWNER_TZ;
   const now = new Date();
   const panels = await listLabPanels(getDb(), now, tz);
+  const known = (await listMarkers(getDb())).map((m) => m.marker);
   const stale = panels.length > 0 && panels[0].ageDays > RETEST_AFTER_DAYS;
   return (
     <>
@@ -57,7 +58,7 @@ async function LabsContent() {
       ) : null}
       <section className={base.card}>
         <h2 className={base.cardTitle}>New Panel</h2>
-        <LabForm today={localDate(now, tz)} />
+        <LabForm today={localDate(now, tz)} known={known} />
       </section>
       <section className={base.card}>
         <h2 className={base.cardTitle}>Panels</h2>

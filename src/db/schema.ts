@@ -240,6 +240,8 @@ export const labResults = pgTable(
     value: doublePrecision("value").notNull(),
     unit: text("unit").notNull(),
     flag: text("flag"),
+    /** The lab's reference range as printed, e.g. "30–100". */
+    refRange: text("ref_range"),
   },
   (t) => [unique("lab_results_panel_marker_unique").on(t.panelId, t.marker)],
 );
