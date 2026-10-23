@@ -86,7 +86,7 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
   let projection: { current: SavedProjection; history: SavedProjection[]; goalSec: number | null } | null = null;
   try {
     const ws = weekStart(date);
-    const current = past ? await savedWeekProjection(db, ws) : await ensureWeekProjection(db, ws);
+    const current = past ? await savedWeekProjection(db, ws) : await ensureWeekProjection(db, ws, tz);
     if (current) {
       const P = RULES["race.projection"].params;
       projection = {

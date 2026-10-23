@@ -151,3 +151,13 @@ These were settled by the designer, not the owner. The owner can override any of
   - Changing the starting paces recomputes the current week's snapshot, so a wrong first entry can be fixed.
   - Changing the goal changes no snapshot, only the goal line.
   - Past weeks never change.
+
+## Update: WHOOP GPS Workouts Count Automatically
+
+Owner request, 2026-10-23. WHOOP workouts with a GPS distance count toward the projection without any manual logging: running, outdoor cycling and swimming. Not counted:
+- spin and generic "activity";
+- workouts with no distance;
+- dismissed workouts;
+- a workout already linked to a logged entry, or within 30 minutes of a logged entry of the same kind.
+
+Logged entries win over WHOOP when both exist.

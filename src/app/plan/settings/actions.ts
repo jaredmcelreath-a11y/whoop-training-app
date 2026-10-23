@@ -33,7 +33,7 @@ export async function savePlanSettings(_prev: PlanSettingsState, formData: FormD
   // before re-planning, so a re-planning failure can't skip it.
   if (startPacesChanged(current, parsed.settings)) {
     try {
-      await recomputeWeekProjection(db, weekStart(localDate(now, tz)));
+      await recomputeWeekProjection(db, weekStart(localDate(now, tz)), tz);
     } catch (e) {
       console.error("savePlanSettings: projection recompute failed", e);
     }

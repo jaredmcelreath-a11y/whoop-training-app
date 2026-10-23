@@ -591,7 +591,7 @@ export const RULES = deepFreeze({
     id: "race.projection",
     area: "race",
     statement:
-      "The projected half Ironman finish adds up a swim, bike and run from your last few weeks of logged training, plus transitions. A leg with too few sessions uses your starting pace (or a first-timer default) and is marked as an estimate. It is recomputed once a week and can go up or down.",
+      "The projected half Ironman finish adds up a swim, bike and run from your last few weeks of training (logged sessions, plus WHOOP runs, rides and swims that have GPS distance), plus transitions. A leg with too few sessions uses your starting pace (or a first-timer default) and is marked as an estimate. It is recomputed once a week and can go up or down.",
     why: "Your own recent paces are the best guide to race day; the factors turn training paces into race paces.",
     params: {
       swimYd: 2112,

@@ -3,9 +3,11 @@
  * training dated through the previous Sunday, is saved the first time it's needed, and never
  * changes after that, except that the current week is recomputed when the starting paces change.
  */
-import { and, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { cardioEntries, planSettings, raceProjections, weeklyMetrics } from "@/db/schema";
+import { cardioEntries, planSettings, raceProjections, weeklyMetrics, workouts } from "@/db/schema";
+import { notDismissed } from "@/lib/log/dismissed";
+import { localDateAtOffset } from "./inputs";
 import { project, type ProjectionInputs } from "@/lib/engine/race-projection";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { addDays } from "@/lib/log/dates";
@@ -36,8 +38,17 @@ export function startPacesChanged(before: StartPaces, after: StartPaces): boolea
   );
 }
 
-/** The look-back window's training, the latest VO2 max in it, and the starting paces. */
-export async function projectionInputs(db: Db, weekStart: string): Promise<ProjectionInputs> {
+/** WHOOP sports that count when they carry GPS distance (spin and generic "activity" don't). */
+const WHOOP_KIND: Record<string, "run" | "bike" | "swim"> = { running: "run", cycling: "bike", swimming: "swim" };
+/** A logged entry starting this close to a WHOOP workout of the same kind is the same session. */
+const SAME_SESSION_MS = 30 * 60_000;
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * The look-back window's training (logged entries, plus WHOOP runs, rides and swims that have GPS
+ * distance and aren't already logged), the latest VO2 max in it, and the starting paces.
+ */
+export async function projectionInputs(db: Db, weekStart: string, tz: string): Promise<ProjectionInputs> {
   const P = RULES["race.projection"].params;
   const from = addDays(weekStart, -P.lookbackWeeks * DAYS_PER_WEEK);
   const to = addDays(weekStart, -1);
@@ -45,17 +56,43 @@ export async function projectionInputs(db: Db, weekStart: string): Promise<Proje
     .select()
     .from(cardioEntries)
     .where(and(gte(cardioEntries.localDate, from), lte(cardioEntries.localDate, to), isNotNull(cardioEntries.distanceM)));
-  const session = (r: (typeof rows)[number]) => ({ distanceM: r.distanceM as number, durationS: r.durationS });
-  const swims = rows.filter((r) => r.kind === "swim" && (r.distanceM as number) >= P.minSwimYd * M_PER_YD).map(session);
-  const rides = rows
-    .filter((r) => r.kind === "bike" && !r.indoor && r.durationS >= P.minRideMin * S_PER_MIN)
-    .map(session);
-  const runs = rows
+  // WHOOP workouts with a GPS distance, in the window by their own local day, not already logged.
+  const whoop = (
+    await db
+      .select({ id: workouts.id, start: workouts.start, end: workouts.end, offset: workouts.timezoneOffset, sport: workouts.sportName, distanceM: workouts.distanceM })
+      .from(workouts)
+      .where(
+        and(
+          gte(workouts.start, new Date(Date.parse(`${from}T00:00:00Z`) - MS_PER_DAY)),
+          lt(workouts.start, new Date(Date.parse(`${weekStart}T00:00:00Z`) + MS_PER_DAY)),
+          isNotNull(workouts.distanceM),
+          notDismissed,
+          sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
+        ),
+      )
+  ).filter((w) => {
+    const kind = WHOOP_KIND[w.sport ?? ""];
+    const day = localDateAtOffset(w.start, w.offset, tz);
+    const logged = rows.some((r) => r.kind === kind && Math.abs(r.startedAt.getTime() - w.start.getTime()) < SAME_SESSION_MS);
+    return kind !== undefined && day >= from && day <= to && !logged;
+  });
+  const fromWhoop = whoop.map((w) => ({
+    kind: WHOOP_KIND[w.sport ?? ""],
+    distanceM: w.distanceM as number,
+    durationS: Math.round((w.end.getTime() - w.start.getTime()) / 1000),
+    indoor: false,
+    inclinePct: null as number | null,
+  }));
+  const all = [
+    ...rows.map((r) => ({ kind: r.kind, distanceM: r.distanceM as number, durationS: r.durationS, indoor: r.indoor, inclinePct: r.inclinePct })),
+    ...fromWhoop,
+  ];
+  const session = (r: (typeof all)[number]) => ({ distanceM: r.distanceM, durationS: r.durationS });
+  const swims = all.filter((r) => r.kind === "swim" && r.distanceM >= P.minSwimYd * M_PER_YD).map(session);
+  const rides = all.filter((r) => r.kind === "bike" && !r.indoor && r.durationS >= P.minRideMin * S_PER_MIN).map(session);
+  const runs = all
     .filter(
-      (r) =>
-        r.kind === "run" &&
-        (r.distanceM as number) >= P.minRunMi * M_PER_MI &&
-        !(r.indoor && (r.inclinePct ?? 0) > P.maxTreadmillInclinePct),
+      (r) => r.kind === "run" && r.distanceM >= P.minRunMi * M_PER_MI && !(r.indoor && (r.inclinePct ?? 0) > P.maxTreadmillInclinePct),
     )
     .map(session);
   const [vo2] = await db
@@ -88,8 +125,8 @@ const toSaved = (r: typeof raceProjections.$inferSelect): SavedProjection => ({
   estimates: r.estimates,
 });
 
-async function compute(db: Db, weekStart: string) {
-  const inputs = await projectionInputs(db, weekStart);
+async function compute(db: Db, weekStart: string, tz: string) {
+  const inputs = await projectionInputs(db, weekStart, tz);
   const p = project(inputs);
   return {
     weekStart,
@@ -110,16 +147,16 @@ export async function savedWeekProjection(db: Db, weekStart: string): Promise<Sa
 }
 
 /** The week's saved projection, computed and saved the first time. */
-export async function ensureWeekProjection(db: Db, weekStart: string): Promise<SavedProjection> {
+export async function ensureWeekProjection(db: Db, weekStart: string, tz: string): Promise<SavedProjection> {
   const saved = await savedWeekProjection(db, weekStart);
   if (saved) return saved;
-  await db.insert(raceProjections).values(await compute(db, weekStart)).onConflictDoNothing({ target: raceProjections.weekStart });
+  await db.insert(raceProjections).values(await compute(db, weekStart, tz)).onConflictDoNothing({ target: raceProjections.weekStart });
   return (await savedWeekProjection(db, weekStart)) as SavedProjection;
 }
 
 /** Recomputes and saves a week (used for the current week when the starting paces change). */
-export async function recomputeWeekProjection(db: Db, weekStart: string): Promise<SavedProjection> {
-  const row = await compute(db, weekStart);
+export async function recomputeWeekProjection(db: Db, weekStart: string, tz: string): Promise<SavedProjection> {
+  const row = await compute(db, weekStart, tz);
   await db
     .insert(raceProjections)
     .values(row)
