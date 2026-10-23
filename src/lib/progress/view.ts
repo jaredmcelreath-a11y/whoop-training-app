@@ -31,10 +31,15 @@ export function paceLabel(sec: number, per: "100 yd" | "mi"): string {
 /** Signed to one decimal: 3 -> "+3.0", -1 -> "-1.0". */
 export const signed1 = (x: number) => `${x >= 0 ? "+" : "-"}${Math.abs(x).toFixed(1)}`;
 
-/** Gain-goal progress, e.g. "+4.2 of 15 lb". */
-export function gainLine(g: { startLb: number | null; currentLb: number | null; gainedLb: number | null; goalLb: number }): string {
+/**
+ * Gain-goal progress, e.g. "+4.2 of 15 lb". With no start weight the goal counts from the first
+ * weigh-in on or after `countsFrom` (the season start); weigh-ins before it don't count.
+ */
+export function gainLine(g: { startLb: number | null; currentLb: number | null; gainedLb: number | null; goalLb: number; countsFrom: string }): string {
   if (g.currentLb === null) return "Log your weight to start tracking";
-  if (g.startLb === null || g.gainedLb === null) return "Set a gain start weight";
+  if (g.startLb === null || g.gainedLb === null) {
+    return `Starts with your first weigh-in from ${shortDate(g.countsFrom)}, or set a gain start weight in Settings`;
+  }
   return `${signed1(g.gainedLb)} of ${g.goalLb} lb`;
 }
 

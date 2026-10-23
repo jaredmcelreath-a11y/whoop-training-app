@@ -32,13 +32,15 @@ describe("paceLabel", () => {
 
 describe("gainLine", () => {
   it("shows gained of goal", () =>
-    expect(gainLine({ startLb: 150, currentLb: 154.2, gainedLb: 4.2, goalLb: 15 })).toBe("+4.2 of 15 lb"));
+    expect(gainLine({ startLb: 150, currentLb: 154.2, gainedLb: 4.2, goalLb: 15, countsFrom: "2026-10-26" })).toBe("+4.2 of 15 lb"));
   it("asks for a weigh-in when there is no current weight", () =>
-    expect(gainLine({ startLb: 150, currentLb: null, gainedLb: null, goalLb: 15 })).toBe("Log your weight to start tracking"));
-  it("asks for a start weight when there is none", () =>
-    expect(gainLine({ startLb: null, currentLb: 154, gainedLb: null, goalLb: 15 })).toBe("Set a gain start weight"));
+    expect(gainLine({ startLb: 150, currentLb: null, gainedLb: null, goalLb: 15, countsFrom: "2026-10-26" })).toBe("Log your weight to start tracking"));
+  it("says the gain counts from the first weigh-in since the season start when there is no start yet", () =>
+    expect(gainLine({ startLb: null, currentLb: 154, gainedLb: null, goalLb: 15, countsFrom: "2026-10-26" })).toBe(
+      "Starts with your first weigh-in from Oct 26, or set a gain start weight in Settings",
+    ));
   it("shows a loss with a minus sign", () =>
-    expect(gainLine({ startLb: 150, currentLb: 149, gainedLb: -1, goalLb: 15 })).toBe("-1.0 of 15 lb"));
+    expect(gainLine({ startLb: 150, currentLb: 149, gainedLb: -1, goalLb: 15, countsFrom: "2026-10-26" })).toBe("-1.0 of 15 lb"));
 });
 
 describe("scanSplitText", () => {

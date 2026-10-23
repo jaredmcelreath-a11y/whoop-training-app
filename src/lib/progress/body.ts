@@ -23,7 +23,8 @@ export type BodyProgress = {
   avg7: Point[];
   rateLbPerWeek: number | null;
   targetRateLbPerWeek: number | null;
-  gain: { startLb: number | null; currentLb: number | null; gainedLb: number | null; goalLb: number };
+  /** countsFrom: the season start; with no set start weight, the first weigh-in from then on is the start. */
+  gain: { startLb: number | null; currentLb: number | null; gainedLb: number | null; goalLb: number; countsFrom: string };
   scans: ScanLite[];
   scanDelta: ScanDelta | null;
 };
@@ -98,7 +99,7 @@ export async function getBodyProgress(db: Db, now: Date, tz: string, range: Rang
     avg7,
     rateLbPerWeek: trendRateLbPerWeek(weights, today),
     targetRateLbPerWeek,
-    gain: { startLb, currentLb: latestAvg, gainedLb, goalLb: ns.gainGoalLb },
+    gain: { startLb, currentLb: latestAvg, gainedLb, goalLb: ns.gainGoalLb, countsFrom: ps.seasonStart },
     scans,
     scanDelta: scanDelta(scans, ps.seasonStart),
   };
