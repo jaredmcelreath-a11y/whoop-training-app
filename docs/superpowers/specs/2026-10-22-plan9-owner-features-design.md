@@ -251,3 +251,12 @@ These were settled by the designer, not the owner. The owner can override any of
 - **Text-recognition library** and its loading strategy. Load it only on the lab page, never in the main bundle.
 - **Schema shapes:** manual completion flag, user sources and proposals. They must be additive and nullable where they extend existing tables.
 - **Exact red token** and ring sizes, within the visual design rules.
+
+## How a Session Resolves Proposals (Added in Plan 12)
+
+1. Run `npx tsx scripts/proposals.ts list`. This reads production when `.env.production.local` holds `DATABASE_URL`. Check the `Database:` line it prints first. A checkout without that file reads the local database instead.
+2. For each proposal:
+   - read the study;
+   - weigh it against the rule's existing citations;
+   - either change the rule in `src/lib/engine/rules/catalog.ts` (with its params, citations, badge and tests passing), or decide it doesn't change anything.
+3. Run `npx tsx scripts/proposals.ts resolve <id> "<what was decided and why>" --prod`. The `--prod` flag is required on Neon; use `--local` on the local database. The decision then shows under that source in the Library.

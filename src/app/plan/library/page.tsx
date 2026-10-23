@@ -5,6 +5,10 @@ import { AppPage } from "@/components/ui/app-page";
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
 import { requireSession } from "@/lib/auth/session";
+import { getDb } from "@/db/client";
+import { listUserSources, type UserSource } from "@/lib/library/user-sources";
+import { AddSourceForm } from "./add-source-form";
+import { deleteSourceAction } from "./source-actions";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { EVIDENCE_ORDER, type Citation, type Evidence } from "@/lib/engine/rules/types";
 import { AREA_LABEL, EVIDENCE_LABEL, EVIDENCE_TEXT, filterRules, humanizeParams, type ParamItem } from "@/lib/plan/view";
@@ -70,6 +74,8 @@ async function LibraryContent({ searchParams }: { searchParams: SearchParams }) 
   const allAreas = Object.keys(AREA_LABEL).filter((a) => all.some((r) => r.area === a));
   const areas = Object.keys(AREA_LABEL).filter((a) => rules.some((r) => r.area === a));
   const other = [...new Set(rules.map((r) => r.area))].filter((a) => !(a in AREA_LABEL));
+  const mine = await listUserSources(getDb());
+  const proposals = mine.filter((m) => m.proposal === "open");
 
   return (
     <>
@@ -94,6 +100,27 @@ async function LibraryContent({ searchParams }: { searchParams: SearchParams }) 
           a mechanism, a critique or a self-experiment. They help explain a rule but do not count toward its badge.
         </p>
       </section>
+
+      {proposals.length ? (
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Proposed Changes</h2>
+          <p className={styles.spaced}>
+            Sources you flagged as changing a rule. Each is checked against the rule&apos;s other evidence in a
+            Claude Code session before anything changes.
+          </p>
+          <ul className={styles.citations}>
+            {proposals.map((p) => (
+              <li key={p.id} className={styles.citation}>
+                <a href={`#${p.ruleId}`} className={styles.citeLink}>
+                  {p.ruleId}
+                </a>
+                : {p.title}
+                {p.note ? <span className={styles.sub}> · {p.note}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <ScrollToHash />
       <nav className={styles.filters} aria-label="Filter by group">
@@ -126,7 +153,7 @@ async function LibraryContent({ searchParams }: { searchParams: SearchParams }) 
           {rules
             .filter((r) => r.area === area)
             .map((r) => (
-              <RuleEntry key={r.id} r={r} />
+              <RuleEntry key={r.id} r={r} mine={mine.filter((m) => m.ruleId === r.id)} />
             ))}
         </section>
       ))}
@@ -134,7 +161,7 @@ async function LibraryContent({ searchParams }: { searchParams: SearchParams }) 
   );
 }
 
-function RuleEntry({ r }: { r: AnyRule }) {
+function RuleEntry({ r, mine }: { r: AnyRule; mine: UserSource[] }) {
   const params = humanizeParams(r.params);
   return (
     <article id={r.id} className={styles.rule}>
@@ -177,7 +204,46 @@ function RuleEntry({ r }: { r: AnyRule }) {
       ) : (
         <p className={styles.spaced}>No direct study: this is common coaching practice.</p>
       )}
+      {mine.length ? <MySources items={mine} /> : null}
+      <AddSourceForm ruleId={r.id} />
     </article>
+  );
+}
+
+/** Sources the owner added; shown with the rule but never counted toward its badge. */
+function MySources({ items }: { items: UserSource[] }) {
+  return (
+    <>
+      <p className={styles.subhead}>Your Sources</p>
+      <ul className={styles.citations}>
+        {items.map((m) => (
+          <li key={m.id} className={styles.citation}>
+            {m.url ? (
+              <a href={m.url} target="_blank" rel="noopener noreferrer" className={styles.citeLink}>
+                {m.authors ? `${m.authors} (${m.year ?? "n.d."}). ` : ""}
+                {m.title}.
+              </a>
+            ) : (
+              <span>{m.title}</span>
+            )}{" "}
+            {m.venue ? <span className={styles.sub}>{m.venue}</span> : null}
+            <span className={styles.citeTags}>
+              <span className={styles.mine}>Added by You</span>
+              {m.evidence !== "context" ? <EvidenceBadge level={m.evidence as Evidence} /> : <span className={styles.context}>context</span>}
+              {m.stance === "contradicts" ? <span className={styles.contradicts}>Contradicts</span> : null}
+              {!m.verified ? <span className={styles.context}>Unverified</span> : null}
+              {m.proposal === "open" ? <span className={styles.mine}>Change Proposed</span> : null}
+            </span>
+            {m.proposal === "resolved" && m.resolution ? <p className={styles.caveat}>Decision: {m.resolution}</p> : null}
+            <form action={deleteSourceAction.bind(null, m.id)}>
+              <button type="submit" className={styles.removeSource}>
+                Remove
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

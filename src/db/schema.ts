@@ -246,6 +246,31 @@ export const labResults = pgTable(
   (t) => [unique("lab_results_panel_marker_unique").on(t.panelId, t.marker)],
 );
 
+/**
+ * Sources the owner added to a rule in the Library. They never change RULES or a rule's badge;
+ * a verified one can propose a change, which a Claude Code session resolves (scripts/proposals.ts).
+ */
+export const userSources = pgTable("user_sources", {
+  id: id(),
+  ruleId: text("rule_id").notNull(),
+  title: text("title").notNull(),
+  authors: text("authors").notNull().default(""),
+  venue: text("venue").notNull().default(""),
+  year: integer("year"),
+  url: text("url").notNull().default(""),
+  doi: text("doi"),
+  pmid: text("pmid"),
+  /** An Evidence level, or "context" for anything unverified or not a study. */
+  evidence: text("evidence").notNull(),
+  verified: boolean("verified").notNull(),
+  stance: text("stance", { enum: ["supports", "contradicts", "context"] }).notNull(),
+  note: text("note"),
+  proposal: text("proposal", { enum: ["none", "open", "resolved"] }).notNull().default("none"),
+  resolution: text("resolution"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  resolvedAt: ts("resolved_at"),
+});
+
 export type PlanWindow = { start: string; end: string };
 export type SessionKind =
   | "swim"
