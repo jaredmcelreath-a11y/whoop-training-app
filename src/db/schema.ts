@@ -279,6 +279,19 @@ export const userSources = pgTable("user_sources", {
   resolvedAt: ts("resolved_at"),
 });
 
+/** One saved race projection per training week (Monday); a saved week never changes. */
+export const raceProjections = pgTable("race_projections", {
+  weekStart: day("week_start").primaryKey(),
+  swimS: integer("swim_s").notNull(),
+  bikeS: integer("bike_s").notNull(),
+  runS: integer("run_s").notNull(),
+  transitionS: integer("transition_s").notNull(),
+  totalS: integer("total_s").notNull(),
+  estimates: jsonb("estimates").$type<{ swim: boolean; bike: boolean; run: boolean }>().notNull(),
+  inputs: jsonb("inputs").notNull(),
+  computedAt: ts("computed_at").notNull().defaultNow(),
+});
+
 export type PlanWindow = { start: string; end: string };
 export type SessionKind =
   | "swim"
@@ -318,6 +331,12 @@ export const planSettings = pgTable(
     painSide: text("pain_side"),
     /** How the pool length is shown: "yd" | "m" | "ft"; storage stays in meters. */
     poolUnit: text("pool_unit"),
+    // Optional starting paces for the race projection, used until a leg has enough training.
+    startSwimSecPer100Yd: integer("start_swim_sec_per_100yd"),
+    startRunSecPerMi: integer("start_run_sec_per_mi"),
+    startBikeMph: doublePrecision("start_bike_mph"),
+    /** Race goal in seconds; null means the race.projection default. */
+    goalSec: integer("goal_sec"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],

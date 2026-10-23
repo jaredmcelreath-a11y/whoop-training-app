@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import { SubmitButton } from "@/components/submit-button";
 import type { PlanSettings } from "@/lib/plan/settings";
-import { JOINT_OPTIONS, poolDisplay, WEEKDAYS } from "@/lib/plan/view";
+import { formatClock, JOINT_OPTIONS, poolDisplay, WEEKDAYS } from "@/lib/plan/view";
 import styles from "../plan.module.css";
 import { savePlanSettings, type PlanSettingsState } from "./actions";
 
@@ -88,6 +88,29 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
         </select>
         <span className={styles.disclaimer}>When set, the pain log skips the side picker.</span>
       </label>
+
+      <fieldset className={styles.field}>
+        <legend className={styles.label}>Race Projection</legend>
+        <label className={styles.field}>
+          <span className={styles.label}>Starting Swim Pace (per 100 yd)</span>
+          <input name="startSwim" placeholder="2:00" autoComplete="off" defaultValue={formatClock(settings.startSwimSecPer100Yd, "pace")} className={styles.input} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Starting Long-Run Pace (per mile)</span>
+          <input name="startRun" placeholder="11:00" autoComplete="off" defaultValue={formatClock(settings.startRunSecPerMi, "pace")} className={styles.input} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Starting Bike Speed (mph)</span>
+          <input name="startBike" inputMode="decimal" placeholder="16" autoComplete="off" defaultValue={settings.startBikeMph ?? ""} className={styles.input} />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Race Goal (h:mm)</span>
+          <input name="goal" placeholder="6:00" autoComplete="off" defaultValue={formatClock(settings.goalSec, "goal")} className={styles.input} />
+        </label>
+        <span className={styles.disclaimer}>
+          Used until each leg has enough logged workouts. Leave a pace blank to use a first-timer estimate.
+        </span>
+      </fieldset>
 
       <SubmitButton className={styles.primary} pendingLabel="Saving and re-planning…">
         Save and re-plan

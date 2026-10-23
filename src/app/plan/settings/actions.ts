@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
-import { localDate } from "@/lib/log/dates";
+import { localDate, weekStart } from "@/lib/log/dates";
+import { recomputeWeekProjection, startPacesChanged } from "@/lib/plan/projection";
 import { regenerateFuture } from "@/lib/plan/service";
 import { getPlanSettings, updatePlanSettings } from "@/lib/plan/settings";
 import { settingsFromForm } from "@/lib/plan/view";
@@ -27,6 +28,15 @@ export async function savePlanSettings(_prev: PlanSettingsState, formData: FormD
   } catch (e) {
     console.error("savePlanSettings: saving failed", e);
     return { error: "Could not save the settings — please try again." };
+  }
+  // A corrected starting pace redoes this week's race projection (past weeks never change). Done
+  // before re-planning, so a re-planning failure can't skip it.
+  if (startPacesChanged(current, parsed.settings)) {
+    try {
+      await recomputeWeekProjection(db, weekStart(localDate(now, tz)));
+    } catch (e) {
+      console.error("savePlanSettings: projection recompute failed", e);
+    }
   }
   try {
     await regenerateFuture(db, localDate(now, tz), now, tz);

@@ -18,6 +18,8 @@ import {
   phaseBlocks,
   prescriptionLine,
   sessionMetaLabel,
+  formatClock,
+  parseClock,
   settingsFromForm,
   structureLine,
   weeksToRace,
@@ -35,7 +37,7 @@ const CURRENT: PlanSettings = {
   poolLengthM: 22.86,
   wakeTime: null,
   painSide: null,
-  poolUnit: "yd",
+  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null,
 };
 
 function form(entries: Record<string, string>): FormData {
@@ -228,6 +230,43 @@ describe("season helpers", () => {
     expect(weeksToRace("2026-10-19", "2027-10-17")).toBe(51);
     expect(weeksToRace("2027-10-11", "2027-10-17")).toBe(0);
     expect(weeksToRace("2027-10-18", "2027-10-17")).toBe(0);
+  });
+});
+
+describe("parseClock", () => {
+  it("reads paces as m:ss and goals as h:mm", () => {
+    expect(parseClock("2:05", "pace")).toBe(125);
+    expect(parseClock("11:00", "pace")).toBe(660);
+    expect(parseClock("6:00", "goal")).toBe(21600);
+    expect(parseClock("5:45", "goal")).toBe(20700);
+    for (const junk of ["", "abc", "1:7", "1:60", "-1:00"]) expect(parseClock(junk, "pace"), junk).toBeNull();
+  });
+});
+
+describe("formatClock", () => {
+  it("writes back what parseClock reads", () => {
+    expect(formatClock(125, "pace")).toBe("2:05");
+    expect(formatClock(660, "pace")).toBe("11:00");
+    expect(formatClock(21600, "goal")).toBe("6:00");
+    expect(formatClock(null, "goal")).toBe("");
+  });
+});
+
+describe("settingsFromForm starting paces and goal", () => {
+  it("stores them, and a blank clears to none", () => {
+    const set = settingsFromForm(form({ ...VALID, startSwim: "2:05", startRun: "11:00", startBike: "15.5", goal: "5:45" }), CURRENT);
+    expect(set.ok && [set.settings.startSwimSecPer100Yd, set.settings.startRunSecPerMi, set.settings.startBikeMph, set.settings.goalSec]).toEqual([
+      125, 660, 15.5, 20700,
+    ]);
+    const blank = settingsFromForm(form({ ...VALID, startSwim: "", startRun: "", startBike: "", goal: "" }), CURRENT);
+    expect(blank.ok && [blank.settings.startSwimSecPer100Yd, blank.settings.startRunSecPerMi, blank.settings.startBikeMph, blank.settings.goalSec]).toEqual([
+      null, null, null, null,
+    ]);
+  });
+  it("names the field when a pace can't be read", () => {
+    const bad = settingsFromForm(form({ ...VALID, startSwim: "fast" }), CURRENT);
+    expect(bad.ok).toBe(false);
+    expect(!bad.ok && bad.error).toMatch(/swim pace/i);
   });
 });
 

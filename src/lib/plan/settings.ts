@@ -20,6 +20,12 @@ export type PlanSettings = {
   painSide: "left" | "right" | "both" | null;
   /** Display unit for pool length. */
   poolUnit: "yd" | "m" | "ft";
+  /** Starting paces for the race projection (null: use the first-timer default). */
+  startSwimSecPer100Yd: number | null;
+  startRunSecPerMi: number | null;
+  startBikeMph: number | null;
+  /** Race goal in seconds (null: the race.projection default). */
+  goalSec: number | null;
 };
 
 export const DEFAULT_RACE_DATE = "2027-10-17";
@@ -31,6 +37,12 @@ const POOL_25_YD_M = 22.86;
 const MIN_WEEKS_TO_RACE = 12;
 const MAX_WEEKS_TO_RACE = 104;
 const DAYS_PER_WEEK = 7;
+const S_PER_H = 3600;
+// Plausible bounds for the starting paces and goal (input checks, not training rules).
+const SWIM_PACE_S = [40, 600] as const;
+const RUN_PACE_S = [240, 1200] as const;
+const BIKE_MPH = [5, 40] as const;
+const GOAL_H = [3, 9] as const;
 
 /** A real calendar date: the YYYY-MM-DD shape and a UTC round trip (no 2027-02-30). */
 const dateStr = z
@@ -62,6 +74,16 @@ export const PlanSettingsInput = z
     wakeTime: hhmm.nullable().optional(),
     painSide: z.enum(["left", "right", "both"]).nullable().optional(),
     poolUnit: z.enum(["yd", "m", "ft"]).optional(),
+    startSwimSecPer100Yd: z.number().int().min(SWIM_PACE_S[0]).max(SWIM_PACE_S[1]).nullable().optional(),
+    startRunSecPerMi: z.number().int().min(RUN_PACE_S[0]).max(RUN_PACE_S[1]).nullable().optional(),
+    startBikeMph: z.number().min(BIKE_MPH[0]).max(BIKE_MPH[1]).nullable().optional(),
+    goalSec: z
+      .number()
+      .int()
+      .min(GOAL_H[0] * S_PER_H)
+      .max(GOAL_H[1] * S_PER_H)
+      .nullable()
+      .optional(),
   })
   .superRefine((v, ctx) => {
     const weeks = daysBetween(v.seasonStart, v.raceDate) / DAYS_PER_WEEK;
@@ -108,6 +130,10 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     wakeTime: r.wakeTime ?? null,
     painSide: (r.painSide as PlanSettings["painSide"]) ?? null,
     poolUnit: (r.poolUnit as PlanSettings["poolUnit"]) ?? legacyPoolUnit(r.poolLengthM),
+    startSwimSecPer100Yd: r.startSwimSecPer100Yd ?? null,
+    startRunSecPerMi: r.startRunSecPerMi ?? null,
+    startBikeMph: r.startBikeMph ?? null,
+    goalSec: r.goalSec ?? null,
   };
 }
 
@@ -157,6 +183,10 @@ export async function updatePlanSettings(
       wakeTime: parsed.data.wakeTime ?? null,
       painSide: parsed.data.painSide ?? null,
       poolUnit: parsed.data.poolUnit ?? "yd",
+      startSwimSecPer100Yd: parsed.data.startSwimSecPer100Yd ?? null,
+      startRunSecPerMi: parsed.data.startRunSecPerMi ?? null,
+      startBikeMph: parsed.data.startBikeMph ?? null,
+      goalSec: parsed.data.goalSec ?? null,
       updatedAt: new Date(),
     })
     .where(eq(planSettings.id, 1))

@@ -48,6 +48,7 @@ describe("getPlanSettings", () => {
 describe("pain side and pool unit", () => {
   it("default to unset and yards", async () => {
     const s0 = await getPlanSettings(db, NOW, TZ);
+    expect([s0.startSwimSecPer100Yd, s0.startRunSecPerMi, s0.startBikeMph, s0.goalSec]).toEqual([null, null, null, null]);
     expect(s0.painSide).toBeNull();
     expect(s0.poolUnit).toBe("yd");
   });
@@ -117,6 +118,19 @@ describe("PlanSettingsInput", () => {
   };
   it("accepts a valid input", () => {
     expect(PlanSettingsInput.safeParse(base).success).toBe(true);
+  });
+  it("keeps starting paces and the goal in sane ranges", () => {
+    const ok = (patch: Record<string, number | null>) => PlanSettingsInput.safeParse({ ...base, ...patch }).success;
+    expect(ok({ startSwimSecPer100Yd: 125, startRunSecPerMi: 660, startBikeMph: 16, goalSec: 21600 })).toBe(true);
+    expect(ok({ startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null })).toBe(true);
+    expect(ok({ startSwimSecPer100Yd: 39 })).toBe(false);
+    expect(ok({ startSwimSecPer100Yd: 601 })).toBe(false);
+    expect(ok({ startRunSecPerMi: 239 })).toBe(false);
+    expect(ok({ startRunSecPerMi: 1201 })).toBe(false);
+    expect(ok({ startBikeMph: 4 })).toBe(false);
+    expect(ok({ startBikeMph: 41 })).toBe(false);
+    expect(ok({ goalSec: 3 * 3600 - 1 })).toBe(false);
+    expect(ok({ goalSec: 9 * 3600 + 1 })).toBe(false);
   });
   it("rejects a race 8 weeks out", () => {
     const r = PlanSettingsInput.safeParse({ ...base, raceDate: addDays(base.seasonStart, 56) });

@@ -320,6 +320,7 @@ export const AREA_LABEL: Record<string, string> = {
   hydration: "Hydration",
   supplements: "Supplements",
   strain: "Strain",
+  race: "Race",
 };
 
 // ---------------------------------------------------------------------------
@@ -391,7 +392,30 @@ const FIELD_LABEL: Record<string, string> = {
   jointStatus: "Joint status",
   poolLengthM: "Pool length",
   wakeTime: "Wake time",
+  startSwimSecPer100Yd: "Starting swim pace",
+  startRunSecPerMi: "Starting run pace",
+  startBikeMph: "Starting bike speed",
+  goalSec: "Race goal",
 };
+
+const S_PER_MIN = 60;
+const MIN_PER_H = 60;
+
+/** The inverse of parseClock, for showing a saved value in the form; "" when unset. */
+export function formatClock(s: number | null, kind: "pace" | "goal"): string {
+  if (s === null) return "";
+  const minutes = kind === "pace" ? Math.floor(s / S_PER_MIN) : Math.floor(s / (S_PER_MIN * MIN_PER_H));
+  const rest = kind === "pace" ? s % S_PER_MIN : Math.floor(s / S_PER_MIN) % MIN_PER_H;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+/** "2:05" as a pace (m:ss) is 125 s; "6:00" as a goal (h:mm) is 21,600 s. Null when unreadable. */
+export function parseClock(raw: string, kind: "pace" | "goal"): number | null {
+  const m = /^(\d{1,2}):([0-5]\d)$/.exec(raw.trim());
+  if (!m) return null;
+  const [big, small] = [Number(m[1]), Number(m[2])];
+  return kind === "pace" ? big * S_PER_MIN + small : (big * MIN_PER_H + small) * S_PER_MIN;
+}
 
 type FormResult = { ok: true; settings: PlanSettings } | { ok: false; error: string };
 
@@ -425,6 +449,21 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     return s === "" ? NaN : Number(s);
   };
 
+  // Optional projection fields: blank clears; anything else must read as a pace, speed or goal.
+  const clock = (key: string, kind: "pace" | "goal", label: string) => {
+    const raw = str(f, key);
+    if (!raw) return { value: null };
+    const v = parseClock(raw, kind);
+    return v === null ? { error: `${label}: use ${kind === "pace" ? "m:ss, like 2:05" : "h:mm, like 6:00"}` } : { value: v };
+  };
+  const swim = clock("startSwim", "pace", "Starting swim pace");
+  const run = clock("startRun", "pace", "Starting run pace");
+  const goal = clock("goal", "goal", "Race goal");
+  const bikeRaw = str(f, "startBike");
+  const bike = bikeRaw ? parseNumber(bikeRaw) : null;
+  for (const c of [swim, run, goal]) if ("error" in c) return { ok: false, error: c.error as string };
+  if (bikeRaw && (bike === null || Number.isNaN(bike))) return { ok: false, error: "Starting bike speed: use mph, like 16" };
+
   const parsed = PlanSettingsInput.safeParse({
     raceDate: str(f, "raceDate"),
     seasonStart: current.seasonStart,
@@ -437,6 +476,10 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     wakeTime: str(f, "wakeTime") || null,
     painSide: ["left", "right", "both"].includes(str(f, "painSide")) ? str(f, "painSide") : null,
     poolUnit: unit,
+    startSwimSecPer100Yd: "value" in swim ? swim.value : null,
+    startRunSecPerMi: "value" in run ? run.value : null,
+    startBikeMph: bike,
+    goalSec: "value" in goal ? goal.value : null,
   });
   if (!parsed.success) {
     const msgs = parsed.error.issues.map((i) => {
@@ -453,6 +496,10 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
       wakeTime: parsed.data.wakeTime ?? null,
       painSide: parsed.data.painSide ?? null,
       poolUnit: parsed.data.poolUnit ?? "yd",
+      startSwimSecPer100Yd: parsed.data.startSwimSecPer100Yd ?? null,
+      startRunSecPerMi: parsed.data.startRunSecPerMi ?? null,
+      startBikeMph: parsed.data.startBikeMph ?? null,
+      goalSec: parsed.data.goalSec ?? null,
     },
   };
 }

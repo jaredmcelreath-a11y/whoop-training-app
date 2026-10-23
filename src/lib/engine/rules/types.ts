@@ -68,7 +68,8 @@ export type RuleArea =
   | "nutrition"
   | "hydration"
   | "supplements"
-  | "strain";
+  | "strain"
+  | "race";
 
 export type Rule<P> = {
   id: string;

@@ -10,9 +10,13 @@ import type { StrainTarget } from "@/lib/engine/strain-target";
 import { recoveryBand } from "@/lib/ui/recovery";
 import { weightHint } from "@/lib/ui/weight-hint";
 import { ensureFresh } from "@/lib/whoop/ensure-fresh";
-import { addDays, localDate } from "@/lib/log/dates";
+import { addDays, localDate, weekStart } from "@/lib/log/dates";
 import { Icon } from "@/components/icon";
 import { MiniRing } from "@/components/mini-ring";
+import { ProjectionCard } from "@/components/projection-card";
+import { ensureWeekProjection, projectionHistory, savedWeekProjection, type SavedProjection } from "@/lib/plan/projection";
+import { getPlanSettings } from "@/lib/plan/settings";
+import { RULES } from "@/lib/engine/rules/catalog";
 import { RecoveryRing } from "@/components/recovery-ring";
 import { TabBar } from "@/components/tab-bar";
 import { Page, PageGlow, StatChip } from "@/components/ui/ui";
@@ -78,6 +82,23 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
   } catch (err) {
     console.error("getDayPlan failed:", err);
   }
+  // This week's race projection: saved on first view (a past day only reads what was saved).
+  let projection: { current: SavedProjection; history: SavedProjection[]; goalSec: number | null } | null = null;
+  try {
+    const ws = weekStart(date);
+    const current = past ? await savedWeekProjection(db, ws) : await ensureWeekProjection(db, ws);
+    if (current) {
+      const P = RULES["race.projection"].params;
+      projection = {
+        current,
+        history: await projectionHistory(db, ws, P.trendWeeks),
+        goalSec: (await getPlanSettings(db, realNow, tz)).goalSec,
+      };
+    }
+  } catch (err) {
+    console.error("race projection failed:", err);
+  }
+
   let target: StrainTarget | null = null;
   try {
     target = sessions ? await getStrainTarget(db, date, sessions, tz) : null;
@@ -113,6 +134,14 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
         )}
       </nav>
       {past ? null : <Banner connection={t.connection} />}
+      {projection ? (
+        <ProjectionCard
+          current={projection.current}
+          history={projection.history}
+          goalSec={projection.goalSec}
+          goalDefaultSec={RULES["race.projection"].params.defaultGoalSec}
+        />
+      ) : null}
       <div className={styles.rings}>
         <SleepRing t={t} />
         <div>

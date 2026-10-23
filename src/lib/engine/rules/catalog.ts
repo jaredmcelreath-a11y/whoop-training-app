@@ -358,6 +358,32 @@ type RunVolumeParams = {
 type SplitParams = { swim: number; bike: number; run: number; earlyRunShare: number; earlyWeeks: number };
 type LoadCheckParams = { overPct: number; weeks: number; trailingWeeks: number };
 type StrainRange = [number, number];
+type RaceProjectionParams = {
+  swimYd: number;
+  bikeMi: number;
+  runMi: number;
+  openWaterFactor: number;
+  riegelExponent: number;
+  easyToRaceFactor: number;
+  offBikeFactor: number;
+  vo2Weight: number;
+  bikeRaceFactor: number;
+  defaultSwimSecPer100Yd: number;
+  defaultRunSecPerMi: number;
+  defaultBikeMph: number;
+  transitionMin: number;
+  lookbackWeeks: number;
+  minSessions: number;
+  minSwimYd: number;
+  minRunMi: number;
+  minRideMin: number;
+  maxTreadmillInclinePct: number;
+  trendWeeks: number;
+  defaultGoalSec: number;
+  plausibleSwimSecPer100Yd: Range;
+  plausibleRunSecPerMi: Range;
+  plausibleBikeMph: Range;
+};
 type StrainTargetParams = {
   minDays: number;
   lookbackDays: number;
@@ -559,6 +585,96 @@ export const RULES = deepFreeze({
     evidence: "practice",
     citations: [ctx(WHOOP_STRAIN)],
     caveat: "WHOOP's own Strain Coach target is not available to this app, so this is the app's estimate, not WHOOP's.",
+  }),
+
+  "race.projection": rule<RaceProjectionParams>({
+    id: "race.projection",
+    area: "race",
+    statement:
+      "The projected half Ironman finish adds up a swim, bike and run from your last few weeks of logged training, plus transitions. A leg with too few sessions uses your starting pace (or a first-timer default) and is marked as an estimate. It is recomputed once a week and can go up or down.",
+    why: "Your own recent paces are the best guide to race day; the factors turn training paces into race paces.",
+    params: {
+      swimYd: 2112,
+      bikeMi: 56,
+      runMi: 13.1,
+      openWaterFactor: 1.05,
+      riegelExponent: 1.06,
+      easyToRaceFactor: 0.9,
+      offBikeFactor: 1.1,
+      vo2Weight: 0.3,
+      bikeRaceFactor: 1.05,
+      defaultSwimSecPer100Yd: 150,
+      defaultRunSecPerMi: 690,
+      defaultBikeMph: 16,
+      transitionMin: 12,
+      lookbackWeeks: 6,
+      minSessions: 2,
+      minSwimYd: 400,
+      minRunMi: 3,
+      minRideMin: 45,
+      maxTreadmillInclinePct: 1,
+      trendWeeks: 12,
+      defaultGoalSec: 21600,
+      // Sessions outside these are treated as typos and left out.
+      plausibleSwimSecPer100Yd: [40, 600],
+      plausibleRunSecPerMi: [240, 1200],
+      plausibleBikeMph: [5, 40],
+    },
+    evidence: "practice",
+    citations: [
+      ctx({
+        authors: "Vickers AJ, Vertosick EA",
+        year: 2016,
+        title: "An empirical study of race times in recreational endurance runners",
+        venue: "BMC Sports Sci Med Rehabil 8:26",
+        url: "https://doi.org/10.1186/s13102-016-0052-y",
+        doi: "10.1186/s13102-016-0052-y",
+        evidence: "trial",
+      }),
+      ctx({
+        authors: "Tew G",
+        year: 2005,
+        title: "The effect of cycling cadence on subsequent 10km running performance in well-trained triathletes",
+        venue: "J Sports Sci Med 4(3):342-353",
+        url: "https://pubmed.ncbi.nlm.nih.gov/24453539/",
+        evidence: "trial",
+      }),
+      ctx({
+        authors: "Daniels J",
+        year: 2022,
+        title: "Daniels' Running Formula (4th edition; VO2 max and race-time equations with Gilbert)",
+        venue: "Human Kinetics",
+        url: "https://us.humankinetics.com/products/daniels-running-formula-4th-edition",
+        evidence: "expert",
+      }),
+      ctx({
+        authors: "Sellés-Pérez S, Cejuela R, Fernández-Sáez J, Arévalo-Chico H",
+        year: 2023,
+        title: "Does Pool Performance of Elite Triathletes Predict Open-Water Performance?",
+        venue: "J Funct Morphol Kinesiol 8(4):165",
+        url: "https://doi.org/10.3390/jfmk8040165",
+        doi: "10.3390/jfmk8040165",
+        evidence: "trial",
+      }),
+      ctx({
+        authors: "WHOOP, Inc.",
+        year: 2026,
+        title: "How Accurate Is WHOOP VO2 Max?",
+        venue: "WHOOP The Locker (accessed 2026-10-23)",
+        url: "https://www.whoop.com/us/en/thelocker/how-accurate-is-whoop-vo2-max/",
+        evidence: "practice",
+      }),
+      ctx({
+        authors: "Marathon Handbook",
+        year: 2026,
+        title: "Average Half Ironman Times By Age, Sex + Race Segment",
+        venue: "marathonhandbook.com (accessed 2026-10-23)",
+        url: "https://marathonhandbook.com/average-half-ironman-times/",
+        evidence: "practice",
+      }),
+    ],
+    caveat:
+      "No study validates a whole half Ironman projection for one athlete, so this is practice. Riegel's exponent is calibrated up to the half marathon (Vickers 2016); the off-the-bike slowdown comes from short cycle-run trials (Tew 2005), so a long race may cost more; the open-water, bike race-effort and easy-to-race factors and the first-timer defaults are practice. WHOOP's VO2 max has only WHOOP's own validation, so it gets the smaller share of the run blend.",
   }),
 
   "season.gainPhase": rule<GainPhaseParams>({

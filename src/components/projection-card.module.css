@@ -1,0 +1,56 @@
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.estimate {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sub);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.total {
+  margin-top: 2px;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.change {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.goal {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--sub);
+}
+
+/* Four legs on one row at 375 px. */
+.legs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+
+.legs > * > p:first-child {
+  font-size: 16px;
+}
+
+.how {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}

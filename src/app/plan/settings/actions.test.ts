@@ -9,11 +9,13 @@ vi.mock("@/lib/env", () => ({ getEnv: () => ({ OWNER_TZ: "America/Chicago" }) })
 vi.mock("@/lib/plan/service", () => ({ regenerateFuture: vi.fn() }));
 vi.mock("@/lib/plan/settings", () => ({ getPlanSettings: vi.fn(), updatePlanSettings: vi.fn() }));
 vi.mock("@/lib/plan/view", () => ({ settingsFromForm: vi.fn() }));
+vi.mock("@/lib/plan/projection", async (orig) => ({ ...(await orig<typeof import("@/lib/plan/projection")>()), recomputeWeekProjection: vi.fn() }));
 
 import { revalidatePath } from "next/cache";
 import { regenerateFuture } from "@/lib/plan/service";
 import { getPlanSettings, updatePlanSettings } from "@/lib/plan/settings";
 import { settingsFromForm } from "@/lib/plan/view";
+import { recomputeWeekProjection } from "@/lib/plan/projection";
 import { savePlanSettings } from "./actions";
 
 const SETTINGS: PlanSettings = {
@@ -27,7 +29,7 @@ const SETTINGS: PlanSettings = {
   poolLengthM: 22.86,
   wakeTime: null,
   painSide: null,
-  poolUnit: "yd",
+  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null,
 };
 
 beforeEach(() => {
@@ -61,5 +63,22 @@ describe("savePlanSettings", () => {
     const res = await savePlanSettings({}, new FormData());
     expect(res.ok).toBe(true);
     expect(revalidatePath).toHaveBeenCalledWith("/plan", "layout");
+  });
+
+  describe("race projection recompute", () => {
+    const withPace = { ...SETTINGS, startSwimSecPer100Yd: 125 };
+    it("recomputes this week when a starting pace changes, even if re-planning then fails", async () => {
+      vi.mocked(settingsFromForm).mockReturnValue({ ok: true, settings: withPace });
+      vi.mocked(regenerateFuture).mockRejectedValueOnce(new Error("transient"));
+      await savePlanSettings({}, new FormData());
+      expect(recomputeWeekProjection).toHaveBeenCalledTimes(1);
+    });
+    it("leaves the projection alone when only the goal changes", async () => {
+      vi.mocked(recomputeWeekProjection).mockClear();
+      vi.mocked(settingsFromForm).mockReturnValue({ ok: true, settings: { ...SETTINGS, goalSec: 20700 } });
+      vi.mocked(regenerateFuture).mockResolvedValueOnce({ deleted: 0, created: 0 });
+      await savePlanSettings({}, new FormData());
+      expect(recomputeWeekProjection).not.toHaveBeenCalled();
+    });
   });
 });

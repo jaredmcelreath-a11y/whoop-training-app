@@ -39,6 +39,7 @@ const REQUIRED: Record<string, string[]> = {
   "lower_leg.block": ["sessionsPerWeek", "tibialisSets", "soleusSets", "gastrocSets"],
   "week.template": ["sessionsPerWeek", "longShare", "coreSessionsPerWeek", "walkRun"],
   "strain.dailyTarget": ["minDays", "lookbackDays", "lowPercentile", "highPercentile", "fallback"],
+  "race.projection": ["openWaterFactor", "riegelExponent", "easyToRaceFactor", "offBikeFactor", "vo2Weight", "bikeRaceFactor", "transitionMin", "lookbackWeeks", "minSessions"],
   // Plan 4 (nutrition and hydration). Tasks 5–8 depend on these names.
   "nutrition.protein": ["gPerKg", "minGPerKg", "maxGPerKg"],
   "nutrition.proteinPerMeal": ["gPerKgPerMeal", "minMeals"],
