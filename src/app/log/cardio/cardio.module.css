@@ -165,5 +165,6 @@
 .row3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 4.5rem);
+  align-items: end; /* boxes line up even if a label wraps */
   gap: 8px;
 }

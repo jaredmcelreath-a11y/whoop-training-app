@@ -13,7 +13,7 @@ const KINDS: { kind: Kind; label: string }[] = [
   { kind: "bike", label: "Bike" },
   { kind: "swim", label: "Swim" },
 ];
-const UNITS: Record<Kind, string[]> = { run: ["mi", "km"], bike: ["mi", "km"], swim: ["yd", "m", "ft"] };
+const UNITS: Record<Kind, string[]> = { run: ["mi", "km"], bike: ["mi", "km"], swim: ["yd", "m", "ft", "mi"] };
 
 function Status({ state, pending }: { state: { ok?: true; error?: string }; pending: boolean }) {
   if (pending) return null;
@@ -46,6 +46,8 @@ export function CardioForm({
 }) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [unit, setUnit] = useState(UNITS[initialKind][0]);
+  // Treadmill (run) or stationary bike: incline and watts only make sense indoors.
+  const [indoor, setIndoor] = useState(initialKind === "run");
   const [state, action, pending] = useActionState<CardioState, FormData>(logCardio, {});
 
   return (
@@ -69,6 +71,7 @@ export function CardioForm({
                 onChange={() => {
                   setKind(k.kind);
                   setUnit(UNITS[k.kind][0]);
+                  setIndoor(k.kind === "run");
                 }}
               />
               {k.label}
@@ -130,7 +133,14 @@ export function CardioForm({
           </label>
         </div>
 
-        {kind === "bike" ? (
+        {kind === "run" || kind === "bike" ? (
+          <label className={styles.check}>
+            <input type="checkbox" name="indoor" checked={indoor} onChange={(e) => setIndoor(e.target.checked)} />
+            {kind === "run" ? "Treadmill (indoor)" : "Stationary bike (indoor)"}
+          </label>
+        ) : null}
+
+        {kind === "bike" && indoor ? (
           <label className={styles.field}>
             <span className={styles.label}>Avg Watts</span>
             <input
@@ -143,7 +153,7 @@ export function CardioForm({
             />
           </label>
         ) : null}
-        {kind === "run" ? (
+        {kind === "run" && indoor ? (
           <label className={styles.field}>
             <span className={styles.label}>Incline (%)</span>
             <input
@@ -154,13 +164,6 @@ export function CardioForm({
               placeholder="1"
               className={base.input}
             />
-          </label>
-        ) : null}
-
-        {kind === "run" ? (
-          <label className={styles.check}>
-            <input type="checkbox" name="indoor" defaultChecked />
-            Treadmill (indoor)
           </label>
         ) : null}
 

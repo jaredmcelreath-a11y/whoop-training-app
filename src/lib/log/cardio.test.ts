@@ -204,7 +204,7 @@ describe("cardioFormToInput", () => {
     expect(r.data.avgWatts).toBeNull();
   });
 
-  it("reads the run's indoor checkbox and ignores fields of other kinds", () => {
+  it("reads the run's indoor checkbox and ignores fields that don't apply", () => {
     const r = cardioFormToInput(
       fd({
         kind: "run",
@@ -222,9 +222,27 @@ describe("cardioFormToInput", () => {
     if (!r.success) return;
     expect(r.data.startedAt).toBe("2026-07-01T11:00:00.000Z");
     expect(r.data.indoor).toBe(false);
-    expect(r.data.inclinePct).toBe(1);
+    expect(r.data.inclinePct).toBeNull(); // incline is a treadmill setting
     expect(r.data.avgWatts).toBeNull();
     expect(r.data.poolLength).toBeNull();
+  });
+
+  const at = { startedAt: "2026-07-01T06:00", durationMin: "45", distance: "12", unit: "mi" };
+  it("keeps the incline for a treadmill run", () => {
+    const r = cardioFormToInput(fd({ kind: "run", ...at, distance: "3", indoor: "on", inclinePct: "1" }), TZ);
+    expect(r.success && r.data.inclinePct).toBe(1);
+  });
+
+  it("reads the stationary bike checkbox and keeps watts only for it", () => {
+    const gym = cardioFormToInput(fd({ kind: "bike", ...at, indoor: "on", avgWatts: "150" }), TZ);
+    expect(gym.success && [gym.data.indoor, gym.data.avgWatts]).toEqual([true, 150]);
+    const road = cardioFormToInput(fd({ kind: "bike", ...at, avgWatts: "150" }), TZ);
+    expect(road.success && [road.data.indoor, road.data.avgWatts]).toEqual([false, null]);
+  });
+
+  it("takes a swim distance in miles", () => {
+    const r = cardioFormToInput(fd({ kind: "swim", ...at, distance: "0.75" }), TZ);
+    expect(r.success && r.data.unit).toBe("mi");
   });
 
   it("rejects a bad start time and a bad number", () => {

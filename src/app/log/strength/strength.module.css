@@ -174,8 +174,20 @@
   padding: 10px 6px;
 }
 
+/* iOS draws its own shorter dropdown that ignores min-height; a plain box with a drawn arrow matches the inputs. */
 .select {
   font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--sub) 50%),
+    linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+  background-position:
+    right 16px center,
+    right 11px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
 }
 
 .numInput:focus,

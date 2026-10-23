@@ -30,7 +30,7 @@ export type SetInput = z.infer<typeof SetInput>;
 
 const MAX_METERS = { swim: 10_000, run: 100_000, bike: 400_000 } as const;
 const KIND_UNITS = {
-  swim: ["yd", "m", "ft"],
+  swim: ["yd", "m", "ft", "mi"],
   run: ["mi", "km"],
   bike: ["mi", "km"],
 } as const;

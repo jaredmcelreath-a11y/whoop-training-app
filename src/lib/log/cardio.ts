@@ -84,7 +84,8 @@ export async function recentCardio(db: Db, limit = 10): Promise<CardioWithWhoop[
 
 /**
  * Reads the cardio form. `startedAt` is a datetime-local value in `tz`; fields that do not
- * belong to the chosen kind are dropped; swims and gym rides are indoor, runs read the checkbox.
+ * belong to the chosen kind are dropped; swims are indoor, runs and rides read the checkbox.
+ * Incline is kept only for a treadmill run and watts only for a stationary bike.
  */
 export function cardioFormToInput(formData: FormData, tz: string) {
   const kind = String(formData.get("kind") ?? "");
@@ -96,16 +97,17 @@ export function cardioFormToInput(formData: FormData, tz: string) {
     // Left empty so validation reports startedAt.
   }
   const unit = String(formData.get("unit") || DEFAULT_UNIT[kind as CardioKind] || "");
+  const indoor = has("swim") || formData.get("indoor") === "on";
   return CardioInput.safeParse({
     kind,
     startedAt,
     durationMin: parseNumber(formData.get("durationMin")),
     distance: parseNumber(formData.get("distance")),
     unit,
-    avgWatts: has("bike") ? parseNumber(formData.get("avgWatts")) : null,
-    inclinePct: has("run") ? parseNumber(formData.get("inclinePct")) : null,
+    avgWatts: has("bike") && indoor ? parseNumber(formData.get("avgWatts")) : null,
+    inclinePct: has("run") && indoor ? parseNumber(formData.get("inclinePct")) : null,
     poolLength: has("swim") ? parseNumber(formData.get("poolLength")) : null,
-    indoor: has("run") ? formData.get("indoor") === "on" : true,
+    indoor,
     notes: String(formData.get("notes") ?? ""),
   });
 }
