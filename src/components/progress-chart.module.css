@@ -1,0 +1,35 @@
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: var(--accent);
+}
+
+.goal {
+  stroke: var(--sub);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.goalText,
+.axis {
+  fill: var(--sub);
+  font-size: 11px;
+}
+
+.empty {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--sub);
+}

@@ -287,6 +287,8 @@ export const raceProjections = pgTable("race_projections", {
   runS: integer("run_s").notNull(),
   transitionS: integer("transition_s").notNull(),
   totalS: integer("total_s").notNull(),
+  /** The week's total when it was first saved; a recompute never changes it (the chart's start). */
+  initialTotalS: integer("initial_total_s"),
   estimates: jsonb("estimates").$type<{ swim: boolean; bike: boolean; run: boolean }>().notNull(),
   inputs: jsonb("inputs").notNull(),
   computedAt: ts("computed_at").notNull().defaultNow(),

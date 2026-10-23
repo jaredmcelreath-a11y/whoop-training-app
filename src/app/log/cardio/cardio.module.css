@@ -166,3 +166,10 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+/* Pool length beside its own unit. */
+.poolRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 7.5rem);
+  gap: 8px;
+}

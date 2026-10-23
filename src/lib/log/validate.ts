@@ -45,6 +45,8 @@ export const CardioInput = z
     avgWatts: optNum(0, 2000),
     inclinePct: optNum(-10, 40),
     poolLength: z.number().positive().nullable(),
+    /** The pool length's own unit; when absent it is the distance unit. */
+    poolUnit: z.enum(["yd", "m", "ft"]).optional(),
     indoor: z.boolean(),
     notes: z.string().max(500),
   })
@@ -65,7 +67,7 @@ export const CardioInput = z
       });
     }
     if (v.poolLength !== null) {
-      const m = toMeters(v.poolLength, v.unit);
+      const m = toMeters(v.poolLength, v.poolUnit ?? v.unit);
       if (m < 10 || m > 100) {
         ctx.addIssue({
           code: "custom",

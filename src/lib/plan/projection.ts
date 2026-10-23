@@ -19,6 +19,8 @@ export type SavedProjection = {
   runS: number;
   transitionS: number;
   totalS: number;
+  /** The total when this week was first saved (null on rows saved before this was kept). */
+  initialTotalS: number | null;
   estimates: { swim: boolean; bike: boolean; run: boolean };
 };
 
@@ -122,6 +124,7 @@ const toSaved = (r: typeof raceProjections.$inferSelect): SavedProjection => ({
   runS: r.runS,
   transitionS: r.transitionS,
   totalS: r.totalS,
+  initialTotalS: r.initialTotalS,
   estimates: r.estimates,
 });
 
@@ -150,7 +153,8 @@ export async function savedWeekProjection(db: Db, weekStart: string): Promise<Sa
 export async function ensureWeekProjection(db: Db, weekStart: string, tz: string): Promise<SavedProjection> {
   const saved = await savedWeekProjection(db, weekStart);
   if (saved) return saved;
-  await db.insert(raceProjections).values(await compute(db, weekStart, tz)).onConflictDoNothing({ target: raceProjections.weekStart });
+  const row = await compute(db, weekStart, tz);
+  await db.insert(raceProjections).values({ ...row, initialTotalS: row.totalS }).onConflictDoNothing({ target: raceProjections.weekStart });
   return (await savedWeekProjection(db, weekStart)) as SavedProjection;
 }
 
@@ -159,7 +163,7 @@ export async function recomputeWeekProjection(db: Db, weekStart: string, tz: str
   const row = await compute(db, weekStart, tz);
   await db
     .insert(raceProjections)
-    .values(row)
+    .values({ ...row, initialTotalS: row.totalS })
     .onConflictDoUpdate({ target: raceProjections.weekStart, set: { ...row, computedAt: new Date() } });
   return (await savedWeekProjection(db, weekStart)) as SavedProjection;
 }

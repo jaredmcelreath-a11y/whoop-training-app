@@ -87,6 +87,15 @@ describe("weekly snapshots", () => {
     expect((await savedWeekProjection(db, addDays(WEEK, -7)))?.totalS).toBe(last.totalS);
   });
 
+  it("keeps the first value of a week when it's recomputed", async () => {
+    const first = await ensureWeekProjection(db, WEEK, TZ);
+    expect(first.initialTotalS).toBe(first.totalS);
+    await updatePlanSettings(db, { startBikeMph: 20 });
+    const after = await recomputeWeekProjection(db, WEEK, TZ);
+    expect(after.totalS).toBeLessThan(first.totalS);
+    expect(after.initialTotalS).toBe(first.totalS);
+  });
+
   it("reads a week without ever writing one", async () => {
     expect(await savedWeekProjection(db, WEEK)).toBeNull();
     expect(await db.select().from(raceProjections)).toHaveLength(0);

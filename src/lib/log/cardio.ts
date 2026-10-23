@@ -38,7 +38,7 @@ export async function addCardio(db: Db, input: CardioInput, tz: string): Promise
       poolLengthM: isSwim
         ? input.poolLength === null
           ? DEFAULT_POOL_M
-          : toMeters(input.poolLength, input.unit)
+          : toMeters(input.poolLength, input.poolUnit ?? input.unit)
         : null,
       indoor: input.indoor,
       notes: input.notes.trim() || null,
@@ -105,6 +105,7 @@ export function cardioFormToInput(formData: FormData, tz: string) {
     avgWatts: has("bike") ? parseNumber(formData.get("avgWatts")) : null,
     inclinePct: has("run") ? parseNumber(formData.get("inclinePct")) : null,
     poolLength: has("swim") ? parseNumber(formData.get("poolLength")) : null,
+    poolUnit: has("swim") && ["yd", "m", "ft"].includes(String(formData.get("poolUnit"))) ? (String(formData.get("poolUnit")) as "yd" | "m" | "ft") : undefined,
     indoor: has("run") ? formData.get("indoor") === "on" : true,
     notes: String(formData.get("notes") ?? ""),
   });

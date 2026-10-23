@@ -67,6 +67,21 @@ describe("addCardio", () => {
     expect(row.distanceM).toBe(1000);
   });
 
+  it("takes the pool length in its own unit, including feet", async () => {
+    const { id } = await addCardio(
+      db,
+      input({ kind: "swim", durationMin: 30, distance: 1000, unit: "yd", poolLength: 75, poolUnit: "ft" }),
+      TZ,
+    );
+    const [row] = await db.select().from(cardioEntries).where(eq(cardioEntries.id, id));
+    expect(row.poolLengthM).toBeCloseTo(22.86, 6);
+    expect(row.distanceM).toBeCloseTo(914.4, 6);
+  });
+
+  it("rejects a pool length outside 10-100 m in its own unit", () => {
+    expect(CardioInput.safeParse({ ...base, kind: "swim", durationMin: 30, distance: 1000, unit: "yd", poolLength: 20, poolUnit: "ft" }).success).toBe(false);
+  });
+
   it("files an 11:30 pm Chicago run under that Chicago date and leaves pool length empty", async () => {
     const { id } = await addCardio(
       db,
@@ -190,6 +205,15 @@ describe("cardioFormToInput", () => {
     expect(r.data.indoor).toBe(true);
     expect(r.data.poolLength).toBeNull();
     expect(r.data.avgWatts).toBeNull();
+  });
+
+  it("reads the pool length unit, defaulting to the distance unit", () => {
+    const swim = (extra: Record<string, string>) =>
+      cardioFormToInput(fd({ kind: "swim", startedAt: "2026-11-04T06:00", durationMin: "32", distance: "1500", unit: "yd", poolLength: "75", ...extra }), TZ);
+    const ft = swim({ poolUnit: "ft" });
+    expect(ft.success && ft.data.poolUnit).toBe("ft");
+    const none = swim({});
+    expect(none.success && none.data.poolUnit).toBeUndefined();
   });
 
   it("reads the run's indoor checkbox and ignores fields of other kinds", () => {

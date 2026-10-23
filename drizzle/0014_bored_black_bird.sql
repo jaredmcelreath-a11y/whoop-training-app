@@ -1,0 +1,1 @@
+ALTER TABLE "race_projections" ADD COLUMN "initial_total_s" integer;

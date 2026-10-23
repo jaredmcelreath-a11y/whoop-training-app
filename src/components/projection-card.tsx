@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { LineChart } from "@/components/line-chart";
+import { ProgressChart } from "@/components/progress-chart";
 import { Cap, Card, StatChip } from "@/components/ui/ui";
 import type { SavedProjection } from "@/lib/plan/projection";
-import { changeLine, goalLine, hms, legTime } from "@/lib/ui/projection-view";
+import { changeLine, goalLine, hms, legTime, progressPoints } from "@/lib/ui/projection-view";
 import styles from "./projection-card.module.css";
 
-const S_PER_H = 3600;
 
 /**
  * The projected half Ironman finish (rule race.projection): this week's saved projection, the
@@ -41,15 +40,7 @@ export function ProjectionCard({
         <StatChip label="Run" value={legTime(current.runS)} hint={hint(current.estimates.run)} />
         <StatChip label="T1 + T2" value={legTime(current.transitionS)} />
       </div>
-      {history.length >= 2 ? (
-        <LineChart
-          segments={[history.map((h) => ({ date: h.weekStart, value: Math.round((h.totalS / S_PER_H) * 100) / 100 }))]}
-          goal={(goalSec ?? goalDefaultSec) / S_PER_H}
-          unit="h"
-          label="Projected finish by week, lower is faster, with the goal line"
-          emptyText=""
-        />
-      ) : null}
+      <ProgressChart points={progressPoints(history)} goalS={goalSec ?? goalDefaultSec} />
       <Link href="/plan/library#race.projection" className={styles.how}>
         How This Is Worked Out
       </Link>

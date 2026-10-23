@@ -39,10 +39,13 @@ export function CardioForm({
   defaultStart,
   initialKind = "run",
   defaultDurationMin,
+  defaultPoolUnit = "yd",
 }: {
   defaultStart: string;
   initialKind?: Kind;
   defaultDurationMin?: number;
+  /** From Plan Settings; the pool length has its own unit (feet allowed). */
+  defaultPoolUnit?: "yd" | "m" | "ft";
 }) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [unit, setUnit] = useState(UNITS[initialKind][0]);
@@ -131,17 +134,25 @@ export function CardioForm({
             </select>
           </label>
           {kind === "swim" ? (
-            <label className={styles.field}>
-              <span className={styles.label}>Pool Length ({unit})</span>
-              <input
-                name="poolLength"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="25"
-                className={base.input}
-              />
-            </label>
+            <div className={styles.field}>
+              <span className={styles.label}>Pool Length</span>
+              <div className={styles.poolRow}>
+                <input
+                  name="poolLength"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="25"
+                  aria-label="Pool length"
+                  className={base.input}
+                />
+                <select name="poolUnit" defaultValue={defaultPoolUnit} aria-label="Pool length unit" className={base.select}>
+                  <option value="yd">Yards</option>
+                  <option value="m">Meters</option>
+                  <option value="ft">Feet</option>
+                </select>
+              </div>
+            </div>
           ) : null}
           {kind === "bike" ? (
             <label className={styles.field}>

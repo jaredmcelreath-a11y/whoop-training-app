@@ -13,13 +13,11 @@ import { ensureFresh } from "@/lib/whoop/ensure-fresh";
 import { addDays, localDate, weekStart } from "@/lib/log/dates";
 import { Icon } from "@/components/icon";
 import { MiniRing } from "@/components/mini-ring";
-import { ProjectionCard } from "@/components/projection-card";
-import { ensureWeekProjection, projectionHistory, savedWeekProjection, type SavedProjection } from "@/lib/plan/projection";
-import { getPlanSettings } from "@/lib/plan/settings";
-import { RULES } from "@/lib/engine/rules/catalog";
+import { ensureWeekProjection, savedWeekProjection, type SavedProjection } from "@/lib/plan/projection";
+import { hms } from "@/lib/ui/projection-view";
 import { RecoveryRing } from "@/components/recovery-ring";
 import { TabBar } from "@/components/tab-bar";
-import { Page, PageGlow, StatChip } from "@/components/ui/ui";
+import { Cap, Card, Page, PageGlow, StatChip } from "@/components/ui/ui";
 import styles from "./today.module.css";
 import { TodayFuel } from "./today-fuel";
 import { TodayTraining } from "./today-training";
@@ -83,18 +81,10 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
     console.error("getDayPlan failed:", err);
   }
   // This week's race projection: saved on first view (a past day only reads what was saved).
-  let projection: { current: SavedProjection; history: SavedProjection[]; goalSec: number | null } | null = null;
+  let projection: SavedProjection | null = null;
   try {
     const ws = weekStart(date);
-    const current = past ? await savedWeekProjection(db, ws) : await ensureWeekProjection(db, ws, tz);
-    if (current) {
-      const P = RULES["race.projection"].params;
-      projection = {
-        current,
-        history: await projectionHistory(db, ws, P.trendWeeks),
-        goalSec: (await getPlanSettings(db, realNow, tz)).goalSec,
-      };
-    }
+    projection = past ? await savedWeekProjection(db, ws) : await ensureWeekProjection(db, ws, tz);
   } catch (err) {
     console.error("race projection failed:", err);
   }
@@ -134,14 +124,6 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
         )}
       </nav>
       {past ? null : <Banner connection={t.connection} />}
-      {projection ? (
-        <ProjectionCard
-          current={projection.current}
-          history={projection.history}
-          goalSec={projection.goalSec}
-          goalDefaultSec={RULES["race.projection"].params.defaultGoalSec}
-        />
-      ) : null}
       <div className={styles.rings}>
         <SleepRing t={t} />
         <div>
@@ -161,6 +143,13 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
         <StatChip label="Resting HR" value={t.rhr === null ? null : `${Math.round(t.rhr)} bpm`} />
         <WeightChip t={t} />
       </div>
+      {/* Just the time; the split, goal and chart are on /projection. */}
+      {projection ? (
+        <Card hot href="/projection">
+          <Cap>Projected Finish</Cap>
+          <p className={styles.restDay}>{hms(projection.totalS)}</p>
+        </Card>
+      ) : null}
       {/* These two read `date` against the real clock, so a past day never adapts or generates. */}
       <TodayTraining db={db} date={date} sessions={sessions} past={past} />
       <TodayFuel db={db} date={date} now={realNow} tz={tz} past={past} />

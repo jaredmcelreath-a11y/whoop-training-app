@@ -36,3 +36,19 @@ export function legTime(s: number): string {
   const m = totalMin % MIN_PER_H;
   return h ? `${h}h ${m}m` : `${m}m`;
 }
+
+type Week = { weekStart: string; totalS: number; initialTotalS: number | null };
+
+const shortDay = (iso: string) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" }).format(new Date(`${iso}T00:00:00Z`));
+
+/**
+ * The progress chart's points, oldest first: "Start" (the very first projection, when the
+ * first week was later recomputed, e.g. after entering starting paces), then each week.
+ */
+export function progressPoints(weeks: readonly Week[]): { label: string; totalS: number }[] {
+  if (!weeks.length) return [];
+  const first = weeks[0];
+  const start = first.initialTotalS !== null && first.initialTotalS !== first.totalS ? [{ label: "Start", totalS: first.initialTotalS }] : [];
+  return [...start, ...weeks.map((w) => ({ label: shortDay(w.weekStart), totalS: w.totalS }))];
+}
