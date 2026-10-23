@@ -7,7 +7,13 @@ export const metadata: Metadata = {
   title: "Seventy3",
   description: "Personal training dashboard built on WHOOP data.",
   appleWebApp: { capable: true, title: "Seventy3", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  icons: {
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/favicon-32.png", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
   // Next emits only the newer mobile-web-app-capable; older iOS reads this one.
   other: { "apple-mobile-web-app-capable": "yes" },
 };

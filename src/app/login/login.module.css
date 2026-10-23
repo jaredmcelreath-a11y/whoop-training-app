@@ -3,17 +3,11 @@
   text-align: center;
 }
 
-.mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  color: var(--accent);
-  background: var(--card2);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  margin-bottom: 12px;
+.logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 10px;
 }
 
 .name {

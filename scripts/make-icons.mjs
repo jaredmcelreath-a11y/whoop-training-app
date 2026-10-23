@@ -1,74 +1,25 @@
-// Writes public/icons/icon-192.png and icon-512.png: a dark square with a green
-// ring (a recovery-dial mark). No dependencies: raw RGBA rows, zlib, PNG chunks.
+// Renders the app icons from public/icons/icon.svg (the Seventy3 "73" mark on its dark tile):
+// the PWA icons, the Apple touch icon and a 32 px favicon. The SVG itself serves as the
+// scalable favicon, and public/icons/logo.svg (no tile) is the mark on the login page.
 // Run: node scripts/make-icons.mjs
-import { mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
-import { deflateSync } from "node:zlib";
+import sharp from "sharp";
 
-const BG = [0x12, 0x16, 0x1b];
-const RING = [0x2f, 0xd0, 0x8a];
-const DOT = [0xe9, 0xed, 0xf2];
+const dir = path.resolve(process.cwd(), "public/icons");
+const svg = readFileSync(path.join(dir, "icon.svg"));
 
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-function crc32(buf) {
-  let c = 0xffffffff;
-  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(body));
-  return Buffer.concat([len, body, crc]);
-}
+const OUT = [
+  ["icon-192.png", 192],
+  ["icon-512.png", 512],
+  ["apple-touch-icon.png", 180],
+  ["favicon-32.png", 32],
+];
 
-function icon(size) {
-  const c = size / 2;
-  // Keep the mark inside the maskable safe zone (inner 80%).
-  const outer = size * 0.3;
-  const inner = size * 0.22;
-  const dot = size * 0.07;
-  const raw = Buffer.alloc(size * (size * 4 + 1));
-  for (let y = 0; y < size; y++) {
-    const row = y * (size * 4 + 1);
-    raw[row] = 0; // filter: none
-    for (let x = 0; x < size; x++) {
-      const d = Math.hypot(x + 0.5 - c, y + 0.5 - c);
-      // Leave a gap in the ring at the top-right, like a dial.
-      const angle = Math.atan2(y + 0.5 - c, x + 0.5 - c);
-      const inGap = angle > -Math.PI / 2 && angle < -Math.PI / 4;
-      let px = BG;
-      if (d <= outer && d >= inner && !inGap) px = RING;
-      else if (d <= dot) px = DOT;
-      const i = row + 1 + x * 4;
-      raw[i] = px[0];
-      raw[i + 1] = px[1];
-      raw[i + 2] = px[2];
-      raw[i + 3] = 0xff;
-    }
-  }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // RGBA
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw, { level: 9 })),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
-
-const dir = path.resolve(import.meta.dirname, "..", "public", "icons");
-mkdirSync(dir, { recursive: true });
-for (const size of [192, 512]) {
-  writeFileSync(path.join(dir, `icon-${size}.png`), icon(size));
-  console.log(`wrote public/icons/icon-${size}.png`);
+for (const [name, size] of OUT) {
+  await sharp(svg, { density: Math.ceil((72 * size) / 512) * 2 })
+    .resize(size, size)
+    .png()
+    .toFile(path.join(dir, name));
+  console.log(`wrote public/icons/${name}`);
 }

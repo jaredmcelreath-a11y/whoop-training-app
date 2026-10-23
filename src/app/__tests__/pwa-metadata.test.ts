@@ -18,6 +18,12 @@ describe("iPhone Home Screen metadata", () => {
     expect(existsSync(join(process.cwd(), "public", apple))).toBe(true);
   });
 
+  it("serves the 73 mark as an SVG favicon with a PNG fallback, both present", () => {
+    const icon = (metadata.icons as { icon: { url: string; type: string }[] }).icon;
+    expect(icon.map((i) => i.url)).toEqual(["/icons/icon.svg", "/icons/favicon-32.png"]);
+    for (const i of icon) expect(existsSync(join(process.cwd(), "public", i.url)), i.url).toBe(true);
+  });
+
   it("covers the notch and sets the theme colour", () => {
     expect(viewport.viewportFit).toBe("cover");
     expect(viewport.themeColor).toBe("#0b0e12");
