@@ -310,6 +310,8 @@ export const plannedSessions = pgTable(
       .notNull()
       .default("planned"),
     completedRef: text("completed_ref"),
+    /** Checked off by hand; cleared when a logged entry or WHOOP workout later matches. */
+    completedManual: boolean("completed_manual").notNull().default(false),
   },
   (t) => [unique("planned_sessions_date_slot_unique").on(t.localDate, t.slot)],
 );
@@ -325,6 +327,8 @@ export const recommendationLog = pgTable(
     ruleId: text("rule_id").notNull(),
     inputs: jsonb("inputs").notNull(),
     effect: text("effect").notNull(),
+    /** The session as adapted that day (a per-session row whose session changed), for the before/now view. */
+    adapted: jsonb("adapted"),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
   (t) => [

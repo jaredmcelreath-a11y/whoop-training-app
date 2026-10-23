@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NOT_ENOUGH_DATA } from "@/lib/engine/adapt";
-import { parseCardioKind, reasonView, sessionLogLink, sessionLogHref, sessionNotes, whyEntries } from "./today-view";
+import { canUncheck, changeFor, logLinkFor, parseCardioKind, reasonView, sessionLogLink, sessionLogHref, sessionNotes, splitDay, whyEntries } from "./today-view";
 
 describe("sessionLogHref", () => {
   it("links strength-like sessions to the strength log", () => {
@@ -94,5 +94,62 @@ describe("reasonView", () => {
   it("a done session with no reasons shows nothing extra", () => {
     const v = reasonView(false, []);
     expect(v).toMatchObject({ badge: null, subtle: null, lines: [], sheet: [] });
+  });
+});
+
+describe("splitDay", () => {
+  const s = (kind: string, status: "planned" | "done", completedRef: string | null = null) => ({ kind, status, completedRef });
+  it("puts done work first, then the current session, then the rest; rest rows are ignored", () => {
+    const run = s("run", "done");
+    const lift = s("strength", "planned");
+    const core = s("core", "planned");
+    expect(splitDay([s("rest", "planned"), run, lift, core])).toEqual({ done: [run], current: lift, later: [core] });
+  });
+  it("counts a logged completion as done", () => {
+    const run = s("run", "planned", "cardio:1");
+    expect(splitDay([run]).done).toEqual([run]);
+  });
+  it("has no current session once everything is done", () => {
+    expect(splitDay([s("run", "done"), s("core", "done")]).current).toBeNull();
+  });
+});
+
+describe("canUncheck", () => {
+  it("allows only a manual check with no logged ref", () => {
+    expect(canUncheck({ completedManual: true, completedRef: null })).toBe(true);
+    expect(canUncheck({ completedManual: false, completedRef: null })).toBe(false);
+    expect(canUncheck({ completedManual: false, completedRef: "whoop:1" })).toBe(false);
+  });
+});
+
+describe("changeFor", () => {
+  const run = { kind: "run" as const, title: "Tempo run 50 min", durationMin: 50, intensity: "tempo" as const };
+  const easy = { kind: "run" as const, title: "Easy run 40 min", durationMin: 40, intensity: "easy" as const };
+  const reasons = [{ ruleId: "recovery.yellowScale", text: "Recovery 48% (yellow) — shortened to 40 min" }];
+  it("today: before is the stored session, now is the adapted one", () => {
+    expect(changeFor({ ...easy, adjusted: true, before: run, reasons })).toEqual({ before: run, now: easy, reasons });
+  });
+  it("a past day: before is the stored row, now is the logged snapshot", () => {
+    expect(changeFor({ ...run, adjusted: false, reasons: [] }, { now: easy, reasons })).toEqual({ before: run, now: easy, reasons });
+  });
+  it("a past day logged before snapshots: now is null", () => {
+    expect(changeFor({ ...run, adjusted: false, reasons: [] }, { now: null, reasons })!.now).toBeNull();
+  });
+  it("no change: null", () => {
+    expect(changeFor({ ...run, adjusted: false, reasons: [] })).toBeNull();
+  });
+});
+
+describe("logLinkFor", () => {
+  const run = { kind: "run", status: "planned", completedRef: null, completedManual: false };
+  it("offers the log link until a session is logged", () => {
+    expect(logLinkFor(run)).toEqual(sessionLogLink("run"));
+    expect(logLinkFor({ ...run, status: "done", completedManual: true })).toEqual(sessionLogLink("run"));
+  });
+  it("drops it once a log or WHOOP workout completed the session", () => {
+    expect(logLinkFor({ ...run, status: "done", completedRef: "cardio:1" })).toBeNull();
+  });
+  it("has none for kinds that aren't logged", () => {
+    expect(logLinkFor({ ...run, kind: "rest" })).toBeNull();
   });
 });

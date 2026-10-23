@@ -5,14 +5,17 @@ import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { getTodaySummary, unscoredLabel, type TodaySummary } from "@/lib/today";
+import { getDayPlan, getStrainTarget, storedDaySessions, type DaySession } from "@/lib/plan/service";
+import type { StrainTarget } from "@/lib/engine/strain-target";
 import { recoveryBand } from "@/lib/ui/recovery";
 import { weightHint } from "@/lib/ui/weight-hint";
 import { ensureFresh } from "@/lib/whoop/ensure-fresh";
 import { addDays, localDate } from "@/lib/log/dates";
 import { Icon } from "@/components/icon";
+import { MiniRing } from "@/components/mini-ring";
 import { RecoveryRing } from "@/components/recovery-ring";
 import { TabBar } from "@/components/tab-bar";
-import { Cap, Card, Page, PageGlow, StatChip } from "@/components/ui/ui";
+import { Page, PageGlow, StatChip } from "@/components/ui/ui";
 import styles from "./today.module.css";
 import { TodayFuel } from "./today-fuel";
 import { TodayTraining } from "./today-training";
@@ -67,6 +70,21 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
   const score = t.recovery?.score ?? null;
   const band = recoveryBand(score);
 
+  // The day's sessions, loaded once: the strain target and the training card both use them.
+  // Today is adapted; a past day is its stored rows only (getDayPlan would mark, generate and log).
+  let sessions: DaySession[] | null = null;
+  try {
+    sessions = past ? await storedDaySessions(db, date) : (await getDayPlan(db, date, realNow, tz)).sessions;
+  } catch (err) {
+    console.error("getDayPlan failed:", err);
+  }
+  let target: StrainTarget | null = null;
+  try {
+    target = sessions ? await getStrainTarget(db, date, sessions, tz) : null;
+  } catch (err) {
+    console.error("getStrainTarget failed:", err);
+  }
+
   return (
     <>
       <PageGlow glow={band ?? "accent"} />
@@ -95,22 +113,27 @@ async function TodayContent({ searchParams }: { searchParams: SearchParams }) {
         )}
       </nav>
       {past ? null : <Banner connection={t.connection} />}
-      <RecoveryRing
-        score={score}
-        band={band}
-        pendingLabel={t.recovery ? unscoredLabel(t.recovery.state) : "No Data"}
-      />
-      <p className={styles.ringSub}>
-        7-day avg {t.recovery?.avg7 == null ? "—" : `${Math.round(t.recovery.avg7)}%`}
-      </p>
+      <div className={styles.rings}>
+        <SleepRing t={t} />
+        <div>
+          <RecoveryRing
+            score={score}
+            band={band}
+            pendingLabel={t.recovery ? unscoredLabel(t.recovery.state) : "No Data"}
+          />
+          <p className={styles.ringSub}>
+            7-day avg {t.recovery?.avg7 == null ? "—" : `${Math.round(t.recovery.avg7)}%`}
+          </p>
+        </div>
+        <StrainRing t={t} target={target} />
+      </div>
       <div className={styles.chips}>
-        <SleepChip t={t} />
-        <StrainChip t={t} />
+        <HrvChip t={t} />
+        <StatChip label="Resting HR" value={t.rhr === null ? null : `${Math.round(t.rhr)} bpm`} />
         <WeightChip t={t} />
       </div>
-      <HrvCard t={t} />
       {/* These two read `date` against the real clock, so a past day never adapts or generates. */}
-      <TodayTraining db={db} date={date} now={realNow} tz={tz} past={past} />
+      <TodayTraining db={db} date={date} sessions={sessions} past={past} />
       <TodayFuel db={db} date={date} now={realNow} tz={tz} past={past} />
       {past ? null : (
         <p className={styles.sync}>
@@ -141,18 +164,65 @@ function Banner({ connection }: { connection: TodaySummary["connection"] }) {
 
 const PENDING = "Pending";
 
-function SleepChip({ t }: { t: TodaySummary }) {
+function SleepRing({ t }: { t: TodaySummary }) {
   const s = t.sleep;
-  if (!s) return <StatChip label="Sleep" icon="moon" value={null} hint="No data yet" />;
-  const need = s.needMin === null ? undefined : `Need ${hm(s.needMin)}`;
-  if (s.asleepMin === null) return <StatChip label="Sleep" icon="moon" value={PENDING} hint={need ?? "Not scored yet"} />;
-  return <StatChip label="Sleep" icon="moon" value={hm(s.asleepMin)} hint={need ?? "Need unknown"} />;
+  const pct = s?.performancePct ?? null;
+  const caption = s?.asleepMin == null ? (s?.needMin == null ? null : `Need ${hm(s.needMin)}`) : hm(s.asleepMin) + (s.needMin == null ? "" : ` / ${hm(s.needMin)}`);
+  return (
+    <div className={styles.miniRing}>
+      <MiniRing
+        label="Sleep"
+        value={pct}
+        max={100}
+        display={pct === null ? "" : `${Math.round(pct)}%`}
+        tone="sleep"
+        band={null}
+        pendingLabel={s ? PENDING : "No Data"}
+      />
+      <p className={styles.ringCap}>Sleep</p>
+      {caption ? <p className={styles.ringSub}>{caption}</p> : null}
+    </div>
+  );
 }
 
-function StrainChip({ t }: { t: TodaySummary }) {
-  if (t.dayStrain !== null) return <StatChip label="Strain" icon="bolt" value={t.dayStrain.toFixed(1)} hint="Day Strain" />;
+const STRAIN_MAX = 21;
+
+function StrainRing({ t, target }: { t: TodaySummary; target: StrainTarget | null }) {
   const noCycle = t.recovery === null && t.sleep === null;
-  return <StatChip label="Strain" icon="bolt" value={noCycle ? null : PENDING} hint={noCycle ? "No data yet" : "Not scored yet"} />;
+  return (
+    <div className={styles.miniRing}>
+      <MiniRing
+        label="Strain"
+        value={t.dayStrain}
+        max={STRAIN_MAX}
+        display={t.dayStrain === null ? "" : t.dayStrain.toFixed(1)}
+        tone="strain"
+        band={target ? { low: target.low, high: target.high } : null}
+        pendingLabel={noCycle ? "No Data" : PENDING}
+      />
+      <p className={styles.ringCap}>Strain</p>
+      {target ? (
+        <p className={styles.ringSub}>
+          Target {target.low}–{target.high}
+          {target.estimate ? " · Estimate" : ""}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function HrvChip({ t }: { t: TodaySummary }) {
+  const h = t.hrv;
+  const avg = h?.avg30 == null ? null : Math.round(h.avg30);
+  let value: string | null = null;
+  let hint = avg === null ? "30-day avg —" : `30-day avg ${avg}`;
+  if (h && h.ms === null && t.recovery) value = unscoredLabel(t.recovery.state);
+  if (h && h.ms !== null) {
+    const ms = Math.round(h.ms);
+    value = `${ms} ms`;
+    if (avg !== null) hint = `${ms >= avg ? "↑" : "↓"} vs 30-day avg ${avg}`;
+  }
+  return <StatChip label="HRV" value={value} hint={hint} />;
 }
 
 function WeightChip({ t }: { t: TodaySummary }) {
@@ -161,41 +231,23 @@ function WeightChip({ t }: { t: TodaySummary }) {
   return <StatChip label="Weight" icon="scale" value={value} hint={weightHint(w)} href="/log#weight" />;
 }
 
-function HrvCard({ t }: { t: TodaySummary }) {
-  const h = t.hrv;
-  const avg = h?.avg30 == null ? null : Math.round(h.avg30);
-  let hrv = "—";
-  let hint = avg === null ? "30-day avg —" : `30-day avg ${avg}`;
-  if (h && h.ms === null) hrv = unscoredLabel(t.recovery?.state);
-  if (h && h.ms !== null) {
-    const ms = Math.round(h.ms);
-    hrv = `${ms} ms`;
-    if (avg !== null) hint = `${ms >= avg ? "↑" : "↓"} vs 30-day avg ${avg}`;
-  }
-  return (
-    <Card>
-      <div className={styles.strainRow}>
-        <div>
-          <Cap>HRV</Cap>
-          <p className={styles.strainNum}>{hrv}</p>
-          <p className={styles.small}>{hint}</p>
-        </div>
-        <div className={styles.strainRight}>
-          <Cap>Resting HR</Cap>
-          <p className={styles.strainNum}>{t.rhr === null ? "—" : `${Math.round(t.rhr)} bpm`}</p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 function TodaySkeleton() {
   return (
     <div aria-busy="true">
       <p className={styles.meta}>&nbsp;</p>
-      <RecoveryRing score={null} band={null} pendingLabel="Loading" />
+      <div className={styles.rings}>
+        <div className={styles.miniRing}>
+          <MiniRing label="Sleep" value={null} max={100} display="" tone="sleep" band={null} pendingLabel="Loading" />
+          <p className={styles.ringCap}>Sleep</p>
+        </div>
+        <RecoveryRing score={null} band={null} pendingLabel="Loading" />
+        <div className={styles.miniRing}>
+          <MiniRing label="Strain" value={null} max={STRAIN_MAX} display="" tone="strain" band={null} pendingLabel="Loading" />
+          <p className={styles.ringCap}>Strain</p>
+        </div>
+      </div>
       <div className={styles.chips}>
-        {["Sleep", "Strain", "Weight"].map((l) => (
+        {["HRV", "Resting HR", "Weight"].map((l) => (
           <StatChip key={l} label={l} value={null} hint="Loading…" />
         ))}
       </div>

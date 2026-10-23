@@ -70,3 +70,52 @@ export function reasonView(adjusted: boolean, reasons: readonly Reason[]) {
   );
   return { badge, subtle, lines, sheet: whyEntries(reasons.filter((r) => !isUnknown(r))) };
 }
+
+const isDone = (s: { status: string; completedRef: string | null }) => s.status === "done" || s.completedRef !== null;
+
+/** Today's card order: finished work, the session to do now, then what follows. Rest rows are left out. */
+export function splitDay<S extends { kind: string; status: string; completedRef: string | null }>(
+  sessions: readonly S[],
+): { done: S[]; current: S | null; later: S[] } {
+  const work = sessions.filter((s) => s.kind !== "rest");
+  const done = work.filter(isDone);
+  const [current = null, ...later] = work.filter((s) => !isDone(s));
+  return { done, current, later };
+}
+
+/** Only a hand check can be undone; a completion from a log or WHOOP stays. */
+export const canUncheck = (s: { completedManual: boolean; completedRef: string | null }): boolean =>
+  s.completedManual && s.completedRef === null;
+
+type Snapshot = { kind: string; title: string; durationMin: number; intensity: string };
+type ChangeReason = { ruleId: string; text: string };
+export type ChangeView = { before: Snapshot; now: Snapshot | null; reasons: ChangeReason[] };
+
+const snap = (s: Snapshot): Snapshot => ({ kind: s.kind, title: s.title, durationMin: s.durationMin, intensity: s.intensity });
+
+/**
+ * The before/now view for a session the plan changed, or null. Today (and a hold day) carries
+ * `before` from adaptation; a past day passes its logged change, whose `now` may be missing.
+ */
+export function changeFor(
+  s: Snapshot & { adjusted: boolean; before?: Snapshot; reasons: ChangeReason[] },
+  logged?: { now: Snapshot | null; reasons: ChangeReason[] },
+): ChangeView | null {
+  if (s.adjusted && s.before) return { before: s.before, now: snap(s), reasons: s.reasons };
+  if (logged) return { before: snap(s), now: logged.now, reasons: logged.reasons };
+  return null;
+}
+
+/**
+ * The quick-log link for a session, kept on a hand check (logging it then upgrades the check)
+ * and dropped once a log or WHOOP workout completed it.
+ */
+export function logLinkFor(s: {
+  kind: string;
+  status: string;
+  completedRef: string | null;
+  completedManual: boolean;
+}): { href: string; label: string } | null {
+  if (isDone(s) && !canUncheck(s)) return null;
+  return sessionLogLink(s.kind);
+}

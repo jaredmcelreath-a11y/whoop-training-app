@@ -38,6 +38,7 @@ const REQUIRED: Record<string, string[]> = {
   "pain.jointStatus": ["caution", "restricted"],
   "lower_leg.block": ["sessionsPerWeek", "tibialisSets", "soleusSets", "gastrocSets"],
   "week.template": ["sessionsPerWeek", "longShare", "coreSessionsPerWeek", "walkRun"],
+  "strain.dailyTarget": ["minDays", "lookbackDays", "lowPercentile", "highPercentile", "fallback"],
   // Plan 4 (nutrition and hydration). Tasks 5–8 depend on these names.
   "nutrition.protein": ["gPerKg", "minGPerKg", "maxGPerKg"],
   "nutrition.proteinPerMeal": ["gPerKgPerMeal", "minMeals"],

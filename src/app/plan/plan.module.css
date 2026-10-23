@@ -278,9 +278,16 @@
 }
 
 .session {
+  position: relative;
   background: var(--card2);
   border-radius: 12px;
   min-width: 0;
+}
+
+/* Inside the session's own rounded box, top-right. */
+.session > .sessionDot {
+  top: 6px;
+  right: 6px;
 }
 
 .summary {
@@ -871,4 +878,17 @@ details[open] > .summary::after {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--card2);
+}
+
+/* ---- check-off ------------------------------------------------------------ */
+
+.sessionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sessionDetails {
+  flex: 1;
+  min-width: 0;
 }

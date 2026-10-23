@@ -17,6 +17,7 @@ import {
   parseWeekParam,
   phaseBlocks,
   prescriptionLine,
+  sessionMetaLabel,
   settingsFromForm,
   structureLine,
   weeksToRace,
@@ -323,5 +324,18 @@ describe("filterRules", () => {
   });
   it("treats an unknown area or level as All", () => {
     expect(filterRules(rules, "nope", "bogus")).toHaveLength(3);
+  });
+});
+
+describe("sessionMetaLabel", () => {
+  it("drops the Easy label on strength-type sessions", () => {
+    expect(sessionMetaLabel("core", "easy")).toBeNull();
+    expect(sessionMetaLabel("lower_leg", "easy")).toBeNull();
+    expect(sessionMetaLabel("mobility", "easy")).toBeNull();
+  });
+  it("keeps intensity on endurance and strength sessions", () => {
+    expect(sessionMetaLabel("run", "easy")).toBe("Easy");
+    expect(sessionMetaLabel("bike", "z2")).toBe("Zone 2");
+    expect(sessionMetaLabel("strength", "strength")).toBe("Strength");
   });
 });

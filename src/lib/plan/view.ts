@@ -147,6 +147,17 @@ export const INTENSITY_LABEL: Record<string, string> = {
   easy: "Easy",
 };
 
+const ENDURANCE_KINDS = new Set(["swim", "bike", "run"]);
+
+/**
+ * The intensity badge for a session, or null when it would only say "Easy" on a strength-type
+ * session (core, lower leg, mobility): those carry `easy` as a placeholder, not a training zone.
+ */
+export function sessionMetaLabel(kind: string, intensity: string): string | null {
+  if (intensity === "easy" && !ENDURANCE_KINDS.has(kind)) return null;
+  return INTENSITY_LABEL[intensity] ?? intensity;
+}
+
 // ---------------------------------------------------------------------------
 // Library
 // ---------------------------------------------------------------------------
@@ -304,6 +315,7 @@ export const AREA_LABEL: Record<string, string> = {
   nutrition: "Nutrition",
   hydration: "Hydration",
   supplements: "Supplements",
+  strain: "Strain",
 };
 
 // ---------------------------------------------------------------------------

@@ -25,12 +25,15 @@ import { loadDayInputs, loadWeekHistory, longestRunMin } from "./inputs";
 import {
   ensureWeek,
   getDayPlan,
+  getStrainTarget,
+  loggedChanges,
   getWeekPlan,
   holdDayView,
   markCompletion,
   markCompletionThrough,
   regenerateFuture,
   remainingTargets,
+  setManualDone,
   storedDaySessions,
 } from "./service";
 
@@ -844,5 +847,211 @@ describe("storedDaySessions", () => {
   it("returns nothing for a day with no stored plan, without generating one", async () => {
     expect(await storedDaySessions(db, addDays(TODAY, -40))).toEqual([]);
     expect((await db.select().from(plannedSessions)).length).toBe(0);
+  });
+});
+
+describe("manual check-off", () => {
+  const place = async (day: string, kind: "run" | "strength" = "run") => {
+    const [row] = await db
+      .insert(plannedSessions)
+      .values({
+        localDate: day,
+        slot: 0,
+        kind,
+        title: kind,
+        durationMin: 30,
+        intensity: kind === "strength" ? ("strength" as const) : ("z2" as const),
+        details: {},
+        ruleIds: [],
+        weekStart: weekStart(day),
+      })
+      .returning();
+    return row;
+  };
+  const read = async (id: string) => (await db.select().from(plannedSessions).where(eq(plannedSessions.id, id)))[0];
+
+  it("checks a planned session", async () => {
+    const row = await place(TODAY);
+    expect(await setManualDone(db, row.id, true, TODAY)).toBe("done");
+    expect(await read(row.id)).toMatchObject({ status: "done", completedManual: true, completedRef: null });
+  });
+
+  it("unchecks only a manual completion", async () => {
+    const manual = await place(TODAY);
+    await setManualDone(db, manual.id, true, TODAY);
+    expect(await setManualDone(db, manual.id, false, TODAY)).toBe("undone");
+    expect(await read(manual.id)).toMatchObject({ status: "planned", completedManual: false, completedRef: null });
+
+    const logged = await place(addDays(TODAY, -1));
+    await db.update(plannedSessions).set({ status: "done", completedRef: "cardio:x" }).where(eq(plannedSessions.id, logged.id));
+    expect(await setManualDone(db, logged.id, false, TODAY)).toBe("refused");
+    expect(await read(logged.id)).toMatchObject({ status: "done", completedRef: "cardio:x", completedManual: false });
+  });
+
+  it("refuses a future date", async () => {
+    const row = await place(addDays(TODAY, 1));
+    expect(await setManualDone(db, row.id, true, TODAY)).toBe("refused");
+    expect((await read(row.id)).status).toBe("planned");
+  });
+
+  it("allows a past date", async () => {
+    const row = await place(addDays(TODAY, -3));
+    expect(await setManualDone(db, row.id, true, TODAY)).toBe("done");
+  });
+
+  it("a later match upgrades a manual check", async () => {
+    const row = await place(TODAY);
+    await setManualDone(db, row.id, true, TODAY);
+    const [entry] = await db
+      .insert(cardioEntries)
+      .values({ kind: "run", startedAt: new Date("2026-10-21T13:00:00Z"), localDate: TODAY, durationS: 1800 })
+      .returning();
+    await markCompletion(db, TODAY, TZ);
+    expect(await read(row.id)).toMatchObject({ status: "done", completedRef: `cardio:${entry.id}`, completedManual: false });
+  });
+
+  it("a manual check survives regeneration", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const [todayRow] = (await db.select().from(plannedSessions).where(eq(plannedSessions.localDate, TODAY))).filter((r) => r.kind !== "rest");
+    expect(todayRow).toBeDefined();
+    await setManualDone(db, todayRow.id, true, TODAY);
+    await updatePlanSettings(db, { longRideDow: 4 });
+    await regenerateFuture(db, TODAY, NOW, TZ);
+    expect(await read(todayRow.id)).toMatchObject({ status: "done", completedManual: true });
+  });
+});
+
+describe("change snapshots", () => {
+  it("getDayPlan stores the adapted snapshot on changed sessions", async () => {
+    await setup();
+    await seedRecovery(3000, TODAY, 45, 50); // yellow
+    const plan = await getDayPlan(db, TODAY, NOW, TZ);
+    const changed = plan.sessions.filter((s) => s.adjusted);
+    expect(changed.length).toBeGreaterThan(0);
+    const rows = await db.select().from(recommendationLog).where(eq(recommendationLog.localDate, TODAY));
+    for (const s of changed) {
+      const mine = rows.filter((r) => r.plannedSessionId === s.id);
+      expect(mine.length).toBeGreaterThan(0);
+      for (const r of mine) {
+        expect(r.adapted).toEqual({ kind: s.kind, title: s.title, durationMin: s.durationMin, intensity: s.intensity });
+      }
+    }
+    // An unchanged session's rows say so, so a past day can tell them from rows logged before snapshots.
+    for (const s of plan.sessions.filter((x) => !x.adjusted)) {
+      expect(rows.filter((r) => r.plannedSessionId === s.id).every((r) => (r.adapted as { unchanged?: boolean })?.unchanged === true)).toBe(true);
+    }
+    const stored = await rowsBetween(TODAY, addDays(TODAY, 1));
+    for (const s of changed) {
+      const row = stored.find((r) => r.id === s.id)!;
+      expect(s.before).toEqual({ kind: row.kind, title: row.title, durationMin: row.durationMin, intensity: row.intensity });
+    }
+    for (const s of plan.sessions.filter((x) => !x.adjusted)) expect(s.before).toBeUndefined();
+  });
+
+  it("a pain-hold swap snapshots the new kind", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const run = (await db.select().from(plannedSessions).where(eq(plannedSessions.weekStart, THIS_WEEK)))
+      .filter((r) => r.kind === "run" && r.localDate >= TODAY)
+      .sort((a, b) => a.localDate.localeCompare(b.localDate))[0];
+    expect(run).toBeDefined();
+    // Invented pain above the hold threshold the day before.
+    await db.insert(painEntries).values({ localDate: addDays(run.localDate, -1), area: "knee", side: "left", score: 6, context: "daily" });
+    const at = new Date(zonedLocalToUtc(`${run.localDate}T12:00`, TZ));
+    await getDayPlan(db, run.localDate, at, TZ);
+    const rows = await db.select().from(recommendationLog).where(eq(recommendationLog.plannedSessionId, run.id));
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => (r.adapted as { kind: string } | null)?.kind === "bike")).toBe(true);
+    const [stored] = await db.select().from(plannedSessions).where(eq(plannedSessions.id, run.id));
+    expect(stored.kind).toBe("run");
+  });
+
+  it("a note that changed nothing gives no logged change (no false dot later)", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const rows = await db.select().from(plannedSessions).where(eq(plannedSessions.weekStart, THIS_WEEK));
+    const day = [...new Set(rows.map((r) => r.localDate))]
+      .filter((d) => d >= TODAY)
+      .sort()
+      .find((d) => {
+        const dayRows = rows.filter((r) => r.localDate === d);
+        return (
+          dayRows.some((r) => r.kind !== "rest") &&
+          !dayRows.some((r) => r.kind === "run" || (r.details as { plyo?: boolean }).plyo === true)
+        );
+      });
+    expect(day).toBeDefined();
+    // Invented pain above the hold threshold: the hold is active, but the day has nothing to swap.
+    await db.insert(painEntries).values({ localDate: addDays(day!, -1), area: "knee", side: "left", score: 6, context: "daily" });
+    const plan = await getDayPlan(db, day!, new Date(zonedLocalToUtc(`${day}T12:00`, TZ)), TZ);
+    expect(plan.sessions.every((s) => !s.adjusted)).toBe(true);
+    const logged = await db.select().from(recommendationLog).where(eq(recommendationLog.localDate, day!));
+    expect(logged.some((r) => r.plannedSessionId !== null && r.effect !== NOT_ENOUGH_DATA)).toBe(true);
+    expect((await loggedChanges(db, day!)).size).toBe(0);
+  });
+
+  it("loggedChanges reads a past day without writing", async () => {
+    const day = addDays(TODAY, -2);
+    const ids: string[] = [];
+    for (const slot of [0, 1, 2]) {
+      const [r] = await db
+        .insert(plannedSessions)
+        .values({ localDate: day, slot, kind: "run", title: "Run 40 min", durationMin: 40, intensity: "z2", details: {}, ruleIds: [], weekStart: weekStart(day) })
+        .returning();
+      ids.push(r.id);
+    }
+    const snap = { kind: "run", title: "Easy run 32 min", durationMin: 32, intensity: "easy" };
+    await db.insert(recommendationLog).values([
+      { localDate: day, plannedSessionId: ids[0], ruleId: "recovery.yellowScale", inputs: {}, effect: "Recovery 50% (yellow) — shortened", adapted: snap },
+      { localDate: day, plannedSessionId: ids[1], ruleId: "recovery.redSwap", inputs: {}, effect: "Recovery 20% (red) — swapped", adapted: null },
+      { localDate: day, plannedSessionId: ids[2], ruleId: "recovery.color", inputs: {}, effect: NOT_ENOUGH_DATA },
+      // A note that did not change the session (e.g. a sleep-debt bedtime note on an easy day).
+      { localDate: day, plannedSessionId: ids[2], ruleId: "recovery.sleepDebt", inputs: {}, effect: "Short on sleep — earlier bedtime", adapted: { unchanged: true } },
+    ]);
+    const before = { log: (await db.select().from(recommendationLog)).length, rows: (await db.select().from(plannedSessions)).length };
+    const changes = await loggedChanges(db, day);
+    expect([...changes.keys()].sort()).toEqual([ids[0], ids[1]].sort());
+    expect(changes.get(ids[0])).toEqual({ now: snap, reasons: [{ ruleId: "recovery.yellowScale", text: "Recovery 50% (yellow) — shortened" }] });
+    expect(changes.get(ids[1])!.now).toBeNull();
+    expect((await db.select().from(recommendationLog)).length).toBe(before.log);
+    expect((await db.select().from(plannedSessions)).length).toBe(before.rows);
+  });
+});
+
+describe("getStrainTarget", () => {
+  const easyRun = { kind: "run", intensity: "z2", durationMin: 40, details: {} };
+  /** A past day with one planned run and a cycle that started the evening before. */
+  const pastDay = async (n: number, strain: number, opts: { skipped?: boolean; missed?: boolean; scored?: boolean } = {}) => {
+    const day = addDays(TODAY, -n);
+    await db.insert(plannedSessions).values({
+      localDate: day, slot: 0, kind: "run", title: "Run", durationMin: 40, intensity: "z2", details: {}, ruleIds: [], weekStart: weekStart(day),
+      status: opts.skipped ? ("skipped" as const) : opts.missed ? ("planned" as const) : ("done" as const),
+    });
+    await db.insert(cycles).values({
+      id: 9000 + n,
+      start: new Date(zonedLocalToUtc(`${addDays(day, -1)}T22:00`, TZ)),
+      end: new Date(zonedLocalToUtc(`${day}T22:00`, TZ)),
+      timezoneOffset: "-05:00",
+      scoreState: opts.scored === false ? "PENDING_SCORE" : "SCORED",
+      strain,
+    });
+  };
+
+  it("learns the band from matching past days, skipping skipped, missed and unscored days", async () => {
+    for (const [i, strain] of [8, 9, 10, 11, 12].entries()) await pastDay(i + 1, strain);
+    await pastDay(6, 20, { skipped: true });
+    await pastDay(7, 19, { scored: false });
+    // A planned run that was never done: that day's low strain says nothing about a run day.
+    await pastDay(8, 2, { missed: true });
+    await pastDay(9, 3, { missed: true });
+    const before = { rows: (await db.select().from(plannedSessions)).length, log: (await db.select().from(recommendationLog)).length };
+    expect(await getStrainTarget(db, TODAY, [easyRun], TZ)).toEqual({ low: 9, high: 11, estimate: false, type: "easy", days: 5 });
+    expect((await db.select().from(plannedSessions)).length).toBe(before.rows);
+    expect((await db.select().from(recommendationLog)).length).toBe(before.log);
+  });
+
+  it("falls back to the starting range with no history", async () => {
+    expect(await getStrainTarget(db, TODAY, [easyRun], TZ)).toEqual({ low: 8, high: 11, estimate: true, type: "easy", days: 0 });
   });
 });

@@ -100,10 +100,6 @@
   color: var(--accent);
 }
 
-.doneIcon {
-  flex: none;
-  color: var(--good);
-}
 
 .adjusted {
   font-size: 13px;
@@ -212,21 +208,8 @@
   font-size: 14px;
 }
 
-.strainRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
 
-.strainRight {
-  text-align: right;
-}
 
-.strainNum {
-  font-size: 22px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
 
 .sync {
   font-size: 12px;
@@ -304,4 +287,114 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* ---- check-off ------------------------------------------------------------ */
+
+.sessionHeadRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sessionHeadRow > .sessionHead {
+  min-width: 0;
+}
+
+.shortRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.shortTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.shortNote {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sub);
+}
+
+.allDone {
+  padding: 10px 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--good);
+}
+
+/* ---- change dot ----------------------------------------------------------- */
+
+.session,
+.shortRow {
+  position: relative;
+}
+
+.changed {
+  margin-top: 6px;
+}
+
+.changedSummary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---- rings ---------------------------------------------------------------- */
+
+/* Recovery stays the large center ring; sleep and strain sit smaller on either side. */
+.rings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.miniRing {
+  min-width: 0;
+  text-align: center;
+}
+
+.ringCap {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--sub);
+}
+
+.miniRing .ringSub {
+  margin: 2px 0 0;
+}
+
+.shortMore {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.shortSummary::-webkit-details-marker {
+  display: none;
 }

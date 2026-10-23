@@ -1,0 +1,50 @@
+.ring {
+  width: 100%;
+  max-width: 96px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.track,
+.band,
+.arc {
+  fill: none;
+}
+
+.track {
+  stroke: var(--card2);
+  stroke-width: 9;
+}
+
+.band {
+  stroke-width: 15;
+  opacity: 0.35;
+}
+
+.arc {
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.ring[data-tone="sleep"] .arc,
+.ring[data-tone="sleep"] .band {
+  stroke: var(--sleep);
+}
+
+.ring[data-tone="strain"] .arc,
+.ring[data-tone="strain"] .band {
+  stroke: var(--info);
+}
+
+.value {
+  fill: var(--text);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.pending {
+  fill: var(--sub);
+  font-size: 13px;
+  font-weight: 700;
+}

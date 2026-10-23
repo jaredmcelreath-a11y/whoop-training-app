@@ -8,16 +8,17 @@
  * - Each stored session carries its week's phase in details.week ({ index, phase, recovery,
  *   gainPhase }), so a past week's phase is never recomputed from a newer calendar.
  */
-import { and, asc, eq, gte, inArray, isNull, lt, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { cardioEntries, exercises, plannedSessions, recommendationLog, strengthSessions, workouts } from "@/db/schema";
+import { cardioEntries, cycles, exercises, plannedSessions, recommendationLog, strengthSessions, workouts } from "@/db/schema";
 import { adapt, applyPainHold, NOT_ENOUGH_DATA, type AdaptedSession } from "@/lib/engine/adapt";
 import { readiness, type Readiness } from "@/lib/engine/readiness";
 import { RULES } from "@/lib/engine/rules/catalog";
+import { dayType, strainTarget, type DayType, type StrainTarget } from "@/lib/engine/strain-target";
 import { seasonCalendar, weeklyTargets, type SeasonCalendar, type WeeklyTargets } from "@/lib/engine/season";
 import { PLYO, prescribe, TEMPLATES, type History, type TemplateItem } from "@/lib/engine/strength";
 import { buildWeek, type PlannedSessionDraft, type StrengthTemplate } from "@/lib/engine/week";
-import { addDays, localDate, weekStart as weekStartOf, zonedLocalToUtc } from "@/lib/log/dates";
+import { addDays, localDate, noonOf, weekStart as weekStartOf, zonedLocalToUtc } from "@/lib/log/dates";
 import type { LinkKind } from "@/lib/log/link-whoop";
 import { lastTime } from "@/lib/log/strength";
 import {
@@ -42,7 +43,24 @@ const PLYO_NAMES = new Set(PLYO.map((p) => p.exercise));
 type Row = typeof plannedSessions.$inferSelect;
 type Insert = typeof plannedSessions.$inferInsert;
 export type WeekMeta = { index: number; phase: string; recovery: boolean; gainPhase: boolean };
-export type DaySession = AdaptedSession & { id: string; status: Row["status"]; completedRef: string | null };
+export type DaySession = AdaptedSession & {
+  id: string;
+  status: Row["status"];
+  completedRef: string | null;
+  completedManual: boolean;
+  /** The stored session, present only when adaptation changed it. */
+  before?: AdaptedSnapshot;
+};
+
+/** A session as adapted on its day, stored on its recommendation_log rows for the before/now view. */
+export type AdaptedSnapshot = Pick<PlannedSessionDraft, "kind" | "title" | "durationMin" | "intensity">;
+
+export const snapshotOf = (s: AdaptedSnapshot): AdaptedSnapshot => ({
+  kind: s.kind,
+  title: s.title,
+  durationMin: s.durationMin,
+  intensity: s.intensity,
+});
 
 const weekEnd = (ws: string) => addDays(ws, DAYS_PER_WEEK - 1);
 const isLong = (r: { details?: unknown }) => (r.details as { long?: boolean } | undefined)?.long === true;
@@ -302,8 +320,9 @@ async function rowsOfDay(db: Db, date: string): Promise<Row[]> {
  * session. Returns how many sessions were newly marked.
  */
 export async function markCompletion(db: Db, date: string, tz: string): Promise<number> {
+  // A manual check is open too: a matching activity upgrades it to a real ref.
   const open = (await rowsOfDay(db, date)).filter(
-    (r) => r.status === "planned" && r.completedRef === null && (LINK_KINDS as string[]).includes(r.kind),
+    (r) => (r.status === "planned" || r.completedManual) && r.completedRef === null && (LINK_KINDS as string[]).includes(r.kind),
   );
   if (!open.length) return 0;
 
@@ -361,8 +380,14 @@ export async function markCompletion(db: Db, date: string, tz: string): Promise<
     if (!ref) continue;
     const done = await db
       .update(plannedSessions)
-      .set({ status: "done", completedRef: ref })
-      .where(and(eq(plannedSessions.id, s.id), eq(plannedSessions.status, "planned"), isNull(plannedSessions.completedRef)))
+      .set({ status: "done", completedRef: ref, completedManual: false })
+      .where(
+        and(
+          eq(plannedSessions.id, s.id),
+          or(eq(plannedSessions.status, "planned"), eq(plannedSessions.completedManual, true)),
+          isNull(plannedSessions.completedRef),
+        ),
+      )
       .returning({ id: plannedSessions.id });
     if (done.length) {
       used.add(ref);
@@ -370,6 +395,27 @@ export async function markCompletion(db: Db, date: string, tz: string): Promise<
     }
   }
   return marked;
+}
+
+/**
+ * Checks a session off by hand, or undoes a hand check. Checking needs a planned session on or
+ * before `today`; unchecking only clears a manual check (a logged or WHOOP completion stays).
+ * Each is one guarded update, so a refused call changes nothing.
+ */
+export async function setManualDone(db: Db, sessionId: string, done: boolean, today: string): Promise<"done" | "undone" | "refused"> {
+  const changed = done
+    ? await db
+        .update(plannedSessions)
+        .set({ status: "done", completedManual: true })
+        .where(and(eq(plannedSessions.id, sessionId), eq(plannedSessions.status, "planned"), lte(plannedSessions.localDate, today)))
+        .returning({ id: plannedSessions.id })
+    : await db
+        .update(plannedSessions)
+        .set({ status: "planned", completedManual: false })
+        .where(and(eq(plannedSessions.id, sessionId), eq(plannedSessions.completedManual, true), isNull(plannedSessions.completedRef)))
+        .returning({ id: plannedSessions.id });
+  if (!changed.length) return "refused";
+  return done ? "done" : "undone";
 }
 
 /**
@@ -410,7 +456,38 @@ export async function storedDaySessions(db: Db, date: string): Promise<DaySessio
     id: row.id,
     status: row.status,
     completedRef: row.completedRef,
+    completedManual: row.completedManual,
   }));
+}
+
+const NO_SESSION_CHANGED = "No session changed";
+/** recommendation_log.adapted on a session row whose session was not changed. */
+const UNCHANGED = { unchanged: true } as const;
+
+/**
+ * Read only: the sessions a day's logged rules changed, keyed by planned session id, with what
+ * each became (null on rows logged before snapshots were kept) and the reasons. "Not enough data"
+ * and session-less rows are not changes.
+ */
+export async function loggedChanges(
+  db: Db,
+  date: string,
+): Promise<Map<string, { now: AdaptedSnapshot | null; reasons: { ruleId: string; text: string }[] }>> {
+  const rows = await db
+    .select()
+    .from(recommendationLog)
+    .where(eq(recommendationLog.localDate, date))
+    .orderBy(asc(recommendationLog.createdAt), asc(recommendationLog.ruleId));
+  const out = new Map<string, { now: AdaptedSnapshot | null; reasons: { ruleId: string; text: string }[] }>();
+  for (const r of rows) {
+    if (!r.plannedSessionId || r.effect === NOT_ENOUGH_DATA || r.effect === NO_SESSION_CHANGED) continue;
+    if ((r.adapted as { unchanged?: boolean } | null)?.unchanged === true) continue;
+    const entry = out.get(r.plannedSessionId) ?? { now: null, reasons: [] };
+    entry.now ??= (r.adapted as AdaptedSnapshot | null) ?? null;
+    entry.reasons.push({ ruleId: r.ruleId, text: r.effect });
+    out.set(r.plannedSessionId, entry);
+  }
+  return out;
 }
 
 /**
@@ -422,9 +499,10 @@ export async function storedDaySessions(db: Db, date: string): Promise<DaySessio
 export function holdDayView(stored: Row[], r: Pick<Readiness, "painHold" | "jointRestricted">): DaySession[] {
   const adapted = applyPainHold(stored.map(toDraft), r).sessions;
   return stored.map((row, i) => {
-    const base = { id: row.id, status: row.status, completedRef: row.completedRef };
+    const base = { id: row.id, status: row.status, completedRef: row.completedRef, completedManual: row.completedManual };
     if (row.status !== "planned") return { ...toDraft(row), adjusted: false, reasons: [], ...base };
-    return { ...servePrescription(row, adapted[i]), ...base };
+    const s = servePrescription(row, adapted[i]);
+    return { ...s, ...base, ...(s.adjusted ? { before: snapshotOf(toDraft(row)) } : {}) };
   });
 }
 
@@ -461,6 +539,8 @@ export async function getDayPlan(
     id: stored[i].id,
     status: stored[i].status,
     completedRef: stored[i].completedRef,
+    completedManual: stored[i].completedManual,
+    ...(s.adjusted ? { before: snapshotOf(toDraft(stored[i])) } : {}),
   }));
 
   if (date === today) {
@@ -473,14 +553,17 @@ export async function getDayPlan(
     for (const s of sessions) {
       const byRule = new Map<string, string[]>();
       for (const x of s.reasons) byRule.set(x.ruleId, [...(byRule.get(x.ruleId) ?? []), x.text]);
+      // What the session became, kept so a past day can still show its before/now view. A note
+      // that changed nothing says so, so it is never mistaken for a row logged before snapshots.
+      const adapted: AdaptedSnapshot | typeof UNCHANGED = s.adjusted ? snapshotOf(s) : UNCHANGED;
       for (const [ruleId, texts] of byRule) {
         cited.add(ruleId);
-        logs.push({ localDate: date, plannedSessionId: s.id, ruleId, inputs: inputsOf(ruleId), effect: texts.join(" · ") });
+        logs.push({ localDate: date, plannedSessionId: s.id, ruleId, inputs: inputsOf(ruleId), effect: texts.join(" · "), adapted });
       }
     }
     for (const ruleId of new Set(r.fired.map((f) => f.ruleId))) {
       if (!cited.has(ruleId)) {
-        logs.push({ localDate: date, plannedSessionId: null, ruleId, inputs: inputsOf(ruleId), effect: "No session changed" });
+        logs.push({ localDate: date, plannedSessionId: null, ruleId, inputs: inputsOf(ruleId), effect: NO_SESSION_CHANGED });
       }
     }
     // Ruling 15b: re-reading refreshes a row's effect and inputs (e.g. once recovery is scored).
@@ -490,7 +573,7 @@ export async function getDayPlan(
         .values(logs)
         .onConflictDoUpdate({
           target: [recommendationLog.localDate, recommendationLog.plannedSessionId, recommendationLog.ruleId],
-          set: { effect: sql`excluded.effect`, inputs: sql`excluded.inputs` },
+          set: { effect: sql`excluded.effect`, inputs: sql`excluded.inputs`, adapted: sql`excluded.adapted` },
         });
     }
     // A "not enough data" row no longer applies once readiness is known; a scored day cites
@@ -522,4 +605,45 @@ export async function getWeekPlan(
     const date = addDays(weekStart, i);
     return { date, sessions: rows.filter((r) => r.localDate === date) };
   });
+}
+
+const SCORED = "SCORED";
+
+/**
+ * Read only: today's strain target band (rule strain.dailyTarget) for `sessions`, learned from
+ * the last lookbackDays of stored plans. A past day counts when every planned workout was done
+ * (by a log, WHOOP or a check; a missed or skipped one would make it look like a lighter day of
+ * that type) and it has a scored WHOOP cycle; its strain is the cycle running at local noon (the cycle
+ * that began with the night before).
+ */
+export async function getStrainTarget(
+  db: Db,
+  date: string,
+  sessions: readonly { kind: string; intensity: string; durationMin: number; details: Record<string, unknown> }[],
+  tz: string,
+): Promise<StrainTarget> {
+  const { lookbackDays } = RULES["strain.dailyTarget"].params;
+  const from = addDays(date, -lookbackDays);
+  const to = addDays(date, -1);
+  const rows = await db
+    .select()
+    .from(plannedSessions)
+    .where(and(gte(plannedSessions.localDate, from), lte(plannedSessions.localDate, to)));
+  const cycleRows = await db
+    .select({ start: cycles.start, scoreState: cycles.scoreState, strain: cycles.strain })
+    .from(cycles)
+    .where(and(gte(cycles.start, new Date(noonOf(addDays(from, -1), tz))), lte(cycles.start, noonOf(to, tz))))
+    .orderBy(asc(cycles.start));
+
+  const byDay = new Map<string, Row[]>();
+  for (const r of rows) byDay.set(r.localDate, [...(byDay.get(r.localDate) ?? []), r]);
+  const history: { type: DayType; strain: number }[] = [];
+  for (const [day, dayRows] of byDay) {
+    if (dayRows.some((r) => r.kind !== "rest" && r.status !== "done" && r.completedRef === null)) continue;
+    const noon = noonOf(day, tz).getTime();
+    const cycle = cycleRows.filter((c) => c.start.getTime() <= noon).at(-1);
+    if (!cycle || cycle.scoreState !== SCORED || cycle.strain === null) continue;
+    history.push({ type: dayType(dayRows.map((r) => ({ ...r, details: r.details as Record<string, unknown> }))), strain: cycle.strain });
+  }
+  return strainTarget(dayType(sessions), history);
 }

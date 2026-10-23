@@ -1,0 +1,54 @@
+.panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--sub);
+}
+
+.was {
+  color: var(--sub);
+  text-decoration: line-through;
+}
+
+.reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--sub);
+  font-size: 13px;
+}
+
+.why {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Sits in the card's padding, above the row's check button. */
+.dot {
+  position: absolute;
+  top: 2px;
+  right: -8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--low);
+}

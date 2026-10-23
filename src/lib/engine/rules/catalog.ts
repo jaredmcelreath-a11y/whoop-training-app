@@ -184,6 +184,15 @@ const WHOOP_101: Citation = {
   evidence: "practice",
 };
 
+const WHOOP_STRAIN: Citation = {
+  authors: "WHOOP, Inc.",
+  year: 2026,
+  title: "How Does WHOOP Strain Work? (0–21 scale; light, moderate, high and all-out bands)",
+  venue: "WHOOP The Locker (accessed 2026-10-22)",
+  url: "https://www.whoop.com/us/en/thelocker/how-does-whoop-strain-work-101/",
+  evidence: "practice",
+};
+
 const WHOOP_ZONES: Citation = {
   authors: "WHOOP, Inc.",
   year: 2026,
@@ -348,6 +357,14 @@ type RunVolumeParams = {
 };
 type SplitParams = { swim: number; bike: number; run: number; earlyRunShare: number; earlyWeeks: number };
 type LoadCheckParams = { overPct: number; weeks: number; trailingWeeks: number };
+type StrainRange = [number, number];
+type StrainTargetParams = {
+  minDays: number;
+  lookbackDays: number;
+  lowPercentile: number;
+  highPercentile: number;
+  fallback: { rest: StrainRange; easy: StrainRange; long: StrainRange; hard: StrainRange; strength: StrainRange };
+};
 type DistributionParams = { lowShare: number };
 type ZonesParams = { z1: Range; z2: Range; z3: Range; z4: Range; z5: Range };
 type ColorParams = { green: number; yellow: number };
@@ -524,6 +541,24 @@ export const RULES = deepFreeze({
     citations: [BOSQUET_2007, MUJIKA_PADILLA_2003, BOMPA_2019],
     caveat:
       "Only the taper (length and ~41-60% volume cut) is backed by a meta-analysis. Peak and build lengths are standard periodization practice, not tested values.",
+  }),
+
+  "strain.dailyTarget": rule<StrainTargetParams>({
+    id: "strain.dailyTarget",
+    area: "strain",
+    statement:
+      "Today's strain target is the 25th to 75th percentile of your WHOOP day strain on past days with the same kind of planned training. Until there are at least 4 such days in the last 56 days, a starting range per day type is used and labeled as an estimate.",
+    why: "No study sets a day-strain target, so the app learns your own typical strain for each kind of day.",
+    params: {
+      minDays: 4,
+      lookbackDays: 56,
+      lowPercentile: 25,
+      highPercentile: 75,
+      fallback: { rest: [4, 8], easy: [8, 11], long: [12, 15], hard: [11, 14], strength: [7, 10] },
+    },
+    evidence: "practice",
+    citations: [ctx(WHOOP_STRAIN)],
+    caveat: "WHOOP's own Strain Coach target is not available to this app, so this is the app's estimate, not WHOOP's.",
   }),
 
   "season.gainPhase": rule<GainPhaseParams>({

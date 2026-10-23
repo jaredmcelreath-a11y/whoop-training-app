@@ -121,6 +121,16 @@ describe("getTodaySummary", () => {
     expect(t.recovery?.score).toBe(77);
   });
 
+  it("reports sleep performance only for a scored sleep", async () => {
+    await connect();
+    const now = new Date("2026-11-03T07:00:00-06:00");
+    await seedSleep("main-1103", new Date("2026-11-03T05:50:00-06:00"), false, 430);
+    await db.update(sleeps).set({ performancePct: 88 });
+    expect((await getTodaySummary(db, now, TZ)).sleep?.performancePct).toBe(88);
+    await db.update(sleeps).set({ scoreState: "PENDING_SCORE" });
+    expect((await getTodaySummary(db, now, TZ)).sleep?.performancePct).toBeNull();
+  });
+
   it("still excludes a nap that ends after the main sleep", async () => {
     await connect();
     const now = new Date("2026-11-03T07:00:00-06:00");
@@ -205,7 +215,7 @@ describe("getTodaySummary", () => {
       scoreState: "PENDING_SCORE",
     });
     const t = await getTodaySummary(db, new Date("2026-10-20T13:00:00Z"), TZ);
-    expect(t.sleep).toEqual({ asleepMin: null, needMin: null, endedAt: new Date("2026-10-20T06:00:00-05:00") });
+    expect(t.sleep).toEqual({ asleepMin: null, needMin: null, performancePct: null, endedAt: new Date("2026-10-20T06:00:00-05:00") });
   });
 });
 

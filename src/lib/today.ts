@@ -8,7 +8,7 @@ export type TodaySummary = {
   recovery: { score: number | null; state: string; avg7: number | null } | null;
   hrv: { ms: number | null; avg30: number | null } | null;
   rhr: number | null;
-  sleep: { asleepMin: number | null; needMin: number | null; endedAt: Date } | null;
+  sleep: { asleepMin: number | null; needMin: number | null; performancePct: number | null; endedAt: Date } | null;
   dayStrain: number | null;
   lastSyncedAt: Date | null;
   weight: Awaited<ReturnType<typeof getWeightTrend>>;
@@ -142,6 +142,7 @@ export async function getTodaySummary(db: Db, now: Date, tz: string): Promise<To
     sleep: sleep
       ? {
           asleepMin: sleep.scoreState === SCORED ? sleep.asleepMin : null,
+          performancePct: sleep.scoreState === SCORED ? sleep.performancePct : null,
           needMin: needs.every((v) => typeof v === "number")
             ? (needs as number[]).reduce((a, b) => a + b, 0)
             : null,

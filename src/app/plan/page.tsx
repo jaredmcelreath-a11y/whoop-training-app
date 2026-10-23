@@ -13,11 +13,12 @@ import { requireSession } from "@/lib/auth/session";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { getEnv } from "@/lib/env";
 import { addDays, localDate, weekStart } from "@/lib/log/dates";
-import { getDayPlan, getWeekPlan, holdDayView, type WeekMeta } from "@/lib/plan/service";
+import { getDayPlan, getWeekPlan, holdDayView, loggedChanges, type WeekMeta } from "@/lib/plan/service";
 import {
   dayHeading,
   detailNotes,
   INTENSITY_LABEL,
+  sessionMetaLabel,
   intervalsLine,
   KIND_LABEL,
   PHASE_LABEL,
@@ -31,6 +32,9 @@ import {
   type RxLine,
 } from "@/lib/plan/view";
 import { WeekPicker } from "./week-picker";
+import { ChangeDot, ChangeView } from "@/components/change-view";
+import { CheckButton } from "@/components/check-button";
+import { canUncheck, changeFor, type ChangeView as Change } from "@/lib/plan/today-view";
 import { PlanHeader } from "./plan-nav";
 import { StripBox } from "./strip-box";
 import styles from "./plan.module.css";
@@ -41,6 +45,10 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 type ViewSession = {
   key: string;
+  before?: { kind: string; title: string; durationMin: number; intensity: string };
+  id: string;
+  completedRef: string | null;
+  completedManual: boolean;
   kind: string;
   title: string;
   durationMin: number;
@@ -95,6 +103,10 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
   // Today's sessions are adapted (with reasons); every other day shows the stored plan.
   const todayPlan = isCurrent ? await getDayPlan(db, today, now, tz) : null;
   const days = await getWeekPlan(db, ws, now, tz);
+  // Past days show what their logged rules changed (read only).
+  const loggedByDay = new Map(
+    await Promise.all(days.filter((d) => d.date < today).map(async (d) => [d.date, await loggedChanges(db, d.date)] as const)),
+  );
 
   // An active pain hold or restricted joint status also changes this week's later days, for
   // display only (stored rows are untouched; each day is adapted in full when it comes).
@@ -181,6 +193,9 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
               ? holdDayView(d.sessions, hold).map((s) => ({ ...s, key: s.id, adjustedLabel: "Changed for the Hold" }))
               : d.sessions.map((s) => ({
                 key: s.id,
+                id: s.id,
+                completedRef: s.completedRef,
+                completedManual: s.completedManual,
                 kind: s.kind,
                 title: s.title,
                 durationMin: s.durationMin,
@@ -203,7 +218,7 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
             {sessions.length ? (
               <ul className={styles.sessions}>
                 {sessions.map((s) => (
-                  <Session key={s.key} s={s} />
+                  <Session key={s.key} s={s} checkable={d.date <= today} change={changeFor(s, loggedByDay.get(d.date)?.get(s.id))} />
                 ))}
               </ul>
             ) : (
@@ -216,7 +231,7 @@ async function WeekContent({ searchParams }: { searchParams: SearchParams }) {
   );
 }
 
-function Session({ s }: { s: ViewSession }) {
+function Session({ s, checkable, change }: { s: ViewSession; checkable: boolean; change: Change | null }) {
   const rx = s.details.prescription as RxLine[] | undefined;
   const iv = s.details.intervals as { runMin: number; walkMin: number; reps: number } | undefined;
   const st = s.details.structure as { warmUpMin: number; hardMin: number; coolDownMin: number } | undefined;
@@ -225,7 +240,9 @@ function Session({ s }: { s: ViewSession }) {
 
   return (
     <li className={styles.session}>
-      <details>
+      {change ? <ChangeDot className={styles.sessionDot} /> : null}
+      <div className={styles.sessionRow}>
+      <details className={styles.sessionDetails}>
         <summary className={styles.summary}>
           <span className={styles.sessionTop}>
             <span className={styles.kind}>
@@ -236,16 +253,21 @@ function Session({ s }: { s: ViewSession }) {
           </span>
           <span className={styles.sessionMeta}>
             {s.durationMin > 0 ? <span>{s.durationMin} min</span> : null}
-            {s.kind !== "rest" ? (
-              <span className={INTENSITY_CLASS[s.intensity] ?? styles.badge}>{INTENSITY_LABEL[s.intensity] ?? s.intensity}</span>
+            {s.kind !== "rest" && sessionMetaLabel(s.kind, s.intensity) ? (
+              <span className={INTENSITY_CLASS[s.intensity] ?? styles.badge}>{sessionMetaLabel(s.kind, s.intensity)}</span>
             ) : null}
-            {s.status === "done" ? <span className={styles.done}><Icon name="check" /> Done</span> : null}
+            {s.status === "done" && !(checkable && s.kind !== "rest") ? (
+              <span className={styles.done}>
+                <Icon name="check" /> Done
+              </span>
+            ) : null}
             {s.status === "skipped" ? <span className={styles.skipped}>Skipped</span> : null}
             {s.adjusted ? <span className={styles.adjusted}>{s.adjustedLabel ?? "Adjusted Today"}</span> : null}
           </span>
         </summary>
         <div className={styles.sessionBody}>
-          {s.reasons.length ? (
+          {change ? <ChangeView {...change} /> : null}
+          {!change && s.reasons.length ? (
             <ul className={styles.reasons}>
               {s.reasons.map((r, i) => (
                 <li key={i}>{r.text}</li>
@@ -289,6 +311,14 @@ function Session({ s }: { s: ViewSession }) {
           ) : null}
         </div>
       </details>
+      {checkable && s.kind !== "rest" ? (
+        <CheckButton
+          sessionId={s.id}
+          done={s.status === "done" || s.completedRef !== null}
+          locked={(s.status === "done" || s.completedRef !== null) && !canUncheck(s)}
+        />
+      ) : null}
+      </div>
     </li>
   );
 }

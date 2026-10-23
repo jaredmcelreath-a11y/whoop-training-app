@@ -1,37 +1,43 @@
 import Link from "next/link";
+import { ChangeDot, ChangeView } from "@/components/change-view";
+import { CheckButton } from "@/components/check-button";
 import { ICON_FOR_KIND, Icon } from "@/components/icon";
 import { Cap, Card } from "@/components/ui/ui";
 import { titleCase } from "@/lib/ui/title-case";
 import type { Db } from "@/db/client";
 import { weekStart } from "@/lib/log/dates";
-import { getDayPlan, storedDaySessions, type DaySession } from "@/lib/plan/service";
-import { reasonView, sessionLogLink, sessionNotes } from "@/lib/plan/today-view";
-import { INTENSITY_LABEL } from "@/lib/plan/view";
+import { loggedChanges, type DaySession } from "@/lib/plan/service";
+import { canUncheck, changeFor, logLinkFor, reasonView, type ChangeView as Change, sessionNotes, splitDay } from "@/lib/plan/today-view";
+import { sessionMetaLabel } from "@/lib/plan/view";
 import { trainingCardView } from "@/lib/nutrition/fuel-view";
 import styles from "./today.module.css";
 import { WhySheet } from "./why-sheet";
 
-/** "Today's training": the day's adapted sessions, why they changed, and where to log them. */
+/**
+ * "Today's training": finished sessions as one-line rows, then the session to do now in full
+ * (why it changed, where to log it, a check to mark it done), then what follows.
+ */
 export async function TodayTraining({
   db,
   date,
-  now,
-  tz,
+  sessions,
   past,
 }: {
   db: Db;
   date: string;
-  now: Date;
-  tz: string;
+  /** The day's sessions, loaded by the page (adapted today, stored on a past day); null if that failed. */
+  sessions: DaySession[] | null;
   past: boolean;
 }) {
   const cap = (n: number) => (past ? (n > 1 ? "Sessions" : "Session") : n > 1 ? "Today's Sessions" : "Today's Session");
-  let sessions: DaySession[];
+  let logged: Awaited<ReturnType<typeof loggedChanges>> | null = null;
   try {
-    // A past day shows its stored rows only: getDayPlan would mark, generate and log.
-    sessions = past ? await storedDaySessions(db, date) : (await getDayPlan(db, date, now, tz)).sessions;
+    // A past day's changes come from what was logged that day (read only).
+    if (past) logged = await loggedChanges(db, date);
   } catch (err) {
-    console.error("getDayPlan failed:", err);
+    console.error("loggedChanges failed:", err);
+  }
+  if (sessions === null) {
     return (
       <Card hot>
         <Cap>{cap(1)}</Cap>
@@ -52,35 +58,88 @@ export async function TodayTraining({
     );
   }
 
+  const { done, current, later } = splitDay(sessions);
+  const change = (s: DaySession) => changeFor(s, logged?.get(s.id));
   return (
     <Card hot>
-      <Cap>{cap(sessions.length)}</Cap>
-      {sessions.map((s) => (
-        <SessionRow key={s.id} s={s} past={past} />
+      <Cap>{cap(done.length + later.length + (current ? 1 : 0))}</Cap>
+      {done.map((s) => (
+        <ShortRow key={s.id} s={s} past={past} change={change(s)} note={s.completedRef !== null ? "Done · Logged" : "Done"} />
+      ))}
+      {current ? (
+        <SessionRow s={current} past={past} change={change(current)} />
+      ) : (
+        <p className={styles.allDone}>{past ? "All Done" : "All Done for Today"}</p>
+      )}
+      {later.map((s) => (
+        <ShortRow key={s.id} s={s} past={past} change={change(s)} note="Up Next" />
       ))}
     </Card>
   );
 }
 
-function SessionRow({ s, past }: { s: DaySession; past: boolean }) {
+/**
+ * One line: check, title, and a note ("Done", "Up Next"). When the plan changed it, or it can
+ * still be logged, tapping the title opens that.
+ */
+function ShortRow({ s, note, change, past }: { s: DaySession; note: string; change: Change | null; past: boolean }) {
+  const done = s.status === "done" || s.completedRef !== null;
+  const link = past ? null : logLinkFor(s);
+  const title = (
+    <span className={styles.shortTitle}>
+      <Icon name={ICON_FOR_KIND[s.kind]} size={16} className={styles.kindIcon} />
+      {titleCase(s.title)}
+    </span>
+  );
+  return (
+    <div className={styles.shortRow}>
+      {change ? <ChangeDot /> : null}
+      <CheckButton sessionId={s.id} done={done} locked={done && !canUncheck(s)} />
+      {change || link ? (
+        <details className={styles.shortMore}>
+          <summary className={styles.shortSummary}>
+            {title}
+            <span className={styles.shortNote}>{note}</span>
+          </summary>
+          {change ? <ChangeView {...change} /> : null}
+          {link ? (
+            <Link href={link.href} className={styles.logLink}>
+              {link.label}
+            </Link>
+          ) : null}
+        </details>
+      ) : (
+        <>
+          {title}
+          <span className={styles.shortNote}>{note}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SessionRow({ s, past, change }: { s: DaySession; past: boolean; change: Change | null }) {
   const done = s.status === "done" || s.completedRef !== null;
   const rest = s.kind === "rest";
-  const link = sessionLogLink(s.kind);
+  const link = logLinkFor(s);
   const v = reasonView(s.adjusted, s.reasons);
   const notes = sessionNotes(s.details);
   return (
     <div className={styles.session}>
-      <div className={styles.sessionHead}>
-        <p className={styles.sessionTitle}>
-          <Icon name={ICON_FOR_KIND[s.kind]} size={18} className={styles.kindIcon} />
-          {titleCase(s.title)}
-          {done ? <Icon name="check" label="Done" className={styles.doneIcon} /> : null}
-        </p>
-        {rest ? null : (
-          <p className={styles.small}>
-            {s.durationMin} min · {INTENSITY_LABEL[s.intensity] ?? s.intensity}
+      {change ? <ChangeDot /> : null}
+      <div className={styles.sessionHeadRow}>
+        <div className={styles.sessionHead}>
+          <p className={styles.sessionTitle}>
+            <Icon name={ICON_FOR_KIND[s.kind]} size={18} className={styles.kindIcon} />
+            {titleCase(s.title)}
           </p>
-        )}
+          {rest ? null : (
+            <p className={styles.small}>
+              {[`${s.durationMin} min`, sessionMetaLabel(s.kind, s.intensity)].filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+        {rest ? null : <CheckButton sessionId={s.id} done={done} locked={done && !canUncheck(s)} />}
       </div>
       {v.badge ? (
         <p className={styles.adjusted}>
@@ -99,10 +158,16 @@ function SessionRow({ s, past }: { s: DaySession; past: boolean }) {
           {n}
         </p>
       ))}
-      {link && !done && !past ? (
+      {link && !past ? (
         <Link href={link.href} className={styles.logLink}>
           {link.label}
         </Link>
+      ) : null}
+      {change ? (
+        <details className={styles.changed}>
+          <summary className={styles.changedSummary}>What Changed</summary>
+          <ChangeView {...change} />
+        </details>
       ) : null}
       <WhySheet entries={v.sheet} />
     </div>
