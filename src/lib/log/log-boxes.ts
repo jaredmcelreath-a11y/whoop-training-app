@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { cardioEntries, workouts } from "@/db/schema";
+import { notDismissed } from "@/lib/log/dismissed";
+import { cardioEntries, dismissedWorkouts, workouts } from "@/db/schema";
 import { whoopSports } from "@/lib/plan/inputs";
 
 /** WHOOP Age and VO2 max usually update on these days (0 = Sunday, 2 = Tuesday). */
@@ -39,6 +40,7 @@ export async function unlinkedWhoopCardio(db: Db, now: Date): Promise<WhoopCardi
         gte(workouts.start, new Date(now.getTime() - DETAILS_LOOKBACK_DAYS * 86_400_000)),
         lte(workouts.start, now),
         sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
+        notDismissed,
       ),
     )
     .orderBy(desc(workouts.start));
@@ -48,6 +50,11 @@ export async function unlinkedWhoopCardio(db: Db, now: Date): Promise<WhoopCardi
     start: r.start,
     durationMin: Math.round((r.end.getTime() - r.start.getTime()) / 60_000),
   }));
+}
+
+/** Marks a WHOOP workout as not a real workout (for example a mis-detected run). Repeating it is harmless. */
+export async function dismissWorkout(db: Db, workoutId: string): Promise<void> {
+  await db.insert(dismissedWorkouts).values({ workoutId }).onConflictDoNothing();
 }
 
 /** Start and length of a WHOOP workout, to pre-fill the cardio form; null when unknown. */

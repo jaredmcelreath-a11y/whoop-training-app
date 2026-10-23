@@ -30,7 +30,14 @@ export function RecoveryRing({ score, band, pendingLabel }: { score: number | nu
           />
         ) : null}
         <text x="75" y={scored ? 89 : 87} textAnchor="middle" className={scored ? styles.value : styles.pending}>
-          {scored ? `${Math.round(pct)}%` : "—"}
+          {scored ? (
+            <>
+              {Math.round(pct)}
+              <tspan className={styles.pct}>%</tspan>
+            </>
+          ) : (
+            "—"
+          )}
         </text>
       </svg>
       <p className={styles.label} data-band={band ?? "none"}>

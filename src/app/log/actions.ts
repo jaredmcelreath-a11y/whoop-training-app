@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { upsertWeekly, upsertWeight } from "@/lib/log/body";
 import { localDate } from "@/lib/log/dates";
+import { dismissWorkout } from "@/lib/log/log-boxes";
 import { parseNumber } from "@/lib/log/units";
 import { WeeklyInput, WeightInput, formError } from "@/lib/log/validate";
 
@@ -35,4 +36,14 @@ export async function logWeekly(_prev: FormState, formData: FormData): Promise<F
   if (!parsed.success) return { error: formError(parsed.error) };
   await upsertWeekly(getDb(), localDate(new Date(), getEnv().OWNER_TZ), parsed.data);
   return done();
+}
+
+/** "Not a Workout": hides a mis-detected WHOOP workout from Missing Details and from the plan. */
+export async function dismissWorkoutAction(workoutId: string): Promise<void> {
+  if (!(await requireSession())) return;
+  if (typeof workoutId !== "string" || !workoutId || workoutId.length > 100) return;
+  await dismissWorkout(getDb(), workoutId);
+  revalidatePath("/");
+  revalidatePath("/log");
+  revalidatePath("/plan");
 }

@@ -19,6 +19,7 @@ import {
 import { NOT_ENOUGH_DATA } from "@/lib/engine/adapt";
 import { addDays, localDate, weekStart, zonedLocalToUtc } from "@/lib/log/dates";
 import { ensureDefaultExercises } from "@/lib/log/strength";
+import { dismissWorkout } from "@/lib/log/log-boxes";
 import { getPlanSettings, updatePlanSettings } from "./settings";
 import { seasonCalendar, weeklyTargets } from "@/lib/engine/season";
 import { loadDayInputs, loadWeekHistory, longestRunMin } from "./inputs";
@@ -591,6 +592,16 @@ describe("Ruling 16 fixes", () => {
     expect(h).toEqual({ actualEnduranceMin: [300, 30], actualRunMin: [45, 0], strainRatio: [null, null] });
   });
 
+  it("a dismissed WHOOP run counts nowhere in the run history", async () => {
+    const cal = seasonCalendar({ seasonStart: "2026-10-12", raceDate: "2027-10-17" });
+    const longestBefore = await longestRunMin(db, TODAY, TZ);
+    const before = await loadWeekHistory(db, cal, 2, "2026-10-28", TZ);
+    await whoopAt("w-fake", "running", at("2026-10-20", "07:00"), 90);
+    await dismissWorkout(db, "w-fake");
+    expect(await longestRunMin(db, TODAY, TZ)).toBe(longestBefore);
+    expect(await loadWeekHistory(db, cal, 2, "2026-10-28", TZ)).toEqual(before);
+  });
+
   it("(d) the long-run lookback counts unlinked WHOOP runs, once", async () => {
     expect(await longestRunMin(db, TODAY, TZ)).toBeNull();
     await whoopAt("w-run", "running", at("2026-10-18", "07:00"), 25);
@@ -872,6 +883,26 @@ describe("storedDaySessions", () => {
   it("returns nothing for a day with no stored plan, without generating one", async () => {
     expect(await storedDaySessions(db, addDays(TODAY, -40))).toEqual([]);
     expect((await db.select().from(plannedSessions)).length).toBe(0);
+  });
+});
+
+describe("dismissed WHOOP workouts", () => {
+  it("never complete a planned session", async () => {
+    const [row] = await db
+      .insert(plannedSessions)
+      .values({ localDate: TODAY, slot: 0, kind: "run", title: "Run", durationMin: 30, intensity: "z2", details: {}, ruleIds: [], weekStart: weekStart(TODAY) })
+      .returning();
+    await db.insert(workouts).values({
+      id: "not-a-run",
+      start: new Date("2026-10-21T14:00:00Z"),
+      end: new Date("2026-10-21T14:30:00Z"),
+      timezoneOffset: "-05:00",
+      sportName: "running",
+      scoreState: "SCORED",
+    });
+    await dismissWorkout(db, "not-a-run");
+    expect(await markCompletion(db, TODAY, TZ)).toBe(0);
+    expect((await db.select().from(plannedSessions).where(eq(plannedSessions.id, row.id)))[0].status).toBe("planned");
   });
 });
 

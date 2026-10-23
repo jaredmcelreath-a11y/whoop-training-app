@@ -2,6 +2,7 @@
 import { and, asc, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { RULES } from "@/lib/engine/rules/catalog";
 import type { Db } from "@/db/client";
+import { notDismissed } from "@/lib/log/dismissed";
 import { cardioEntries, sleeps, strengthSessions, workouts } from "@/db/schema";
 import type { ActualWorkout } from "@/lib/engine/day-timeline";
 import { overlapsLogged, whoopKind, type Span } from "@/lib/plan/inputs";
@@ -118,6 +119,7 @@ export async function actualWorkouts(db: Db, date: string, tz: string): Promise<
       and(
         gte(workouts.start, from),
         lt(workouts.start, to),
+        notDismissed,
         sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
         sql`not exists (select 1 from ${strengthSessions} where ${strengthSessions.whoopWorkoutId} = ${workouts.id})`,
       ),

@@ -78,6 +78,13 @@
       "when": 1792728173081,
       "tag": "0010_perfect_squirrel_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792729633871,
+      "tag": "0011_salty_masque",
+      "breakpoints": true
     }
   ]
 }

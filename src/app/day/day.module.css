@@ -59,11 +59,17 @@
 
 /* ---- targets --------------------------------------------------------------- */
 
+/* Three per row; a short last row (two chips) sits centred. */
 .targets {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   margin-top: 8px;
+}
+
+.targets > * {
+  flex: 0 0 calc((100% - 12px) / 3);
 }
 
 .needs {
@@ -217,4 +223,37 @@
 .targets > * > p:first-child {
   font-size: 15px;
   overflow-wrap: normal;
+}
+
+/* ---- collapsible supplements ----------------------------------------------- */
+
+.suppsSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.suppsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.suppsSummary::after {
+  content: "Show";
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.suppsSection[open] > .suppsSummary::after {
+  content: "Hide";
+}
+
+.suppsCount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
 }

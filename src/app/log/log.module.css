@@ -137,12 +137,14 @@
   justify-content: center;
   gap: 6px;
   min-height: 82px;
-  padding: 10px 6px;
+  padding: 10px 4px;
   border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--line);
   color: var(--text);
-  font-size: 12px;
+  /* 11 px keeps "Swim / Bike / Run" on one line in a third of a 375 px screen. */
+  font-size: 11px;
+  white-space: nowrap;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
@@ -175,11 +177,38 @@
 
 .detailsRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 6px 0;
   font-size: 13px;
+}
+
+.detailsText {
+  flex: 1 1 100%;
+}
+
+.detailsActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1 1 100%;
+}
+
+.dismiss {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--sub);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .detailsRow + .detailsRow {

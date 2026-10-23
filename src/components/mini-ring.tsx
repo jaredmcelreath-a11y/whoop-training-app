@@ -62,7 +62,16 @@ export function MiniRing({
         />
       ) : null}
       <text x="50" y="57" textAnchor="middle" className={scored ? styles.value : styles.pending}>
-        {scored ? display : pendingLabel}
+        {scored && display.endsWith("%") ? (
+          <>
+            {display.slice(0, -1)}
+            <tspan className={styles.pct}>%</tspan>
+          </>
+        ) : scored ? (
+          display
+        ) : (
+          pendingLabel
+        )}
       </text>
     </svg>
   );

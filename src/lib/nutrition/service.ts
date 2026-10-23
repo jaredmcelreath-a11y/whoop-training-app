@@ -13,6 +13,7 @@
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import type { Db } from "@/db/client";
+import { notDismissed } from "@/lib/log/dismissed";
 import { bodyScans, cycles, energyEstimates, nutritionDays, plannedSessions, weightEntries, whoopRaw, workouts } from "@/db/schema";
 import {
   calibrateTdee,
@@ -281,7 +282,7 @@ async function exerciseHistory(db: Db, now: Date): Promise<Partial<Record<Exerci
   const rows = await db
     .select({ sport: workouts.sportName, start: workouts.start, end: workouts.end, kcal: workouts.kcal })
     .from(workouts)
-    .where(and(gte(workouts.start, new Date(now.getTime() - p.historyLookbackDays * MS_PER_DAY)), lte(workouts.start, now), inArray(workouts.sportName, sports)));
+    .where(and(gte(workouts.start, new Date(now.getTime() - p.historyLookbackDays * MS_PER_DAY)), lte(workouts.start, now), inArray(workouts.sportName, sports), notDismissed));
   const rates = new Map<LinkKind, number[]>();
   for (const r of rows) {
     const kind = whoopKind(r.sport);

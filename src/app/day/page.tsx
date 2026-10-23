@@ -152,7 +152,11 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
         ))}
       </ol>
 
-      <h2 className={styles.sectionTitle}>Supplements</h2>
+      {/* Collapsed by default: the timeline above already places each supplement in the day. */}
+      <details className={styles.suppsSection}>
+        <summary className={`${styles.sectionTitle} ${styles.suppsSummary}`}>
+          Supplements <span className={styles.suppsCount}>{ns.supplements.length}</span>
+        </summary>
       <Card>
         {ns.supplements.length ? (
           <ul className={styles.supps}>
@@ -185,6 +189,7 @@ async function DayContent({ searchParams }: { searchParams: SearchParams }) {
         </p>
         <p className={styles.small}>Not medical advice. Check supplements with your doctor or a registered dietitian.</p>
       </Card>
+      </details>
     </>
   );
 }

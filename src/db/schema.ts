@@ -111,6 +111,14 @@ export const workouts = pgTable("workouts", {
   zoneMs: jsonb("zone_ms").$type<ZoneMs>(),
 });
 
+/** WHOOP workouts the owner marked as not a real workout: never asked about or counted as done. */
+export const dismissedWorkouts = pgTable("dismissed_workouts", {
+  workoutId: text("workout_id")
+    .primaryKey()
+    .references(() => workouts.id, { onDelete: "cascade" }),
+  dismissedAt: ts("dismissed_at").notNull().defaultNow(),
+});
+
 export const webhookEvents = pgTable("webhook_events", {
   traceId: text("trace_id").primaryKey(),
   type: text("type").notNull(),

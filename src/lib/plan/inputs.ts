@@ -10,6 +10,7 @@
  */
 import { and, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
+import { notDismissed } from "@/lib/log/dismissed";
 import { cardioEntries, cycles, painEntries, plannedSessions, recoveries, sleeps, strengthSessions, workouts } from "@/db/schema";
 import { RULES } from "@/lib/engine/rules/catalog";
 import type { DayInputs, PainInput } from "@/lib/engine/readiness";
@@ -257,6 +258,7 @@ export async function loadWeekHistory(
         gte(workouts.start, wlo),
         lt(workouts.start, whi),
         inArray(workouts.sportName, ENDURANCE_SPORTS),
+        notDismissed,
         sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
         sql`not exists (select 1 from ${strengthSessions} where ${strengthSessions.whoopWorkoutId} = ${workouts.id})`,
       ),
@@ -376,6 +378,7 @@ export async function longestRunMin(db: Db, endDate: string, tz: string): Promis
           gte(workouts.start, lo),
           lt(workouts.start, hi),
           inArray(workouts.sportName, whoopSports("run")),
+          notDismissed,
           sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
         ),
       )

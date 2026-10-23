@@ -17,6 +17,7 @@ import { getEnv } from "@/lib/env";
 
 import { localDate } from "@/lib/log/dates";
 import { WeeklyForm, WeightForm } from "./forms";
+import { dismissWorkoutAction } from "./actions";
 import styles from "./log.module.css";
 
 const SECTIONS: { href: string; label: string; icon: IconName }[] = [
@@ -100,10 +101,10 @@ async function LogContent() {
 
       <Card>
         <section id="weight">
-          <Cap>Weight</Cap>
           {/* Remounts after each save so the box collapses once today's weight is in. */}
           <Reenter
             key={weighedToday ? `w-${weighedToday.loggedAt.getTime()}` : "w-none"}
+            title={<Cap>Weight</Cap>}
             open={!weighedToday}
             summary={weighedToday ? `Logged ${weighedToday.lb.toFixed(1)} lb today` : null}
           >
@@ -113,15 +114,11 @@ async function LogContent() {
       </Card>
       <Card>
         <section id="weekly">
-          <Cap>This Week</Cap>
           <Reenter
             key={week ? `wk-${week.updatedAt.getTime()}` : "wk-none"}
+            title={<Cap>This Week</Cap>}
             open={weekOpen}
-            summary={
-              week
-                ? `VO2 Max ${week.vo2max ?? "—"} · WHOOP Age ${week.whoopAge ?? "—"}`
-                : null
-            }
+            summary={week ? `VO2 Max ${week.vo2max ?? "—"} · Age ${week.whoopAge ?? "—"}` : null}
           >
             <WeeklyForm vo2max={week?.vo2max ?? null} whoopAge={week?.whoopAge ?? null} />
           </Reenter>
@@ -135,14 +132,21 @@ async function LogContent() {
           <ul className={styles.detailsList}>
             {needDetails.map((w) => (
               <li key={w.id} className={styles.detailsRow}>
-                <span>
+                <span className={styles.detailsText}>
                   <Icon name={w.kind === "swim" ? "swim" : w.kind === "bike" ? "bike" : "run"} size={16} />{" "}
                   {titleCase(w.kind)} · {w.durationMin} min ·{" "}
                   {new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit" }).format(w.start)}
                 </span>
-                <Link href={`/log/cardio?kind=${w.kind}&whoop=${encodeURIComponent(w.id)}`} className={styles.detailsLink}>
-                  Add Details
-                </Link>
+                <span className={styles.detailsActions}>
+                  <form action={dismissWorkoutAction.bind(null, w.id)}>
+                    <button type="submit" className={styles.dismiss}>
+                      Not a Workout
+                    </button>
+                  </form>
+                  <Link href={`/log/cardio?kind=${w.kind}&whoop=${encodeURIComponent(w.id)}`} className={styles.detailsLink}>
+                    Add Details
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>

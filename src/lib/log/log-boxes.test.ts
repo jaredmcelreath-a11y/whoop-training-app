@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { cardioEntries, workouts } from "@/db/schema";
-import { unlinkedWhoopCardio, weeklyBoxOpen, whoopPrefill } from "./log-boxes";
+import { dismissWorkout, unlinkedWhoopCardio, weeklyBoxOpen, whoopPrefill } from "./log-boxes";
 
 describe("weeklyBoxOpen", () => {
   // 2026-03-02 is a Monday; 03-03 Tuesday; 03-04 Wednesday; 03-08 Sunday.
@@ -53,6 +53,14 @@ describe("unlinkedWhoopCardio", () => {
     });
     const got = await unlinkedWhoopCardio(db, NOW);
     expect(got.map((x) => [x.id, x.kind, x.durationMin])).toEqual([["swim", "swim", 40]]);
+  });
+
+  it("leaves out a workout marked as not a real one, and dismissing twice is fine", async () => {
+    await w("fake-run", "running", "2026-03-07T15:00:00Z");
+    await w("real-swim", "swimming", "2026-03-07T12:00:00Z");
+    await dismissWorkout(db, "fake-run");
+    await dismissWorkout(db, "fake-run");
+    expect((await unlinkedWhoopCardio(db, NOW)).map((x) => x.id)).toEqual(["real-swim"]);
   });
 });
 

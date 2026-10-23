@@ -95,7 +95,10 @@
 }
 
 .chip {
-  display: block;
+  /* Content centred vertically, so chips with and without a hint line up. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   color: var(--text);
   text-decoration: none;
   flex: 1;

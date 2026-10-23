@@ -53,6 +53,11 @@
   font-weight: 800;
 }
 
+/* The % sign is smaller so the number itself reads centered. */
+.pct {
+  font-size: 22px;
+}
+
 .pending {
   fill: var(--sub);
   font-size: 20px;
@@ -60,6 +65,7 @@
 }
 
 .label {
+  text-align: center;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;

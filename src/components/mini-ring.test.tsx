@@ -31,4 +31,10 @@ describe("MiniRing", () => {
     expect(html).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(/i);
     expect(html).toContain('aria-label="Sleep 84%"');
   });
+  it("sets a trailing % smaller than the number", () => {
+    const html = renderToStaticMarkup(
+      <MiniRing label="Sleep" value={84} max={100} display="84%" tone="sleep" band={null} pendingLabel="Pending" />,
+    );
+    expect(html).toMatch(/84<tspan[^>]*class="[^"]*pct[^"]*"[^>]*>%<\/tspan>/);
+  });
 });

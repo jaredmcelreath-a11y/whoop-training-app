@@ -10,6 +10,7 @@
  */
 import { and, asc, eq, gte, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
+import { notDismissed } from "@/lib/log/dismissed";
 import { cardioEntries, cycles, exercises, plannedSessions, recommendationLog, strengthSessions, workouts } from "@/db/schema";
 import { adapt, applyPainHold, NOT_ENOUGH_DATA, type AdaptedSession } from "@/lib/engine/adapt";
 import { readiness, type Readiness } from "@/lib/engine/readiness";
@@ -348,6 +349,7 @@ export async function markCompletion(db: Db, date: string, tz: string): Promise<
           lt(workouts.start, new Date(dayMs + 2 * MS_PER_DAY)),
           sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
           sql`not exists (select 1 from ${strengthSessions} where ${strengthSessions.whoopWorkoutId} = ${workouts.id})`,
+          notDismissed,
         ),
       )
       .orderBy(asc(workouts.start))

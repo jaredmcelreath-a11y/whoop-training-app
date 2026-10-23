@@ -43,6 +43,10 @@
   font-weight: 800;
 }
 
+.pct {
+  font-size: 13px;
+}
+
 .pending {
   fill: var(--sub);
   font-size: 13px;
