@@ -1,4 +1,5 @@
 import { hms } from "@/lib/ui/projection-view";
+import { ChartTips } from "./chart-tips";
 import styles from "./progress-chart.module.css";
 
 const W = 320;
@@ -24,27 +25,30 @@ export function ProgressChart({ points, goalS }: { points: { label: string; tota
   const y = (s: number) => PAD_TOP + ((hi - s) / (hi - lo)) * (H - PAD_TOP - PAD_BOTTOM);
   const first = points[0];
   const last = points[points.length - 1];
+  const tips = points.map((p, i) => ({ x: x(i), y: y(p.totalS), text: `${hms(p.totalS)} · ${p.label}` }));
   return (
-    <svg
-      className={styles.chart}
-      viewBox={`0 0 ${W} ${H}`}
-      role="img"
-      aria-label={`Projected finish from ${hms(first.totalS)} at ${first.label} to ${hms(last.totalS)} at ${last.label}, goal ${hms(goalS)}`}
-    >
-      <line x1={PAD_X} x2={W - PAD_X} y1={y(goalS)} y2={y(goalS)} className={styles.goal} data-goal="true" />
-      <text x={W - PAD_X} y={y(goalS) - 4} textAnchor="end" className={styles.goalText}>
-        Goal
-      </text>
-      <polyline points={points.map((p, i) => `${x(i)},${y(p.totalS)}`).join(" ")} className={styles.line} />
-      {points.map((p, i) => (
-        <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.totalS)} r={DOT_R} className={styles.dot} />
-      ))}
-      <text x={x(0)} y={H - 8} className={styles.axis}>
-        {first.label}
-      </text>
-      <text x={x(points.length - 1)} y={H - 8} textAnchor="end" className={styles.axis}>
-        {last.label}
-      </text>
-    </svg>
+    <ChartTips tips={tips} width={W} height={H}>
+      <svg
+        className={styles.chart}
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`Projected finish from ${hms(first.totalS)} at ${first.label} to ${hms(last.totalS)} at ${last.label}, goal ${hms(goalS)}`}
+      >
+        <line x1={PAD_X} x2={W - PAD_X} y1={y(goalS)} y2={y(goalS)} className={styles.goal} data-goal="true" />
+        <text x={W - PAD_X} y={y(goalS) - 4} textAnchor="end" className={styles.goalText}>
+          Goal
+        </text>
+        <polyline points={points.map((p, i) => `${x(i)},${y(p.totalS)}`).join(" ")} className={styles.line} />
+        {points.map((p, i) => (
+          <circle key={`${p.label}-${i}`} cx={x(i)} cy={y(p.totalS)} r={DOT_R} className={styles.dot} />
+        ))}
+        <text x={x(0)} y={H - 8} className={styles.axis}>
+          {first.label}
+        </text>
+        <text x={x(points.length - 1)} y={H - 8} textAnchor="end" className={styles.axis}>
+          {last.label}
+        </text>
+      </svg>
+    </ChartTips>
   );
 }

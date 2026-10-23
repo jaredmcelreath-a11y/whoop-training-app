@@ -143,6 +143,7 @@ function WeightSection({ body }: { body: BodyProgress }) {
         secondary={splitAtGaps(body.avg7)}
         goal={goal}
         unit="lb (7-day avg)"
+        dotUnit="lb"
         label="Body weight with 7-day average and goal line"
         emptyText="Log your weight to see a chart"
         emptyHref="/log#weight"

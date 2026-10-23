@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Point } from "@/lib/progress/series";
+import { shortDate } from "@/lib/progress/view";
 import { chartGeometry } from "./chart-geometry";
+import { ChartTips } from "./chart-tips";
 import styles from "./line-chart.module.css";
 
 const DEFAULT_WIDTH = 320;
@@ -16,6 +18,8 @@ type Props = {
   secondary?: Point[][];
   goal?: number;
   unit: string;
+  /** The unit in a dot's popup when it differs from the caption's (e.g. "lb" under "lb (7-day avg)"). */
+  dotUnit?: string;
   label: string;
   emptyText: string;
   emptyHref?: string;
@@ -31,6 +35,7 @@ export function LineChart({
   secondary,
   goal,
   unit,
+  dotUnit = unit,
   label,
   emptyText,
   emptyHref,
@@ -65,48 +70,51 @@ export function LineChart({
   const rawDots = g.dots.slice(0, rawCount);
   const linePaths = sec.length > 0 ? g.paths.slice(segments.length) : g.paths;
   const last = (sec.length > 0 ? sec : segments).flat().at(-1);
+  const tips = segments.flat().map((p, i) => ({ ...rawDots[i], text: `${fmt(p.value)} ${dotUnit} · ${shortDate(p.date)}` }));
 
   return (
     <figure className={styles.chart} style={{ margin: 0 }}>
-      <svg className={styles.svg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
-        {g.yTicks.map((t, i) => (
-          <g key={i}>
-            <line className={styles.grid} x1={pad} x2={width - pad} y1={t.y} y2={t.y} />
-            <text className={styles.tick} x={pad} y={t.y - TICK_GAP}>
-              {t.label}
+      <ChartTips tips={tips} width={width} height={height}>
+        <svg className={styles.svg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
+          {g.yTicks.map((t, i) => (
+            <g key={i}>
+              <line className={styles.grid} x1={pad} x2={width - pad} y1={t.y} y2={t.y} />
+              <text className={styles.tick} x={pad} y={t.y - TICK_GAP}>
+                {t.label}
+              </text>
+            </g>
+          ))}
+          {goal !== undefined && (
+            <line className={styles.goal} x1={pad} x2={width - pad} y1={g.yOf(goal)} y2={g.yOf(goal)} />
+          )}
+          {linePaths.map((d, i) => (
+            <path key={`a${i}`} className={styles.area} data-area="true" d={areaPath(d, height - pad)} />
+          ))}
+          {linePaths.map((d, i) => (
+            <path key={i} className={styles.line} d={d} />
+          ))}
+          {rawDots.map((p, i) => (
+            <circle
+              key={i}
+              className={sec.length > 0 ? styles.dotFaint : styles.dot}
+              cx={p.x}
+              cy={p.y}
+              r={DOT_RADIUS}
+            />
+          ))}
+          {g.xLabels.map((l, i) => (
+            <text
+              key={i}
+              className={styles.tick}
+              x={l.x}
+              y={height - pad + LABEL_DROP}
+              textAnchor={i === 0 ? "start" : "end"}
+            >
+              {l.label}
             </text>
-          </g>
-        ))}
-        {goal !== undefined && (
-          <line className={styles.goal} x1={pad} x2={width - pad} y1={g.yOf(goal)} y2={g.yOf(goal)} />
-        )}
-        {linePaths.map((d, i) => (
-          <path key={`a${i}`} className={styles.area} data-area="true" d={areaPath(d, height - pad)} />
-        ))}
-        {linePaths.map((d, i) => (
-          <path key={i} className={styles.line} d={d} />
-        ))}
-        {rawDots.map((p, i) => (
-          <circle
-            key={i}
-            className={sec.length > 0 ? styles.dotFaint : styles.dot}
-            cx={p.x}
-            cy={p.y}
-            r={DOT_RADIUS}
-          />
-        ))}
-        {g.xLabels.map((l, i) => (
-          <text
-            key={i}
-            className={styles.tick}
-            x={l.x}
-            y={height - pad + LABEL_DROP}
-            textAnchor={i === 0 ? "start" : "end"}
-          >
-            {l.label}
-          </text>
-        ))}
-      </svg>
+          ))}
+        </svg>
+      </ChartTips>
       {last && (
         <figcaption className={styles.latest}>
           {fmt(last.value)} {unit}

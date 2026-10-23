@@ -1,0 +1,58 @@
+.wrap {
+  position: relative;
+}
+
+/* A finger-sized target centred on each dot; the dot itself stays drawn in the svg. */
+.hit {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hit:focus-visible {
+  outline: 2px solid var(--info);
+}
+
+.tip {
+  position: absolute;
+  z-index: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.tip[data-align="start"] {
+  transform: translate(-12px, calc(-100% - 10px));
+}
+
+.tip[data-align="end"] {
+  transform: translate(calc(-100% + 12px), calc(-100% - 10px));
+}
+
+.tip[data-below="true"] {
+  transform: translate(-50%, 10px);
+}
+
+.tip[data-below="true"][data-align="start"] {
+  transform: translate(-12px, 10px);
+}
+
+.tip[data-below="true"][data-align="end"] {
+  transform: translate(calc(-100% + 12px), 10px);
+}

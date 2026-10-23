@@ -4,7 +4,7 @@ import { ProgressChart } from "./progress-chart";
 
 const pts = [
   { label: "Start", totalS: 25595 },
-  { label: "Oct 19", totalS: 24231 },
+  { label: "Oct 19", totalS: 24300 },
   { label: "Oct 26", totalS: 24100 },
 ];
 
@@ -23,5 +23,10 @@ describe("ProgressChart", () => {
     const html = renderToStaticMarkup(<ProgressChart points={pts.slice(0, 1)} goalS={21600} />);
     expect(html).not.toContain("<polyline");
     expect(html).toContain("Your chart starts after next week");
+  });
+  it("labels each dot with its time and week for the popup", () => {
+    const html = renderToStaticMarkup(<ProgressChart points={pts} goalS={21600} />);
+    expect(html).toContain('aria-label="7:06:35 · Start"');
+    expect(html).toContain('aria-label="6:45:00 · Oct 19"');
   });
 });

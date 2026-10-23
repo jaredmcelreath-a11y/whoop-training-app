@@ -48,4 +48,11 @@ describe("LineChart theming", () => {
   it("fills a soft area under each line, closed to the chart floor", () => {
     expect(html).toMatch(/<path[^>]*data-area="true"[^>]*d="M[^"]*Z"/);
   });
+  it("labels each dot with its value and date for the popup", () => {
+    const html = renderToStaticMarkup(
+      <LineChart {...base} unit="lb (7-day avg)" dotUnit="lb" segments={[pts(["2026-10-01", 150], ["2026-10-08", 151.26])]} />,
+    );
+    expect(html).toContain('aria-label="150 lb · Oct 1"');
+    expect(html).toContain('aria-label="151.3 lb · Oct 8"');
+  });
 });
