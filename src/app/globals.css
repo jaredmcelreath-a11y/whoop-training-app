@@ -74,7 +74,8 @@ textarea {
 }
 
 input[type="date"],
-input[type="time"] {
+input[type="time"],
+input[type="datetime-local"] {
   -webkit-appearance: none;
   appearance: none;
   display: block;

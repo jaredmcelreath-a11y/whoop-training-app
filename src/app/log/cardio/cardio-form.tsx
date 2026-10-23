@@ -13,7 +13,7 @@ const KINDS: { kind: Kind; label: string }[] = [
   { kind: "bike", label: "Bike" },
   { kind: "swim", label: "Swim" },
 ];
-const UNITS: Record<Kind, string[]> = { run: ["mi", "km"], bike: ["mi", "km"], swim: ["yd", "m"] };
+const UNITS: Record<Kind, string[]> = { run: ["mi", "km"], bike: ["mi", "km"], swim: ["yd", "m", "ft"] };
 
 function Status({ state, pending }: { state: { ok?: true; error?: string }; pending: boolean }) {
   if (pending) return null;
@@ -39,13 +39,10 @@ export function CardioForm({
   defaultStart,
   initialKind = "run",
   defaultDurationMin,
-  defaultPoolUnit = "yd",
 }: {
   defaultStart: string;
   initialKind?: Kind;
   defaultDurationMin?: number;
-  /** From Plan Settings; the pool length has its own unit (feet allowed). */
-  defaultPoolUnit?: "yd" | "m" | "ft";
 }) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [unit, setUnit] = useState(UNITS[initialKind][0]);
@@ -90,7 +87,8 @@ export function CardioForm({
           />
         </label>
 
-        <div className={styles.row}>
+        {/* Duration, distance and unit on one line. */}
+        <div className={styles.row3}>
           <label className={styles.field}>
             <span className={styles.label}>Duration (min)</span>
             <input
@@ -115,9 +113,6 @@ export function CardioForm({
               className={base.input}
             />
           </label>
-        </div>
-
-        <div className={styles.row}>
           <label className={styles.field}>
             <span className={styles.label}>Unit</span>
             <select
@@ -133,54 +128,34 @@ export function CardioForm({
               ))}
             </select>
           </label>
-          {kind === "swim" ? (
-            <div className={styles.field}>
-              <span className={styles.label}>Pool Length</span>
-              <div className={styles.poolRow}>
-                <input
-                  name="poolLength"
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="25"
-                  aria-label="Pool length"
-                  className={base.input}
-                />
-                <select name="poolUnit" defaultValue={defaultPoolUnit} aria-label="Pool length unit" className={base.select}>
-                  <option value="yd">Yards</option>
-                  <option value="m">Meters</option>
-                  <option value="ft">Feet</option>
-                </select>
-              </div>
-            </div>
-          ) : null}
-          {kind === "bike" ? (
-            <label className={styles.field}>
-              <span className={styles.label}>Avg Watts</span>
-              <input
-                name="avgWatts"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="145"
-                className={base.input}
-              />
-            </label>
-          ) : null}
-          {kind === "run" ? (
-            <label className={styles.field}>
-              <span className={styles.label}>Incline (%)</span>
-              <input
-                name="inclinePct"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="1"
-                className={base.input}
-              />
-            </label>
-          ) : null}
         </div>
+
+        {kind === "bike" ? (
+          <label className={styles.field}>
+            <span className={styles.label}>Avg Watts</span>
+            <input
+              name="avgWatts"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="145"
+              className={base.input}
+            />
+          </label>
+        ) : null}
+        {kind === "run" ? (
+          <label className={styles.field}>
+            <span className={styles.label}>Incline (%)</span>
+            <input
+              name="inclinePct"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="1"
+              className={base.input}
+            />
+          </label>
+        ) : null}
 
         {kind === "run" ? (
           <label className={styles.check}>

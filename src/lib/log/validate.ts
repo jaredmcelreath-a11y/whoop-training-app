@@ -30,7 +30,7 @@ export type SetInput = z.infer<typeof SetInput>;
 
 const MAX_METERS = { swim: 10_000, run: 100_000, bike: 400_000 } as const;
 const KIND_UNITS = {
-  swim: ["yd", "m"],
+  swim: ["yd", "m", "ft"],
   run: ["mi", "km"],
   bike: ["mi", "km"],
 } as const;
@@ -41,12 +41,10 @@ export const CardioInput = z
     startedAt: z.iso.datetime({ offset: true }),
     durationMin: num(1, 600),
     distance: z.number().positive().nullable(),
-    unit: z.enum(["yd", "m", "mi", "km"]),
+    unit: z.enum(["yd", "m", "ft", "mi", "km"]),
     avgWatts: optNum(0, 2000),
     inclinePct: optNum(-10, 40),
     poolLength: z.number().positive().nullable(),
-    /** The pool length's own unit; when absent it is the distance unit. */
-    poolUnit: z.enum(["yd", "m", "ft"]).optional(),
     indoor: z.boolean(),
     notes: z.string().max(500),
   })
@@ -67,7 +65,7 @@ export const CardioInput = z
       });
     }
     if (v.poolLength !== null) {
-      const m = toMeters(v.poolLength, v.poolUnit ?? v.unit);
+      const m = toMeters(v.poolLength, v.unit);
       if (m < 10 || m > 100) {
         ctx.addIssue({
           code: "custom",

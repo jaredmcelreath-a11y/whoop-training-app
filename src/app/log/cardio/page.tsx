@@ -12,7 +12,6 @@ import { toZonedLocal } from "@/lib/log/dates";
 import { formatWhoop } from "@/lib/log/link-whoop";
 import { shortDate } from "@/lib/log/strength-view";
 import { parseCardioKind } from "@/lib/plan/today-view";
-import { getPlanSettings } from "@/lib/plan/settings";
 import base from "../strength/strength.module.css";
 import { deleteCardioAction } from "./actions";
 import { CardioForm, DeleteCardioButton } from "./cardio-form";
@@ -54,7 +53,6 @@ async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: 
           initialKind={kind}
           defaultStart={toZonedLocal(prefill?.start ?? new Date(), getEnv().OWNER_TZ)}
           defaultDurationMin={prefill?.durationMin}
-          defaultPoolUnit={(await getPlanSettings(getDb(), new Date(), getEnv().OWNER_TZ)).poolUnit}
         />
       </section>
       <section className={base.card}>
