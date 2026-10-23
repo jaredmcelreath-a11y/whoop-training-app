@@ -12,6 +12,7 @@ import {
   PHASE_LABEL,
   dayHeading,
   detailNotes,
+  effortLine,
   humanizeParams,
   intervalsLine,
   parseWeekParam,
@@ -91,6 +92,13 @@ describe("session detail lines", () => {
   it("formats walk-run intervals", () => {
     expect(intervalsLine({ runMin: 2, walkMin: 1, reps: 10 })).toBe("10 × (run 2 min, walk 1 min)");
   });
+  it("says what easy means on an easy swim, ride or run", () => {
+    expect(effortLine("swim", "z2")).toBe("Easy: Zone 2, 60–70% of max heart rate. You can talk in full sentences.");
+    expect(effortLine("run", "z1")).toBe("Easy: Zone 1, 50–60% of max heart rate. You can talk in full sentences.");
+    expect(effortLine("bike", "tempo")).toBeNull();
+    expect(effortLine("core", "easy")).toBeNull();
+  });
+
   it("formats a quality structure", () => {
     expect(structureLine({ warmUpMin: 15, hardMin: 20, coolDownMin: 10 }, "tempo")).toBe(
       "15 min warm-up · 20 min tempo · 10 min cool-down",

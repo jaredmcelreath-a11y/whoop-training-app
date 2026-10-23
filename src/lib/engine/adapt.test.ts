@@ -660,7 +660,11 @@ describe("adapt: monotonic", () => {
         // Every rule that fired and acted on (or flagged) this day shows up as a reason, and
         // every reason comes from a fired rule.
         const reasonIds = new Set(out.flatMap((o) => o.reasons.map((x) => x.ruleId)));
-        const has = (kinds: ReadonlySet<string>) => plan.some((p) => kinds.has(p.kind));
+        // The later rules see the day after the pain step: under a pain hold or restricted joints a
+        // run is already mobility on a red day (its reason names the red) or an easy ride otherwise.
+        const held = r.painHold || r.jointRestricted;
+        const kinds = plan.map((p) => (p.kind === "run" && held ? (r.color === "red" ? "mobility" : "bike") : p.kind));
+        const has = (want: ReadonlySet<string>) => kinds.some((k) => want.has(k));
         const expected = new Set<string>();
         for (const f of r.fired) {
           const id = f.ruleId;

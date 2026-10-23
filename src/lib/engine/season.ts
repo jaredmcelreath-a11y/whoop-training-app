@@ -108,6 +108,19 @@ export function rampEnduranceMin(cal: SeasonCalendar, weekIndex: number): number
   return startMin + ((peakMin - startMin) * weekIndex) / firstPeak;
 }
 
+/**
+ * How far through build a week is, for growing the long ride and long run: 0 in base, rising
+ * each build week to 1 by the last build week, 1 in peak, and 0 in taper and race weeks.
+ */
+export function buildProgress(cal: SeasonCalendar, weekIndex: number): number {
+  const week = weekAt(cal, weekIndex);
+  if (week.phase === "peak") return 1;
+  if (week.phase !== "build") return 0;
+  const start = cal.weeks.findIndex((w) => w.phase === "build");
+  const peak = cal.weeks.findIndex((w) => w.phase === "peak");
+  return (weekIndex - start + 1) / (peak - start);
+}
+
 function weekAt(cal: SeasonCalendar, weekIndex: number): SeasonWeek {
   const week = cal.weeks[weekIndex];
   if (!Number.isInteger(weekIndex) || !week) throw new RangeError(`week index out of range: ${weekIndex}`);

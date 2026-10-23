@@ -80,6 +80,13 @@ function hardMinutes(xs: PlannedSessionDraft[]): number {
   return xs.filter((x) => HARD.has(x.intensity)).reduce((t, x) => t + Number(x.details.hardMin), 0);
 }
 
+/** week.template: the long session's share with n sessions of a sport. */
+const longShareFor = (n: number, sport: string, progress = 0) => {
+  const base = n === 2 ? WT.longShareOfTwo : Math.max(WT.longShare, 1 / n);
+  const peak = (WT.longSharePeak as Record<string, number>)[sport] ?? base;
+  return Math.max(base, base + (peak - base) * progress);
+};
+
 const sportTarget = (t: WeeklyTargets, k: string) => (k === "swim" ? t.swimMin : k === "bike" ? t.bikeMin : t.runMin);
 
 /** Invariants that must hold for any settings and any phase. */
@@ -104,13 +111,16 @@ function checkInvariants(w: PlannedSessionDraft[], inp: BuildWeekInput) {
   const lower = strength(w).find((x) => templateOf(x) === "lower")!;
   expect(lowerTooClose(w, dow(lower.localDate)), label).toBe(false);
 
-  // Each sport's long session is within round(target × max(longShare, 1/n)).
+  // Each sport's long session is within its share of the target (rounding may add under a step),
+  // is the longest of its sport, and the sport's sessions never add up past its target.
   for (const k of ["swim", "bike", "run"]) {
     const xs = ofKind(w, k);
     if (!xs.length) continue;
     const long = xs.find((x) => x.details.long)!;
-    const bound = Math.round(sportTarget(inp.targets, k) * Math.max(WT.longShare, 1 / xs.length));
-    expect(long.durationMin, `${label} ${k}`).toBeLessThanOrEqual(bound);
+    const bound = Math.round(sportTarget(inp.targets, k) * longShareFor(xs.length, k, inp.buildProgress ?? 0));
+    expect(long.durationMin, `${label} ${k}`).toBeLessThan(bound + WT.roundToMin);
+    for (const x of xs) expect(x.durationMin, `${label} ${k}`).toBeLessThanOrEqual(long.durationMin);
+    expect(sum(xs), `${label} ${k}`).toBeLessThanOrEqual(sportTarget(inp.targets, k));
   }
 
   // Walk-run reps always fit the session.
@@ -280,7 +290,7 @@ describe("buildWeek", () => {
       expect(iv.runMin).toBe(expectedRun(0));
       expect(iv.walkMin).toBe(WT.walkRun.walkMin);
       expect(iv.reps * (iv.runMin + iv.walkMin)).toBeLessThanOrEqual(r.durationMin);
-      expect(r.title).toMatch(/^(Long walk-run|Walk-run) \d+×\(\d+ run\/\d+ walk\)$/);
+      expect(r.title).toMatch(/^(Long walk-run|Walk-run) \d+ min · \d+×\(\d+ run\/\d+ walk\)$/);
       expect(r.ruleIds).toContain("volume.run");
     }
     const last = at(RUN.walkRunWeeks - 1);
@@ -342,10 +352,10 @@ describe("buildWeek", () => {
     expect(sum(runs)).toBeLessThanOrEqual(sc.targets.runMin);
 
     // A tight cap drops what the other runs cannot absorb, and says so.
-    const tight = buildWeek(input(sc, { longestRunMinLastLookback: 20 }));
+    const tight = buildWeek(input(sc, { longestRunMinLastLookback: 30 }));
     const tRuns = ofKind(tight, "run");
     const tLong = tRuns.find((x) => x.details.long)!;
-    const tCap = Math.floor(20 * (1 + RUN.longRunMaxIncreasePct / 100));
+    const tCap = Math.floor(30 * (1 + RUN.longRunMaxIncreasePct / 100));
     expect(tLong.durationMin).toBe(tCap);
     for (const r of tRuns) expect(r.durationMin).toBeLessThanOrEqual(tCap);
     expect((tLong.details.longRunCap as { droppedMin: number }).droppedMin).toBeGreaterThan(0);
@@ -353,6 +363,106 @@ describe("buildWeek", () => {
 
     // No cap when the input is null.
     expect(ofKind(uncapped, "run").every((x) => !x.details.longRunCap)).toBe(true);
+  });
+
+  it("never lets one short run cap every continuous run below a first session's length", () => {
+    const w = buildWeek(input(byName("base"), { longestRunMinLastLookback: 5.4 }));
+    const long = ofKind(w, "run").find((x) => x.details.long)!;
+    expect(long.durationMin).toBe(RUN.longRunCapFloorMin);
+    expect(long.details.longRunCap).toMatchObject({ capMin: RUN.longRunCapFloorMin });
+  });
+
+  it("leaves walk-run sessions to the walk-run progression, not the single-run cap", () => {
+    const sc = byName("walk-run base");
+    const capped = ofKind(buildWeek(input(sc, { longestRunMinLastLookback: 5.4 })), "run");
+    expect(capped.every((x) => !x.details.longRunCap)).toBe(true);
+    expect(capped.map((x) => x.durationMin)).toEqual(ofKind(buildWeek(input(sc)), "run").map((x) => x.durationMin));
+  });
+
+  it("makes the long session clearly longer when a sport has only two", () => {
+    // Swim 93 min in two sessions: about 60/40, so 55 and 35 rather than 47 and 46.
+    const swims = ofKind(buildWeek(input(byName("walk-run base"))), "swim");
+    expect(swims).toHaveLength(2);
+    const long = swims.find((x) => x.details.long)!;
+    const easy = swims.find((x) => !x.details.long)!;
+    expect([long.durationMin, easy.durationMin]).toEqual([55, 35]);
+  });
+
+  it("grows the long ride and long run through build, toward longSharePeak at peak", () => {
+    const sc = byName("peak");
+    const longOf = (w: PlannedSessionDraft[], k: string) => ofKind(w, k).find((x) => x.details.long)!.durationMin;
+    const flat = buildWeek(input(sc));
+    const full = buildWeek(input(sc, { buildProgress: 1 }));
+    expect(longOf(full, "bike")).toBeGreaterThan(longOf(flat, "bike"));
+    expect(longOf(full, "run")).toBeGreaterThan(longOf(flat, "run"));
+    // About longSharePeak of the sport's minutes (swims and rides round to 5 min).
+    expect(Math.abs(longOf(full, "bike") - sc.targets.bikeMin * WT.longSharePeak.bike)).toBeLessThan(WT.roundToMin);
+    expect(Math.abs(longOf(full, "run") - sc.targets.runMin * WT.longSharePeak.run)).toBeLessThanOrEqual(1);
+    const half = buildWeek(input(sc, { buildProgress: 0.5 }));
+    expect(longOf(half, "bike")).toBeGreaterThan(longOf(flat, "bike"));
+    expect(longOf(half, "bike")).toBeLessThan(longOf(full, "bike"));
+  });
+
+  it("puts the long swim on the least busy day, not with the long run or long ride", () => {
+    for (const sc of SCENARIOS) {
+      const w = buildWeek(input(sc));
+      const longSwim = dow(ofKind(w, "swim").find((x) => x.details.long)!.localDate);
+      expect(longSwim, sc.name).not.toBe(SETTINGS.longRunDow);
+      expect(longSwim, sc.name).not.toBe(SETTINGS.longRideDow);
+    }
+    // Live-like layout (long ride Sat, long run Sun, rest Mon): Friday is otherwise empty.
+    const w = buildWeek(input(byName("walk-run base")));
+    expect(dow(ofKind(w, "swim").find((x) => x.details.long)!.localDate)).toBe(4);
+  });
+
+  it("race week: race day is the race, the day before a short shakeout, legs fresh", () => {
+    const RW = RULES["season.raceWeek"].params;
+    // Race on Sunday 2026-11-22 of the test week.
+    const w = buildWeek(input({ ...byName("taper"), phase: "race" }, {}, { raceDate: "2026-11-22" }));
+    const on = (d: number) => w.filter((x) => dow(x.localDate) === d);
+    expect(on(6).map((x) => [x.kind, x.title])).toEqual([["rest", "Race Day"]]);
+    const before = on(5);
+    expect(before).toHaveLength(1);
+    expect(ENDURANCE.has(before[0].kind)).toBe(true);
+    expect(before[0].durationMin).toBeLessThanOrEqual(RW.shakeoutMin);
+    expect(HARD.has(before[0].intensity)).toBe(false);
+    expect(before[0].details.long).toBeFalsy();
+    // No lower-body lifting all week; no lifting, lower-leg or core in the last days.
+    expect(strength(w).some((x) => templateOf(x) === "lower")).toBe(false);
+    expect(w.some((x) => x.details.plyo)).toBe(false);
+    for (const x of w.filter((y) => ["strength", "lower_leg", "core"].includes(y.kind))) {
+      expect(6 - dow(x.localDate), x.title).toBeGreaterThan(RW.noLiftDaysBefore);
+    }
+  });
+
+  it("race week: nothing is planned after a mid-week race", () => {
+    const w = buildWeek(input({ ...byName("taper"), phase: "race" }, {}, { raceDate: "2026-11-19" }));
+    expect(w.filter((x) => dow(x.localDate) === 3).map((x) => x.title)).toEqual(["Race Day"]);
+    for (const x of w.filter((y) => dow(y.localDate) > 3)) expect(x.kind, x.localDate).toBe("rest");
+  });
+
+  it("puts the easy swim on the lightest day", () => {
+    // Walk-run base: Tuesday has a ride, Wednesday only a short walk-run.
+    const w = buildWeek(input(byName("walk-run base")));
+    const easySwim = ofKind(w, "swim").find((x) => !x.details.long)!;
+    const minutesOn = (d: number) => w.filter((x) => ENDURANCE.has(x.kind) && x.kind !== "swim" && dow(x.localDate) === d).reduce((t, x) => t + x.durationMin, 0);
+    const d = dow(easySwim.localDate);
+    for (const other of [1, 2, 3, 4, 5, 6]) {
+      if (other === d || other === dow(ofKind(w, "swim").find((x) => x.details.long)!.localDate)) continue;
+      expect(minutesOn(d), `day ${d} vs ${other}`).toBeLessThanOrEqual(minutesOn(other));
+    }
+  });
+
+  it("rounds swims and rides to 5 minutes, and keeps runs to the minute", () => {
+    for (const sc of SCENARIOS) {
+      for (const x of buildWeek(input(sc)).filter((y) => y.kind === "swim" || y.kind === "bike")) {
+        expect(x.durationMin % WT.roundToMin, `${sc.name} ${x.title}`).toBe(0);
+      }
+    }
+    // A 10% weekly step on 45 min is under 5 min, so rounding runs down would freeze them.
+    const sc = byName("walk-run base");
+    const runs = ofKind(buildWeek(input({ ...sc, targets: { ...sc.targets, runMin: 47 } })), "run");
+    expect(sum(runs)).toBe(47);
   });
 
   it("same-day cardio goes in window 0 and strength in window 1 when two windows exist", () => {
@@ -426,7 +536,8 @@ describe("buildWeek", () => {
       expect(Number(hard[0].details.hardMin), k).toBeGreaterThanOrEqual(WT.qualityMinMin);
     }
     const end = w.filter((x) => ENDURANCE.has(x.kind));
-    expect(Math.abs(sum(end) - sc.targets.enduranceMin)).toBeLessThanOrEqual(5);
+    // Rounding swims and rides to a step leaves each under one step short at most.
+    expect(Math.abs(sum(end) - sc.targets.enduranceMin)).toBeLessThan(2 * WT.roundToMin);
   });
 
   it("puts the long swim in window 1 when two windows exist", () => {

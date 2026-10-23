@@ -16,7 +16,7 @@ import { adapt, applyPainHold, NOT_ENOUGH_DATA, type AdaptedSession } from "@/li
 import { readiness, type Readiness } from "@/lib/engine/readiness";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { dayType, strainTarget, type DayType, type StrainTarget } from "@/lib/engine/strain-target";
-import { seasonCalendar, weeklyTargets, type SeasonCalendar, type WeeklyTargets } from "@/lib/engine/season";
+import { buildProgress, seasonCalendar, weeklyTargets, type SeasonCalendar, type WeeklyTargets } from "@/lib/engine/season";
 import { PLYO, prescribe, suggestLoad, TEMPLATES, type History, type Prescription, type TemplateItem } from "@/lib/engine/strength";
 import { buildWeek, type PlannedSessionDraft, type StrengthTemplate } from "@/lib/engine/week";
 import { addDays, localDate, noonOf, weekStart as weekStartOf, zonedLocalToUtc } from "@/lib/log/dates";
@@ -164,6 +164,7 @@ async function generateWeek(
     targets,
     settings,
     longestRunMinLastLookback: await longestRunMin(db, lookbackEnd, tz),
+    buildProgress: buildProgress(cal, week.index),
   });
 
   const allItems = drafts.flatMap((d) => itemsFor(d) ?? []);

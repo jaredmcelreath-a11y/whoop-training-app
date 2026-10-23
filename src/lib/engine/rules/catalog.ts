@@ -340,6 +340,7 @@ type Range = readonly [number, number];
 type SeasonPhasesParams = { taperWeeks: number; peakWeeks: number; buildWeeks: number; taperVolumeFactor: number };
 type GainPhaseParams = { maxWeeks: number };
 type RecoveryWeekParams = { every: number; volumeFactor: number };
+type RaceWeekParams = { shakeoutMin: number; noLiftDaysBefore: number };
 type EnduranceVolumeParams = {
   startHours: number;
   peakHours: number;
@@ -354,6 +355,7 @@ type RunVolumeParams = {
   walkRunWeeks: number;
   longRunMaxIncreasePct: number;
   longRunLookbackDays: number;
+  longRunCapFloorMin: number;
 };
 type SplitParams = { swim: number; bike: number; run: number; earlyRunShare: number; earlyWeeks: number };
 type LoadCheckParams = { overPct: number; weeks: number; trailingWeeks: number };
@@ -430,6 +432,9 @@ type WeekTemplateParams = {
   sessionsPerWeek: { swim: Range; bike: Range; run: Range };
   typicalSessionMin: { swim: number; bike: number; run: number };
   longShare: number;
+  longShareOfTwo: number;
+  longSharePeak: { bike: number; run: number };
+  roundToMin: number;
   qualityMinMin: number;
   minWarmUpMin: number;
   minCoolDownMin: number;
@@ -567,6 +572,19 @@ export const RULES = deepFreeze({
     citations: [BOSQUET_2007, MUJIKA_PADILLA_2003, BOMPA_2019],
     caveat:
       "Only the taper (length and ~41-60% volume cut) is backed by a meta-analysis. Peak and build lengths are standard periodization practice, not tested values.",
+  }),
+
+  "season.raceWeek": rule<RaceWeekParams>({
+    id: "season.raceWeek",
+    area: "season",
+    statement:
+      "In race week the race day shows the race and nothing is planned after it. The day before is an easy shakeout of at most 20 min. There is no lower-body lifting all week, and no lifting, lower-leg or core work in the last 3 days before the race.",
+    why: "Arrive fresh: the taper keeps a little intensity, but heavy legs or long sessions right before a race only add fatigue.",
+    params: { shakeoutMin: 20, noLiftDaysBefore: 3 },
+    evidence: "practice",
+    citations: [ctx(BOSQUET_2007), ctx(MUJIKA_PADILLA_2003)],
+    caveat:
+      "Race-week details are coaching practice. The taper studies (context) back cutting volume while keeping some intensity, but no trial sets the shakeout length or how many days without lifting.",
   }),
 
   "strain.dailyTarget": rule<StrainTargetParams>({
@@ -763,16 +781,17 @@ export const RULES = deepFreeze({
     id: "volume.run",
     area: "volume",
     statement:
-      "Running starts at 45 min/week as walk-run for the first 8 weeks. Weekly run minutes rise at most 10% over last week's actual, never more than 30%. After a missed week (under 50% of the starting minutes), restart at the starting minutes. When you have run in the past 30 days, no single run is more than 10% longer than the longest of those runs.",
+      "Running starts at 45 min/week as walk-run for the first 4 weeks. Weekly run minutes rise at most 10% over last week's actual, never more than 30%. After a missed week (under 50% of the starting minutes), restart at the starting minutes. After walk-run, when you have run in the past 30 days, no single run is more than 10% longer than the longest of those runs, but that cap never drops below 25 min.",
     why: "Novice runners who raised weekly distance >30% had more overuse injuries. 10% is a cautious margin, not proven.",
     params: {
       startMinPerWeek: 45,
       maxWeeklyIncreasePct: 10,
       absoluteCapWeeklyIncreasePct: 30,
       reentryBelowFraction: 0.5,
-      walkRunWeeks: 8,
+      walkRunWeeks: 4,
       longRunMaxIncreasePct: 10,
       longRunLookbackDays: 30,
+      longRunCapFloorMin: 25,
     },
     evidence: "trial",
     citations: [
@@ -808,7 +827,7 @@ export const RULES = deepFreeze({
       },
     ],
     caveat:
-      "The weekly 10% is practice: an RCT (Buist 2008, context) found no injury benefit and Frandsen 2025 found no link with the week-to-week ratio. The 30% cap (Nielsen) and the single-run cap (Frandsen) are cohort findings. The 50% missed-week threshold for restarting at the starting minutes is practice, not a studied value.",
+      "The weekly 10% is practice: an RCT (Buist 2008, context) found no injury benefit and Frandsen 2025 found no link with the week-to-week ratio. The 30% cap (Nielsen) and the single-run cap (Frandsen) are cohort findings. The 50% missed-week threshold for restarting at the starting minutes is practice, not a studied value. Frandsen counted continuous running sessions, so walk-run sessions (mostly walking) follow the walk-run progression instead. The 25 min floor is practice: without it one short jog would cap every run, while the walk-run sessions you just finished are about that long.",
   }),
 
   "volume.split": rule<SplitParams>({
@@ -1582,12 +1601,15 @@ export const RULES = deepFreeze({
     id: "week.template",
     area: "week",
     statement:
-      "Each week has one rest day, 2-3 swims, 2-3 rides and 2-4 runs. The long ride and long run fall on their set days; a sport's long session is about 40% of its minutes. Core goes on 2 of the strength days. Walk-run starts at 1 min run / 1 min walk and adds 1 min of running every 2 weeks.",
+      "Each week has one rest day, 2-3 swims, 2-3 rides and 2-4 runs. The long ride and long run fall on their set days and the long swim on the least busy other day; a sport's long session is about 40% of its minutes, or 60% when it has only 2. Through build the long ride grows to 60% of riding and the long run to 50% of running by peak. Swims and rides are rounded to 5 min. Core goes on 2 of the strength days. Walk-run starts at 3 min run / 1 min walk and adds 2 min of running every week.",
     why: "A steady weekly pattern spreads the load: easy days sit around long and hard days, and running builds slowly.",
     params: {
       sessionsPerWeek: { swim: [2, 3], bike: [2, 3], run: [2, 4] },
       typicalSessionMin: { swim: 40, bike: 60, run: 30 },
       longShare: 0.4,
+      longShareOfTwo: 0.6,
+      longSharePeak: { bike: 0.6, run: 0.5 },
+      roundToMin: 5,
       qualityMinMin: 15,
       minWarmUpMin: 10,
       minCoolDownMin: 5,
@@ -1596,13 +1618,13 @@ export const RULES = deepFreeze({
       lowerLegMin: 10,
       coreMin: 10,
       coreSessionsPerWeek: 2,
-      walkRun: { startRunMin: 1, walkMin: 1, stepRunMin: 1, everyWeeks: 2 },
+      walkRun: { startRunMin: 3, walkMin: 1, stepRunMin: 2, everyWeeks: 1 },
       strides: { reps: 6, seconds: 20 },
     },
     evidence: "practice",
     citations: [],
     caveat:
-      "Every value here is coaching practice, not a tested number: the session counts, the 40% long-session share, typical session lengths, the shortest worthwhile quality block, the minimum warm-up and cool-down and the cap on a session's hard share, strength, lower-leg and core durations, the walk-run progression and the strides. The volume caps (volume.*) and intensity.distribution still bound the week.",
+      "Every value here is coaching practice, not a tested number: the session counts, the 40% long-session share (60% with 2 sessions, so the long one is clearly longer), the build-phase growth of the long ride and run (peaks near 3 h and 1 h 40 min, in line with common half-Ironman plans rather than a study), rounding swims and rides to 5 min (runs keep whole minutes, since their 10% steps are smaller), typical session lengths, the shortest worthwhile quality block, the minimum warm-up and cool-down and the cap on a session's hard share, strength, lower-leg and core durations, the walk-run progression and the strides. The volume caps (volume.*) and intensity.distribution still bound the week.",
   }),
   // ----- nutrition (Plan 4) -------------------------------------------------
   "nutrition.protein": rule<ProteinParams>({

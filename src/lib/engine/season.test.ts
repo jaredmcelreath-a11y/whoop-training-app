@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { RULES } from "@/lib/engine/rules/catalog";
-import { rampEnduranceMin, seasonCalendar, weeklyTargets, type WeekHistory } from "@/lib/engine/season";
+import { buildProgress, rampEnduranceMin, seasonCalendar, weeklyTargets, type WeekHistory } from "@/lib/engine/season";
 
 const P = RULES["season.phases"].params;
 const REC = RULES["season.recoveryWeek"].params;
@@ -326,5 +326,20 @@ describe("weeklyTargets joint status (Ruling 10)", () => {
       sim.actualRunMin.push(t.runMin);
       sim.strainRatio.push(1);
     }
+  });
+});
+
+describe("buildProgress", () => {
+  const cal = seasonCalendar({ seasonStart: "2026-10-26", raceDate: "2027-10-17" });
+  const first = (p: string) => cal.weeks.findIndex((w) => w.phase === p);
+  it("is 0 in base, rises through build to 1 at peak, and 0 again in taper", () => {
+    expect(buildProgress(cal, 0)).toBe(0);
+    expect(buildProgress(cal, first("build") - 1)).toBe(0);
+    const b = buildProgress(cal, first("build"));
+    expect(b).toBeGreaterThan(0);
+    expect(b).toBeLessThan(buildProgress(cal, first("build") + 1));
+    expect(buildProgress(cal, first("peak") - 1)).toBe(1);
+    expect(buildProgress(cal, first("peak"))).toBe(1);
+    expect(buildProgress(cal, first("taper"))).toBe(0);
   });
 });

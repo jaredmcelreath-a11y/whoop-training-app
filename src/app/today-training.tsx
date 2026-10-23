@@ -8,7 +8,7 @@ import type { Db } from "@/db/client";
 import { weekStart } from "@/lib/log/dates";
 import { loggedChanges, type DaySession } from "@/lib/plan/service";
 import { canUncheck, changeFor, logLinkFor, reasonView, type ChangeView as Change, sessionNotes, splitDay } from "@/lib/plan/today-view";
-import { sessionMetaLabel } from "@/lib/plan/view";
+import { effortLine, sessionMetaLabel } from "@/lib/plan/view";
 import { trainingCardView } from "@/lib/nutrition/fuel-view";
 import styles from "./today.module.css";
 import { WhySheet } from "./why-sheet";
@@ -47,12 +47,14 @@ export async function TodayTraining({
   }
 
   if (trainingCardView(sessions).kind === "rest") {
+    // season.raceWeek stores race day as a rest row marked `race`.
+    const race = sessions.some((s) => s.details.race === true);
     return (
       <Card hot href={past ? `/plan?week=${weekStart(date)}` : "/plan"}>
         <Cap>{cap(1)}</Cap>
         <p className={styles.restDay}>
-          <Icon name="rest" size={22} className={styles.kindIcon} />
-          Rest Day
+          <Icon name={race ? "flag" : "rest"} size={22} className={styles.kindIcon} />
+          {race ? "Race Day" : "Rest Day"}
         </p>
       </Card>
     );
@@ -124,6 +126,7 @@ function SessionRow({ s, past, change }: { s: DaySession; past: boolean; change:
   const link = logLinkFor(s);
   const v = reasonView(s.adjusted, s.reasons);
   const notes = sessionNotes(s.details);
+  const effort = effortLine(s.kind, s.intensity);
   return (
     <div className={styles.session}>
       {change ? <ChangeDot /> : null}
@@ -153,6 +156,7 @@ function SessionRow({ s, past, change }: { s: DaySession; past: boolean; change:
           {r.text}
         </p>
       ))}
+      {effort ? <p className={styles.small}>{effort}</p> : null}
       {notes.map((n, i) => (
         <p key={`${i}-${n}`} className={styles.small}>
           {n}

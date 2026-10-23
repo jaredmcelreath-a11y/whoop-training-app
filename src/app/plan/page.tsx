@@ -18,6 +18,7 @@ import {
   dayHeading,
   detailNotes,
   INTENSITY_LABEL,
+  effortLine,
   sessionMetaLabel,
   intervalsLine,
   KIND_LABEL,
@@ -284,6 +285,7 @@ function Session({ s, checkable, change }: { s: ViewSession; checkable: boolean;
               ))}
             </ul>
           ) : null}
+          {effortLine(s.kind, s.intensity) ? <p className={styles.lineNote}>{effortLine(s.kind, s.intensity)}</p> : null}
           {iv ? <p className={styles.line}>{intervalsLine(iv)}</p> : null}
           {st ? <p className={styles.line}>{structureLine(st, INTENSITY_LABEL[s.intensity]?.toLowerCase() ?? s.intensity)}</p> : null}
           {notes.length ? (

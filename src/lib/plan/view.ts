@@ -149,6 +149,20 @@ export const INTENSITY_LABEL: Record<string, string> = {
 
 const ENDURANCE_KINDS = new Set(["swim", "bike", "run"]);
 
+const EASY_ZONES = ["z1", "z2"] as const;
+
+/**
+ * What an easy swim, ride or run feels like, from intensity.zones: "Easy: Zone 2, 60–70% of max
+ * heart rate. …". Null for anything that isn't easy endurance work.
+ */
+export function effortLine(kind: string, intensity: string): string | null {
+  if (!ENDURANCE_KINDS.has(kind)) return null;
+  const zone = intensity === "easy" ? "z2" : EASY_ZONES.find((z) => z === intensity);
+  if (!zone) return null;
+  const [lo, hi] = RULES["intensity.zones"].params[zone];
+  return `Easy: Zone ${zone.slice(1)}, ${Math.round(lo * 100)}–${Math.round(hi * 100)}% of max heart rate. You can talk in full sentences.`;
+}
+
 /**
  * The intensity badge for a session, or null when it would only say "Easy" on a strength-type
  * session (core, lower leg, mobility): those carry `easy` as a placeholder, not a training zone.

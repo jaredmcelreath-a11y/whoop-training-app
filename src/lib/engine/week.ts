@@ -35,6 +35,8 @@ export type BuildWeekInput = {
   settings: PlanSettings;
   /** Longest single run in the last volume.run.longRunLookbackDays days; null = no extra cap. */
   longestRunMinLastLookback: number | null;
+  /** 0 in base, rising to 1 through build (see season.buildProgress); grows the long ride and run. */
+  buildProgress?: number;
   /** Strength templates to place, in chronological order. Defaults to Upper A, Lower, Upper B. */
   strengthDays?: StrengthTemplate[];
 };
@@ -106,6 +108,40 @@ function fmtDuration(min: number): string {
 }
 
 /**
+ * The long session's share of a sport's minutes with n sessions: longShareOfTwo for two, else at
+ * least 1/n; through build the long ride and long run grow toward longSharePeak.
+ */
+function longShareFor(n: number, sport: Sport, progress: number): number {
+  const WT = RULES["week.template"].params;
+  const base = n === 2 ? WT.longShareOfTwo : Math.max(WT.longShare, 1 / n);
+  const peak = sport === "swim" ? base : WT.longSharePeak[sport];
+  return Math.max(base, base + (peak - base) * progress);
+}
+
+/**
+ * Rounds a sport's sessions to `step` minutes without going over their total: each is
+ * floored to a step, then the leftover goes back one step at a time to the largest remainders
+ * (the long session first on ties). A session shorter than one step is left as it is. The long
+ * session ends up the longest.
+ */
+function roundSessions(xs: Cardio[], step: number) {
+  const total = xs.reduce((t, c) => t + c.durationMin, 0);
+  const rem = new Map(xs.filter((c) => c.durationMin >= step).map((c) => [c, c.durationMin % step]));
+  for (const [c, r] of rem) c.durationMin -= r;
+  let left = total - xs.reduce((t, c) => t + c.durationMin, 0);
+  const order = [...rem.keys()].sort((a, b) => rem.get(b)! - rem.get(a)! || Number(b.long) - Number(a.long) || a.dow - b.dow);
+  for (const c of order) {
+    if (left < step) break;
+    if (rem.get(c) === 0) continue;
+    c.durationMin += step;
+    left -= step;
+  }
+  const long = xs.find((c) => c.long);
+  const top = xs.reduce<Cardio | undefined>((m, c) => (!m || c.durationMin > m.durationMin ? c : m), undefined);
+  if (long && top && top !== long) [long.durationMin, top.durationMin] = [top.durationMin, long.durationMin];
+}
+
+/**
  * Add `extra` minutes to `targets` in order, each up to `maxEach`. Returns what did not fit.
  */
 function spread(extra: number, targets: Cardio[], maxEach: number): number {
@@ -152,6 +188,7 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   const buildLike = phase === "build" || phase === "peak";
 
   const days = Array.from({ length: DAYS_PER_WEEK }, (_, d) => d).filter((d) => d !== restDow);
+  const progress = input.buildProgress ?? 0;
   const longDow: Record<Sport, number> = { run: longRunDow, bike: longRideDow, swim: longRunDow };
   const minutes: Record<Sport, number> = {
     run: runAllowed ? targets.runMin : 0,
@@ -174,7 +211,13 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
     if (total <= 0) continue;
     const [lo, hi] = WT.sessionsPerWeek[sport];
     const n = Math.min(hi, Math.max(lo, Math.round(total / WT.typicalSessionMin[sport])));
-    const longMin = n === 1 ? total : Math.round(total * Math.max(WT.longShare, 1 / n));
+    const longMin = Math.round(total * longShareFor(n, sport, progress));
+    // The long swim goes on the least busy day away from the long run and long ride.
+    if (sport === "swim") {
+      const free = days.filter((d) => d !== longRunDow && d !== longRideDow);
+      const load = (d: number) => cardio.filter((c) => c.dow === d).length;
+      longDow.swim = free.reduce((a, b) => (load(b) < load(a) ? b : a), free[0] ?? longRunDow);
+    }
     const long: Cardio = {
       sport,
       dow: longDow[sport],
@@ -198,7 +241,9 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
         if (sport === "run" && walkRun && runDays.some((r) => adjacent(r, d))) continue;
         const gap = Math.min(...used.map((u) => circularGap(u, d)));
         const load = cardio.filter((c) => c.dow === d).length;
-        const score = [-gap, load, d];
+        // Swims are low impact: they go on the lightest day by minutes, then away from other swims.
+        const minutesOn = cardio.filter((c) => c.dow === d).reduce((t, c) => t + c.durationMin, 0);
+        const score = sport === "swim" ? [minutesOn, -gap, d] : [-gap, load, d];
         if (!best || compareScores(score, best.score) < 0) best = { d, score };
       }
       if (!best) break; // no legal day left (walk-run spacing): its minutes merge below
@@ -226,8 +271,11 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   let runCap = Number.POSITIVE_INFINITY;
   const longRun = longOf("run");
   const lookback = input.longestRunMinLastLookback;
-  if (longRun && lookback !== null && lookback > 0) {
-    runCap = Math.floor(lookback * (1 + RUN.longRunMaxIncreasePct / PERCENT));
+  // Walk-run sessions are mostly walking and follow their own progression; the cap (from a study of
+  // continuous running sessions) applies once running is continuous.
+  if (longRun && lookback !== null && lookback > 0 && !walkRun) {
+    // One short jog never caps every run below a first session's length.
+    runCap = Math.max(RUN.longRunCapFloorMin, Math.floor(lookback * (1 + RUN.longRunMaxIncreasePct / PERCENT)));
     const runs = ofSport("run");
     let trimmed = 0;
     for (const r of runs) {
@@ -252,18 +300,23 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
     }
   }
 
-  // ---- 3. Long-session bound: never more than round(sport total × max(longShare, 1/n)) -----
+  // ---- 3. Long-session bound: never more than round(sport total × its long share) ----------
   for (const sport of SPORTS) {
     const lg = longOf(sport);
     if (!lg) continue;
     const n = ofSport(sport).length;
-    const bound = Math.round(minutes[sport] * Math.max(WT.longShare, 1 / n));
+    const bound = Math.round(minutes[sport] * longShareFor(n, sport, progress));
     if (lg.durationMin > bound) {
       lg.details.longBound = { boundMin: bound, droppedMin: lg.durationMin - bound };
       lg.durationMin = bound;
       pushRule(lg.ruleIds, "week.template");
     }
   }
+
+  // ---- 3b. Round swims and rides to week.template.roundToMin, never past a sport's total ----
+  // Runs keep whole minutes: their 10% steps are smaller than a rounding step, so rounding them
+  // down would freeze running.
+  for (const sport of ["swim", "bike"] as const) roundSessions(ofSport(sport), WT.roundToMin);
 
   // ---- 4. Intensity -------------------------------------------------------------------------
   // A quality session keeps its full planned duration; only its hard block (details.hardMin)
@@ -344,6 +397,24 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
     }
   }
 
+  // ---- Race week (season.raceWeek): race day, a shakeout the day before, nothing after ------
+  const RW = RULES["season.raceWeek"].params;
+  const raceGap = Math.round((Date.parse(`${settings.raceDate}T00:00:00Z`) - Date.parse(`${weekStart}T00:00:00Z`)) / (HOURS_PER_DAY * 3_600_000));
+  const raceDow = phase === "race" && raceGap >= 0 && raceGap < DAYS_PER_WEEK ? raceGap : null;
+  if (raceDow !== null) {
+    const eve = cardio
+      .filter((c) => c.dow === raceDow - 1)
+      .sort((a, b) => KIND_ORDER.indexOf(a.sport) - KIND_ORDER.indexOf(b.sport))[0];
+    for (const c of cardio) if (c.dow >= raceDow - 1 && c !== eve) c.durationMin = 0;
+    if (eve) {
+      eve.durationMin = Math.min(eve.durationMin, RW.shakeoutMin);
+      eve.long = false;
+      eve.intensity = "z2";
+      eve.details = { shakeout: true };
+      pushRule(eve.ruleIds, "season.raceWeek");
+    }
+  }
+
   // Drop anything trimmed to nothing.
   const sessions = cardio.filter((c) => c.durationMin > 0);
 
@@ -369,11 +440,15 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
       const ahead = (k - d + DAYS_PER_WEEK) % DAYS_PER_WEEK;
       return ahead >= 1 && ahead <= spacingDays;
     });
-  const templates = input.strengthDays ?? DEFAULT_STRENGTH;
+  // Race week: lifting only before the last noLiftDaysBefore days, and no lower-body day.
+  const liftDays = raceDow === null ? days : days.filter((d) => d < raceDow - RW.noLiftDaysBefore);
+  const templates = (input.strengthDays ?? DEFAULT_STRENGTH)
+    .filter((t) => raceDow === null || t !== "lower")
+    .slice(0, raceDow === null ? undefined : Math.ceil(liftDays.length / 2));
   let strengthPlan: { dow: number; template: StrengthTemplate }[] = [];
   if (templates.length) {
     let best: { combo: number[]; score: number[] } | null = null;
-    for (const combo of combinations(days, templates.length)) {
+    for (const combo of combinations(liftDays, templates.length)) {
       if (combo.some((d, i) => templates[i] === "lower" && tooCloseBeforeKeyRun(d))) continue;
       const pairs = combinations(combo, 2).filter(([a, b]) => adjacent(a, b)).length;
       const onLongRun = combo.filter((d) => d === longRunDow).length;
@@ -398,7 +473,8 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   // ---- 7. Lower-leg blocks: non-consecutive, away from the day before a key run -------------
   const upperDows = new Set(strengthPlan.filter((s) => s.template !== "lower").map((s) => s.dow));
   let llBest: { combo: number[]; score: number[] } | null = null;
-  for (const combo of combinations(days, LL.sessionsPerWeek)) {
+  const llCount = raceDow === null ? LL.sessionsPerWeek : Math.min(LL.sessionsPerWeek, Math.ceil(liftDays.length / 2));
+  for (const combo of combinations(liftDays, llCount)) {
     if (combinations(combo, 2).some(([a, b]) => adjacent(a, b))) continue;
     const beforeKey = combo.filter(tooCloseBeforeKeyRun).length;
     const offUpper = combo.filter((d) => !upperDows.has(d)).length;
@@ -413,7 +489,11 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   const out: PlannedSessionDraft[] = [];
   for (let dow = 0; dow < DAYS_PER_WEEK; dow++) {
     const localDate = addDays(weekStart, dow);
-    if (dow === restDow) {
+    if (dow === raceDow) {
+      out.push({ localDate, slot: 0, kind: "rest", title: "Race Day", durationMin: 0, intensity: "easy", details: { race: true }, ruleIds: ["season.raceWeek"] });
+      continue;
+    }
+    if (dow === restDow || (raceDow !== null && dow > raceDow)) {
       out.push({ localDate, slot: 0, kind: "rest", title: "Rest", durationMin: 0, intensity: "easy", details: {}, ruleIds: ["week.template"] });
       continue;
     }
@@ -463,7 +543,7 @@ function cardioTitle(c: Cardio): string {
   const dur = fmtDuration(c.durationMin);
   const iv = c.details.intervals as { runMin: number; walkMin: number; reps: number } | undefined;
   if (c.sport === "run" && iv) {
-    return `${c.long ? "Long walk-run" : "Walk-run"} ${iv.reps}×(${iv.runMin} run/${iv.walkMin} walk)`;
+    return `${c.long ? "Long walk-run" : "Walk-run"} ${dur} · ${iv.reps}×(${iv.runMin} run/${iv.walkMin} walk)`;
   }
   const noun = { swim: "swim", bike: "ride", run: "run" }[c.sport];
   switch (c.intensity) {

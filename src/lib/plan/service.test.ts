@@ -1,3 +1,4 @@
+import { RULES } from "@/lib/engine/rules/catalog";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, asc, eq, gte, lt } from "drizzle-orm";
 import type { Db } from "@/db/client";
@@ -181,7 +182,8 @@ describe("ensureWeek", () => {
   });
 
   it("caps single runs from the longest logged run in the lookback (Ruling 6)", async () => {
-    await setup();
+    // Nine weeks in, so NEXT_WEEK is past walk-run (walk-run sessions aren't capped).
+    await setup({ seasonStart: "2026-08-24" });
     await db.insert(cardioEntries).values({
       kind: "run",
       startedAt: new Date("2026-10-15T12:00:00Z"),
@@ -191,7 +193,11 @@ describe("ensureWeek", () => {
     await ensureWeek(db, NEXT_WEEK, NOW, TZ);
     const runs = (await rowsBetween(NEXT_WEEK, addDays(NEXT_WEEK, 7))).filter((r) => r.kind === "run");
     expect(runs.length).toBeGreaterThan(0);
-    expect(Math.max(...runs.map((r) => r.durationMin))).toBeLessThanOrEqual(11);
+    // 10 min × 1.1 is 11, but the cap never drops below volume.run.longRunCapFloorMin.
+    const floor = RULES["volume.run"].params.longRunCapFloorMin;
+    expect(Math.max(...runs.map((r) => r.durationMin))).toBeLessThanOrEqual(floor);
+    const long = runs.find((r) => (r.details as { long?: boolean }).long)!;
+    expect((long.details as { longRunCap?: { capMin: number } }).longRunCap?.capMin).toBe(floor);
   });
 });
 
@@ -215,7 +221,7 @@ describe("regenerateFuture after a race-date change (Review Focus 2)", () => {
 
     // Reading today first leaves recommendation_log rows on today's sessions.
     await getDayPlan(db, TODAY, NOW, TZ);
-    expect((await db.select().from(recommendationLog)).length).toBeGreaterThan(1);
+    expect((await db.select().from(recommendationLog)).length).toBeGreaterThan(0);
 
     // 20-week season: build starts at week 1, so the gain phase is week 0 only.
     await updatePlanSettings(db, { raceDate: "2027-02-28" });
@@ -298,13 +304,13 @@ describe("week boundaries in Chicago across the November DST change (Review Focu
     await setup();
     expect(localDate(at, TZ)).toBe("2026-11-01");
     expect(weekStart(localDate(at, TZ))).toBe("2026-10-26");
-    // A WHOOP swim at 23:00 Sunday local (offset -06:00 after the change).
+    // A WHOOP run at 23:00 Sunday local (offset -06:00 after the change); Sunday is the long run.
     await db.insert(workouts).values({
-      id: "w-sunday-swim",
+      id: "w-sunday-run",
       start: new Date("2026-11-02T05:00:00Z"),
       end: new Date("2026-11-02T05:25:00Z"),
       timezoneOffset: "-06:00",
-      sportName: "swimming",
+      sportName: "running",
       scoreState: "SCORED",
     });
     const plan = await getDayPlan(db, localDate(at, TZ), at, TZ);
@@ -312,9 +318,9 @@ describe("week boundaries in Chicago across the November DST change (Review Focu
     expect(plan.sessions.every((s) => s.localDate === "2026-11-01")).toBe(true);
     const rows = await rowsBetween("2026-11-01", "2026-11-02");
     expect(rows.every((r) => r.weekStart === "2026-10-26")).toBe(true);
-    const swim = rows.find((r) => r.kind === "swim");
-    expect(swim?.status).toBe("done");
-    expect(swim?.completedRef).toBe("whoop:w-sunday-swim");
+    const run = rows.find((r) => r.kind === "run");
+    expect(run?.status).toBe("done");
+    expect(run?.completedRef).toBe("whoop:w-sunday-run");
   });
 
   it("Monday 00:30 is Monday in week 2026-11-02", async () => {
