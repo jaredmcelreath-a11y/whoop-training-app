@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TEMPLATES, PLYO, prescribe, weeklySetsPerMuscle, type History } from "@/lib/engine/strength";
+import { TEMPLATES, PLYO, prescribe, progressionStep, suggestLoad, weeklySetsPerMuscle, type History } from "@/lib/engine/strength";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { DEFAULT_EXERCISES } from "@/lib/log/exercise-catalog";
 
@@ -51,45 +51,66 @@ describe("templates", () => {
   });
 });
 
+describe("progressionStep", () => {
+  it("adds about 2.5% rounded to the increment, at least one increment", () => {
+    expect(progressionStep(100, 5, 2.5)).toBe(5);
+    expect(progressionStep(300, 5, 2.5)).toBe(10);
+    expect(progressionStep(20, 2.5, 2.5)).toBe(2.5);
+    expect(progressionStep(20, 5, 2.5)).toBe(5);
+  });
+});
+
 describe("prescribe", () => {
-  it("adds the upper step when every set hit the top of the range", () => {
-    const [r] = prescribe(TEMPLATES.upperA.slice(0, 1), hist("Machine Chest Press", sets([12, 12, 12], 100)), base);
+  const pulldown = TEMPLATES.upperA.find((i) => i.exercise === "Lat Pulldown")!;
+  const raise = TEMPLATES.upperA.find((i) => i.exercise === "Dumbbell Lateral Raise")!;
+
+  it("uses the compound range for big lifts and the isolation range for small ones", () => {
+    const [p, r] = prescribe([pulldown, raise], new Map(), base);
+    expect(p.repRange).toEqual([6, 10]);
+    expect(r.repRange).toEqual([10, 15]);
+  });
+
+  it("steps up when every set hit the top of the range at one weight", () => {
+    const [r] = prescribe([pulldown], hist("Lat Pulldown", sets([10, 10, 10], 100)), base);
     expect(r.targetWeightLb).toBe(105);
-    expect(r.repRange).toEqual([10, 12]);
     expect(r.ruleIds).toContain("strength.progression");
   });
 
   it("does not progress when the sets used different weights", () => {
-    const h = { sets: [{ reps: 12, weightLb: 100 }, { reps: 12, weightLb: 100 }, { reps: 12, weightLb: 80 }] };
-    const [r] = prescribe(TEMPLATES.upperA.slice(0, 1), hist("Machine Chest Press", h), base);
+    const h = { sets: [{ reps: 10, weightLb: 100 }, { reps: 10, weightLb: 100 }, { reps: 10, weightLb: 80 }] };
+    const [r] = prescribe([pulldown], hist("Lat Pulldown", h), base);
     expect(r.targetWeightLb).toBe(100);
   });
 
   it("keeps the weight and asks for more reps otherwise", () => {
-    const [r] = prescribe(TEMPLATES.upperA.slice(0, 1), hist("Machine Chest Press", sets([12, 11, 10], 100)), base);
+    const [r] = prescribe([pulldown], hist("Lat Pulldown", sets([10, 10, 9], 100)), base);
     expect(r.targetWeightLb).toBe(100);
     expect(r.note).toMatch(/more reps/);
   });
 
-  it("uses the lower step for leg lifts", () => {
-    const [r] = prescribe(TEMPLATES.lower.slice(0, 1), hist("Leg Press", sets([12, 12, 12], 200)), base);
-    expect(r.targetWeightLb).toBe(210);
+  it("scales the step with the weight on heavy lifts", () => {
+    const [r] = prescribe(TEMPLATES.lower.slice(0, 1), hist("Leg Press", sets([10, 10, 10], 300)), base);
+    expect(r.targetWeightLb).toBe(310);
   });
 
-  it("uses the upper step for calf work", () => {
-    const calf = TEMPLATES.lower.find((i) => i.exercise === "Machine Calf Press")!;
-    const [r] = prescribe([calf], hist("Machine Calf Press", sets([12, 12, 12], 100)), base);
-    expect(r.targetWeightLb).toBe(105);
+  it("uses a per-exercise increment on light lifts", () => {
+    const [r] = prescribe([raise], hist("Dumbbell Lateral Raise", sets([15, 15, 15], 20)), base, new Map([["Dumbbell Lateral Raise", 2.5]]));
+    expect(r.targetWeightLb).toBe(22.5);
   });
 
-  it("has null weight and the pick-a-weight note with no history", () => {
-    const [r] = prescribe(TEMPLATES.upperA.slice(0, 1), new Map(), base);
+  it("keeps the lower-leg range", () => {
+    const [r] = prescribe(TEMPLATES.lowerLeg.slice(0, 1), new Map(), base);
+    expect(r.repRange).toEqual([12, 15]);
+  });
+
+  it("has null weight and the calibration note with no history", () => {
+    const [r] = prescribe([pulldown], new Map(), base);
     expect(r.targetWeightLb).toBeNull();
-    expect(r.note).toBe("Pick a weight you can do for 10–12 with 1–3 reps left");
+    expect(r.note).toMatch(/about 3 reps left/);
   });
 
   it("treats a null last weight as no weight history", () => {
-    const [r] = prescribe(TEMPLATES.upperA.slice(0, 1), hist("Machine Chest Press", sets([12, 12], null)), base);
+    const [r] = prescribe([pulldown], hist("Lat Pulldown", sets([10, 10], null)), base);
     expect(r.targetWeightLb).toBeNull();
   });
 
@@ -124,5 +145,22 @@ describe("prescribe", () => {
     const out = prescribe(TEMPLATES.core, new Map(), base);
     expect(out.every((r) => r.targetWeightLb === null)).toBe(true);
     expect(out[0].note).toMatch(/seconds/);
+  });
+});
+
+describe("suggestLoad", () => {
+  const range: [number, number] = [6, 10];
+  it("steps up from a session that hit the top on every set", () => {
+    expect(suggestLoad(range, sets([10, 10, 10], 100), 5).targetWeightLb).toBe(105);
+  });
+  it("calibrates with no history", () => {
+    const s = suggestLoad(range, null, 5);
+    expect(s.targetWeightLb).toBeNull();
+    expect(s.note).toMatch(/about 3 reps left/);
+  });
+  it("asks for more reps on a bodyweight lift that has history (no First time note)", () => {
+    const s = suggestLoad([12, 15], sets([15, 14], null), 5);
+    expect(s.targetWeightLb).toBeNull();
+    expect(s.note).toBe("Aim for 15 reps on every set.");
   });
 });

@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Icon } from "@/components/icon";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import { addExerciseAction, addSetAction, type SetState } from "../actions";
 import styles from "../strength.module.css";
-import { CATEGORY_LABEL, type Category } from "@/lib/log/exercise-catalog";
+import { CATEGORY_LABEL, classifyExercise, type Category } from "@/lib/log/exercise-catalog";
 
 /**
  * The "add set" row. Its clientId lives in action state: a double-tap submits the same id twice
@@ -71,8 +72,8 @@ export function SetRow({
           className={styles.numInput}
         />
       </label>
-      <button type="submit" className={styles.addButton} disabled={pending}>
-        {pending ? "…" : "Add Set"}
+      <button type="submit" className={styles.saveSet} disabled={pending} aria-label={`Save set ${setIndex + 1}`}>
+        <Icon name="check" size={20} />
       </button>
       {state.error && !pending ? (
         <p className={styles.error} role="alert">
@@ -85,9 +86,15 @@ export function SetRow({
 
 const CATEGORIES = Object.keys(CATEGORY_LABEL) as Category[];
 
-/** `exList` is the current `?ex=` list; the new exercise is appended to it. */
+/**
+ * `exList` is the current `?ex=` list; the new exercise is appended to it. The category follows a
+ * guess from the name as it is typed, until it is picked by hand.
+ */
 export function AddExerciseForm({ sessionId, exList }: { sessionId: string; exList: string }) {
   const [state, action, pending] = useActionState(addExerciseAction, {});
+  const [name, setName] = useState("");
+  const [picked, setPicked] = useState<Category | null>(null);
+  const category = picked ?? (name.trim() ? classifyExercise(name).category : "strength");
   return (
     <form action={action} onSubmit={keepInputOnSubmit(action)} className={styles.stack}>
       <input type="hidden" name="sessionId" value={sessionId} />
@@ -101,9 +108,17 @@ export function AddExerciseForm({ sessionId, exList }: { sessionId: string; exLi
         className={styles.input}
         maxLength={80}
         required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
       <div className={styles.inline}>
-        <select name="category" aria-label="Category" className={styles.select} defaultValue="strength">
+        <select
+          name="category"
+          aria-label="Category"
+          className={styles.select}
+          value={category}
+          onChange={(e) => setPicked(e.target.value as Category)}
+        >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {CATEGORY_LABEL[c]}

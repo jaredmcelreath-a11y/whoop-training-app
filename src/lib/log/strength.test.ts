@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { exercises, strengthSessions, strengthSets } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import {
   addSet,
   createExercise,
@@ -17,6 +18,8 @@ import {
   startSession,
   startOrResumeSession,
   archiveExercise,
+  ensureExercisesByName,
+  exerciseIncrements,
   unarchiveExercise,
 } from "./strength";
 import { DEFAULT_EXERCISES } from "./exercise-catalog";
@@ -227,5 +230,46 @@ describe("startOrResumeSession", () => {
     ]);
     expect(a.id).toBe(b.id);
     expect(await db.select().from(strengthSessions)).toHaveLength(1);
+  });
+});
+
+describe("exercise pattern and increment", () => {
+  const byName = async (name: string) => (await db.select().from(exercises).where(eq(exercises.name, name)))[0];
+
+  it("defaults get their pattern, and a backfill fills rows that predate it", async () => {
+    await ensureDefaultExercises(db);
+    expect((await byName("Lat Pulldown")).pattern).toBe("compound");
+    expect((await byName("Dumbbell Lateral Raise")).pattern).toBe("isolation");
+    await db.update(exercises).set({ pattern: null }).where(eq(exercises.name, "Lat Pulldown"));
+    await ensureDefaultExercises(db);
+    expect((await byName("Lat Pulldown")).pattern).toBe("compound");
+  });
+
+  it("a new strength exercise gets its pattern from its name", async () => {
+    expect((await createExercise(db, "Hack Squat", "strength")).pattern).toBe("compound");
+    expect((await createExercise(db, "Cable Fly", "strength")).pattern).toBe("isolation");
+    expect((await createExercise(db, "Side Plank", "core")).pattern).toBeNull();
+  });
+
+  it("ensureExercisesByName finds or creates by name, once", async () => {
+    await ensureDefaultExercises(db);
+    const first = await ensureExercisesByName(db, ["lat pulldown", "Invented Lift Press"]);
+    expect(first.get("lat pulldown")?.name).toBe("Lat Pulldown");
+    expect(first.get("Invented Lift Press")).toMatchObject({ category: "strength", pattern: "compound" });
+    const count = (await db.select().from(exercises)).length;
+    await ensureExercisesByName(db, ["Lat Pulldown", "Invented Lift Press"]);
+    expect((await db.select().from(exercises)).length).toBe(count);
+  });
+
+  it("ensureExercisesByName brings back an archived exercise", async () => {
+    const ex = await createExercise(db, "Invented Row", "strength");
+    await archiveExercise(db, ex.id);
+    expect((await ensureExercisesByName(db, ["Invented Row"])).get("Invented Row")?.archived).toBe(false);
+  });
+
+  it("exerciseIncrements lists only exercises with an increment", async () => {
+    await ensureDefaultExercises(db);
+    await db.update(exercises).set({ incrementLb: 2.5 }).where(eq(exercises.name, "Dumbbell Lateral Raise"));
+    expect(await exerciseIncrements(db)).toEqual(new Map([["Dumbbell Lateral Raise", 2.5]]));
   });
 });

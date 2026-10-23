@@ -1,9 +1,9 @@
-import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { exercises, strengthSessions, strengthSets, workouts } from "@/db/schema";
 import { localDate } from "./dates";
 import { findWhoopMatch, type LinkedWorkout } from "./link-whoop";
-import { DEFAULT_EXERCISES, type Category } from "./exercise-catalog";
+import { classifyExercise, DEFAULT_EXERCISES, type Category } from "./exercise-catalog";
 import type { SetInput } from "./validate";
 
 export type { Category };
@@ -13,6 +13,10 @@ export type StrengthSet = typeof strengthSets.$inferSelect;
 
 export async function ensureDefaultExercises(db: Db): Promise<void> {
   await db.insert(exercises).values(DEFAULT_EXERCISES).onConflictDoNothing({ target: exercises.name });
+  // Rows created before exercises had a pattern get the catalog's.
+  for (const e of DEFAULT_EXERCISES.filter((x) => x.pattern !== null)) {
+    await db.update(exercises).set({ pattern: e.pattern }).where(and(eq(exercises.name, e.name), isNull(exercises.pattern)));
+  }
 }
 
 /** Most recently used first (by latest set), then name. */
@@ -46,7 +50,7 @@ export async function createExercise(db: Db, name: string, category: Category): 
   if (existing) return existing;
   const [inserted] = await db
     .insert(exercises)
-    .values({ name: trimmed, category })
+    .values({ name: trimmed, category, pattern: category === "strength" ? classifyExercise(trimmed).pattern : null })
     .onConflictDoNothing({ target: exercises.name })
     .returning();
   if (inserted) return inserted;
@@ -54,6 +58,33 @@ export async function createExercise(db: Db, name: string, category: Category): 
   const raced = await findByName(db, trimmed);
   if (!raced) throw new Error("could not create exercise");
   return raced;
+}
+
+/**
+ * The exercises for these names (any case), keyed by the name as given: existing ones (brought
+ * back if archived), and new ones created with the classified category. Used for planned lifts.
+ */
+export async function ensureExercisesByName(db: Db, names: readonly string[]): Promise<Map<string, Exercise>> {
+  const out = new Map<string, Exercise>();
+  for (const name of names) {
+    if (out.has(name)) continue;
+    let ex = await createExercise(db, name, classifyExercise(name).category);
+    if (ex.archived) {
+      await unarchiveExercise(db, ex.id);
+      ex = { ...ex, archived: false };
+    }
+    out.set(name, ex);
+  }
+  return out;
+}
+
+/** Exercise name to its own load step, for those that have one. */
+export async function exerciseIncrements(db: Db): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ name: exercises.name, incrementLb: exercises.incrementLb })
+    .from(exercises)
+    .where(isNotNull(exercises.incrementLb));
+  return new Map(rows.map((r) => [r.name, r.incrementLb as number]));
 }
 
 export async function archiveExercise(db: Db, id: string): Promise<void> {

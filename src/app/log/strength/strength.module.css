@@ -45,10 +45,49 @@
   margin-bottom: 10px;
 }
 
+.exHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .exName {
   font-size: 18px;
   font-weight: 700;
   overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.exTag {
+  flex: none;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.target {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* The per-set check: saves this row as a done set. */
+.saveSet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.saveSet:disabled {
+  opacity: 0.5;
 }
 
 .last {
@@ -100,7 +139,7 @@
 
 .addRow {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) minmax(88px, auto);
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 48px;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
@@ -146,7 +185,6 @@
   outline-offset: 1px;
 }
 
-.addButton,
 .primary,
 .secondary {
   min-height: 48px;
@@ -262,4 +300,41 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---- exercise picker ------------------------------------------------------ */
+
+.pickerSummary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.pickList {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.pickLink {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.subhead {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--sub);
 }

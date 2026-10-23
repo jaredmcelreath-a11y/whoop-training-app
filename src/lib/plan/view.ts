@@ -197,9 +197,13 @@ function scalar(v: unknown, unit: string, pct: boolean): string {
 
 /** Keys whose camelCase split reads badly, with their own label and unit. */
 const KEY_LABEL: Record<string, { label: string; unit?: string }> = {
-  addLbUpper: { label: "Add (upper body)", unit: " lb" },
-  addLbLower: { label: "Add (lower body)", unit: " lb" },
-  rirTarget: { label: "Reps in reserve" },
+  compound: { label: "Big lifts (reps)" },
+  isolation: { label: "Isolation lifts (reps)" },
+  rirCompound: { label: "Reps in reserve (big lifts)" },
+  rirIsolation: { label: "Reps in reserve (isolation)" },
+  stepPct: { label: "Step", unit: "%" },
+  defaultIncrementLb: { label: "Default increment", unit: " lb" },
+  calibrationRir: { label: "Reps left when finding a weight" },
   swcSd: { label: "Smallest worthwhile change", unit: " SD" },
   reentryBelowFraction: { label: "Restart if a week falls below" },
   absoluteCapWeeklyIncreasePct: { label: "Hard cap on weekly increase", unit: "%" },

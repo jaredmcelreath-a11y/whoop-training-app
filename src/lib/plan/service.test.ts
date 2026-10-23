@@ -35,6 +35,7 @@ import {
   remainingTargets,
   setManualDone,
   storedDaySessions,
+  todayPrescription,
 } from "./service";
 
 // All values below are invented test data.
@@ -149,9 +150,33 @@ describe("ensureWeek", () => {
     expect(lower).toBeDefined();
     const rx = (lower!.details as { prescription: { exercise: string; targetWeightLb: number | null }[] })
       .prescription;
-    expect(rx.find((p) => p.exercise === "Leg Press")?.targetWeightLb).toBe(210);
+    expect(rx.find((p) => p.exercise === "Leg Press")?.targetWeightLb).toBe(205); // 2.5% of 200 lb, in 5 lb increments (strength.progression)
     // Joint status "caution" (the default) allows no plyometrics.
     expect(rx.some((p) => p.exercise === "Box Jump")).toBe(false);
+  });
+
+  it("uses an exercise's own increment in the prescription", async () => {
+    await setup();
+    await ensureDefaultExercises(db);
+    await db.update(exercises).set({ incrementLb: 2.5 }).where(eq(exercises.name, "Leg Press"));
+    const [legPress] = await db.select().from(exercises).where(eq(exercises.name, "Leg Press"));
+    const [s] = await db
+      .insert(strengthSessions)
+      .values({ startedAt: new Date("2026-10-14T12:00:00Z"), endedAt: new Date("2026-10-14T13:00:00Z"), localDate: "2026-10-14" })
+      .returning();
+    await db.insert(strengthSets).values(
+      [0, 1, 2].map((i) => ({
+        clientId: crypto.randomUUID(), sessionId: s.id, exerciseId: legPress.id, setIndex: i, reps: 10, weightLb: 40,
+        completedAt: new Date("2026-10-14T12:30:00Z"),
+      })),
+    );
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const lower = (await rowsBetween(THIS_WEEK, NEXT_WEEK)).find(
+      (r) => r.kind === "strength" && (r.details as { template: string }).template === "lower",
+    )!;
+    const rx = (lower.details as { prescription: { exercise: string; targetWeightLb: number | null }[] }).prescription;
+    // 2.5% of 40 lb is 1 lb, so one 2.5 lb increment (a 5 lb default would be 12.5%).
+    expect(rx.find((p) => p.exercise === "Leg Press")?.targetWeightLb).toBe(42.5);
   });
 
   it("caps single runs from the longest logged run in the lookback (Ruling 6)", async () => {
@@ -1053,5 +1078,78 @@ describe("getStrainTarget", () => {
 
   it("falls back to the starting range with no history", async () => {
     expect(await getStrainTarget(db, TODAY, [easyRun], TZ)).toEqual({ low: 8, high: 11, estimate: true, type: "easy", days: 0 });
+  });
+});
+
+describe("todayPrescription", () => {
+  const noon = (d: string) => new Date(zonedLocalToUtc(`${d}T12:00`, TZ));
+  const liftDay = async (template: string) => {
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const rows = await db.select().from(plannedSessions).where(eq(plannedSessions.weekStart, THIS_WEEK));
+    return rows
+      .filter((r) => r.kind === "strength" && (r.details as { template?: string }).template === template && r.localDate >= TODAY)
+      .sort((a, b) => a.localDate.localeCompare(b.localDate))[0];
+  };
+
+  it("returns today's planned lifts in order", async () => {
+    await setup();
+    const day = await liftDay("upperA") ?? (await liftDay("upperB"));
+    expect(day).toBeDefined();
+    const rx = await todayPrescription(db, day.localDate, noon(day.localDate), TZ);
+    // Every lifting session that day (the main lift plus any core or lower-leg block), in slot order.
+    const stored = (await db.select().from(plannedSessions).where(eq(plannedSessions.localDate, day.localDate)))
+      .filter((r) => ["strength", "lower_leg", "core"].includes(r.kind))
+      .sort((x, y) => x.slot - y.slot)
+      .flatMap((r) => ((r.details as { prescription?: { exercise: string }[] }).prescription ?? []).map((p) => p.exercise));
+    expect(rx.map((p) => p.exercise)).toEqual(stored);
+    expect(rx.map((p) => p.exercise)).toContain("Machine Chest Press");
+  });
+
+  it("is empty for a workout on another day", async () => {
+    await setup();
+    const day = await liftDay("upperA") ?? (await liftDay("upperB"));
+    expect(await todayPrescription(db, addDays(day.localDate, -1), noon(day.localDate), TZ)).toEqual([]);
+  });
+
+  it("suggests from the latest session, not the one before the week was built", async () => {
+    await setup();
+    await ensureDefaultExercises(db);
+    const day = await liftDay("upperA") ?? (await liftDay("upperB"));
+    const [pulldown] = await db.select().from(exercises).where(eq(exercises.name, "Lat Pulldown"));
+    // Invented: the day before, after the week was built, every set at the top of the range at 100 lb.
+    const prev = addDays(day.localDate, -1);
+    const [s] = await db
+      .insert(strengthSessions)
+      .values({ startedAt: noon(prev), endedAt: new Date(noon(prev).getTime() + 3_600_000), localDate: prev })
+      .returning();
+    await db.insert(strengthSets).values(
+      [0, 1, 2].map((i) => ({ clientId: crypto.randomUUID(), sessionId: s.id, exerciseId: pulldown.id, setIndex: i, reps: 10, weightLb: 100, completedAt: noon(prev) })),
+    );
+    const rx = await todayPrescription(db, day.localDate, noon(day.localDate), TZ);
+    expect(rx.find((p) => p.exercise === "Lat Pulldown")).toMatchObject({ targetWeightLb: 105, repRange: [6, 10] });
+  });
+
+  it("still serves a lift checked off by hand", async () => {
+    await setup();
+    const day = await liftDay("upperA") ?? (await liftDay("upperB"));
+    expect(await setManualDone(db, day.id, true, day.localDate)).toBe("done");
+    const rx = await todayPrescription(db, day.localDate, noon(day.localDate), TZ);
+    expect(rx.map((p) => p.exercise)).toContain("Machine Chest Press");
+  });
+
+  it("degrades to no plan when the plan can't be read", async () => {
+    const broken = {} as Db;
+    expect(await todayPrescription(broken, TODAY, NOW, TZ)).toEqual([]);
+  });
+
+  it("leaves out plyometrics a pain hold removed", async () => {
+    await setup({ jointStatus: "unrestricted" });
+    const day = await liftDay("lower");
+    expect(day).toBeDefined();
+    expect((day.details as { prescription: { exercise: string }[] }).prescription.some((p) => p.exercise === "Box Jump")).toBe(true);
+    await db.insert(painEntries).values({ localDate: addDays(day.localDate, -1), area: "knee", side: "left", score: 6, context: "daily" });
+    const rx = await todayPrescription(db, day.localDate, noon(day.localDate), TZ);
+    expect(rx.length).toBeGreaterThan(0);
+    expect(rx.some((p) => p.exercise === "Box Jump")).toBe(false);
   });
 });

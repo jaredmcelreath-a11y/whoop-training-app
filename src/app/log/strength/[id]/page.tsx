@@ -9,16 +9,24 @@ import { TabBar } from "@/components/tab-bar";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { formatWhoop } from "@/lib/log/link-whoop";
-import { getSession, lastTime, listExercises } from "@/lib/log/strength";
+import { ensureExercisesByName, getSession, lastTime, listExercises } from "@/lib/log/strength";
+import { getEnv } from "@/lib/env";
+import { todayPrescription } from "@/lib/plan/service";
 import {
   formatLastTime,
   nextSetDefaults,
   parseExList,
+  plannedRowCount,
+  setRowKey,
   shortDate,
+  tagLine,
+  targetLine,
+  workoutBlocks,
 } from "@/lib/log/strength-view";
 import { deleteWorkout, finishWorkout, removeSetAction } from "../actions";
 import styles from "../strength.module.css";
-import { AddExerciseForm, DeleteWorkoutButton, SetRow } from "./set-row";
+import { DeleteWorkoutButton, SetRow } from "./set-row";
+import { ExercisePicker } from "./exercise-picker";
 
 /** Static shell; the session, params and search params are runtime data and stream in. */
 export default function WorkoutPage({ params, searchParams }: PageProps<"/log/strength/[id]">) {
@@ -52,25 +60,19 @@ async function Workout({
   const { session, sets, whoop } = data;
   const finished = session.endedAt !== null;
 
-  // Exercises in the session, in order (always shown), then the ones picked via ?ex= that have
-  // no sets yet, in pick order.
-  const blocks: { exerciseId: string; name: string }[] = [];
-  for (const s of sets) {
-    if (!blocks.some((b) => b.exerciseId === s.exerciseId)) {
-      blocks.push({ exerciseId: s.exerciseId, name: s.exerciseName });
-    }
-  }
+  // Today's planned lifts first (only for a workout logged today), then exercises logged
+  // without a plan, then the ones picked via ?ex= that have no sets yet.
+  const prescription = finished ? [] : await todayPrescription(db, session.localDate, new Date(), getEnv().OWNER_TZ, id);
+  const byName = await ensureExercisesByName(db, prescription.map((p) => p.exercise));
   const all = await listExercises(db);
   const exList = parseExList((await searchParams).ex);
-  if (!finished) {
-    for (const exId of exList) {
-      const picked = all.find((e) => e.id === exId);
-      if (picked && !blocks.some((b) => b.exerciseId === picked.id)) {
-        blocks.push({ exerciseId: picked.id, name: picked.name });
-      }
-    }
-  }
-  const exParam = exList.join(",");
+  const picks = finished ? [] : exList.flatMap((exId) => all.filter((e) => e.id === exId));
+  const blocks = workoutBlocks(
+    prescription.map((p) => ({ ...p, exerciseId: byName.get(p.exercise)!.id })),
+    sets,
+    picks,
+  );
+  const info = new Map(all.map((e) => [e.id, e]));
   const pickable = all.filter((e) => !blocks.some((b) => b.exerciseId === e.id));
   const histories = await Promise.all(blocks.map((b) => lastTime(db, b.exerciseId, id)));
 
@@ -83,9 +85,18 @@ async function Workout({
       {blocks.map((b, i) => {
         const mine = sets.filter((s) => s.exerciseId === b.exerciseId);
         const next = nextSetDefaults(mine, histories[i]);
+        // A first set with a planned weight starts there; later rows carry the same values.
+        const weightLb = mine.length === 0 && b.planned?.targetWeightLb != null ? b.planned.targetWeightLb : next.weightLb;
+        const rows = finished ? 0 : plannedRowCount(b.planned, mine.length);
+        const ex = info.get(b.exerciseId);
         return (
           <section key={b.exerciseId} className={styles.card}>
-            <h2 className={styles.exName}>{b.name}</h2>
+            <div className={styles.exHead}>
+              <h2 className={styles.exName}>{b.name}</h2>
+              {ex ? <span className={styles.exTag}>{tagLine(ex.category, ex.pattern)}</span> : null}
+            </div>
+            {b.planned ? <p className={styles.target}>{targetLine(b.planned)}</p> : null}
+            {b.planned?.note ? <p className={styles.sub}>{b.planned.note}</p> : null}
             <p className={styles.last}>{formatLastTime(histories[i])}</p>
             {mine.length ? (
               <ol className={styles.sets}>
@@ -105,41 +116,31 @@ async function Workout({
                 ))}
               </ol>
             ) : null}
-            {finished ? null : (
-              <SetRow
-                sessionId={id}
-                exerciseId={b.exerciseId}
-                setIndex={next.setIndex}
-                reps={next.reps}
-                weightLb={next.weightLb}
-                initialClientId={crypto.randomUUID()}
-              />
-            )}
+            {Array.from({ length: rows }, (_, r) => {
+              const reps = next.reps ?? b.planned?.repRange[0] ?? null;
+              return (
+                <SetRow
+                  key={setRowKey(b.exerciseId, next.setIndex + r, reps, weightLb)}
+                  sessionId={id}
+                  exerciseId={b.exerciseId}
+                  setIndex={next.setIndex + r}
+                  reps={reps}
+                  weightLb={weightLb}
+                  initialClientId={crypto.randomUUID()}
+                />
+              );
+            })}
           </section>
         );
       })}
 
       {finished ? null : (
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Add Exercise</h2>
-          <form method="get" className={styles.inline}>
-            {/* Sent alongside the pick (?ex=<list>&ex=<new>) so earlier picks stay on screen. */}
-            {exParam ? <input type="hidden" name="ex" value={exParam} /> : null}
-            <select name="ex" aria-label="Exercise" className={styles.select} required defaultValue="">
-              <option value="" disabled>
-                Pick an Exercise
-              </option>
-              {pickable.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className={styles.secondary}>
-              Add
-            </button>
-          </form>
-          <AddExerciseForm sessionId={id} exList={exParam} />
+          <ExercisePicker
+            sessionId={id}
+            exList={exList}
+            exercises={pickable.map((e) => ({ id: e.id, name: e.name }))}
+          />
         </section>
       )}
 

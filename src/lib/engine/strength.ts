@@ -17,7 +17,7 @@
  * (strength.volume, strength.frequency). The Lower day is the one main lower session a week.
  */
 import { RULES, type RuleId } from "@/lib/engine/rules/catalog";
-import { DEFAULT_EXERCISES } from "@/lib/log/exercise-catalog";
+import { classifyExercise, DEFAULT_EXERCISES } from "@/lib/log/exercise-catalog";
 import type { PlanSettings } from "@/lib/plan/settings";
 
 /** `muscles` are the primary muscles (full set credit); `secondary` helper muscles get strength.template.indirectSetCredit. */
@@ -94,7 +94,6 @@ export const TEMPLATES: Record<TemplateName, TemplateItem[]> = {
 export const PLYO: TemplateItem[] = [item("Box Jump", ST.plyo.sets, ["plyo"])];
 
 const PLYO_NAMES = new Set(DEFAULT_EXERCISES.filter((e) => e.category === "plyo").map((e) => e.name));
-const LOWER_BIG_MUSCLES = new Set(["quads", "hamstrings", "glutes", "adductors"]);
 const CORE_MUSCLE = "core";
 const LOWER_LEG_MUSCLES = new Set(["tibialis", "gastrocnemius", "soleus"]);
 
@@ -111,6 +110,12 @@ export function weeklySetsPerMuscle(templates: Record<string, TemplateItem[]>): 
 }
 
 const roundHalfUp = (x: number) => Math.floor(x + 0.5);
+const PERCENT = 100;
+
+/** About stepPct of the weight, in whole increments, never less than one increment. */
+export function progressionStep(weightLb: number, incrementLb: number, stepPct: number): number {
+  return incrementLb * Math.max(1, Math.round((weightLb * stepPct) / PERCENT / incrementLb));
+}
 const dash = (r: readonly [number, number]) => `${r[0]}–${r[1]}`;
 
 function plyoAllowed(status: PlanSettings["jointStatus"]): boolean {
@@ -118,10 +123,36 @@ function plyoAllowed(status: PlanSettings["jointStatus"]): boolean {
   return RULES["pain.jointStatus"].params[status].plyo;
 }
 
+/**
+ * Double progression (strength.progression) from the last session of a lift: one step up when
+ * every set reached the top of the range at one weight, else keep the weight. With no history,
+ * the calibration note; with history but no weights (bodyweight), aim for the top of the range.
+ */
+export function suggestLoad(
+  range: readonly [number, number],
+  h: History,
+  incrementLb: number,
+): { targetWeightLb: number | null; note: string } {
+  const PROG = RULES["strength.progression"].params;
+  if (!h || h.sets.length === 0) {
+    return { targetWeightLb: null, note: `First time: start light and stop with about ${PROG.calibrationRir} reps left (${dash(range)} reps).` };
+  }
+  const weights = h.sets.map((s) => s.weightLb).filter((w): w is number => w !== null);
+  if (!weights.length) return { targetWeightLb: null, note: `Aim for ${range[1]} reps on every set.` };
+  const lastWeight = Math.max(...weights);
+  if (PROG.whenAllSetsAtMax && h.sets.every((s) => s.reps >= range[1] && s.weightLb === lastWeight)) {
+    const step = progressionStep(lastWeight, incrementLb, PROG.stepPct);
+    return { targetWeightLb: lastWeight + step, note: `Hit ${range[1]} reps on every set: add ${step} lb.` };
+  }
+  return { targetWeightLb: lastWeight, note: `Keep ${lastWeight} lb and aim for more reps on every set (target ${range[1]}).` };
+}
+
+/** `increments` maps an exercise name to its load step in lb (default strength.progression.defaultIncrementLb). */
 export function prescribe(
   template: TemplateItem[],
   history: Map<string, History>,
   opts: PrescribeOpts,
+  increments: Map<string, number> = new Map(),
 ): Prescription[] {
   const REP = RULES["strength.repRange"].params;
   const PROG = RULES["strength.progression"].params;
@@ -172,29 +203,18 @@ export function prescribe(
     }
 
     const isLowerLeg = it.muscles.some((m) => LOWER_LEG_MUSCLES.has(m));
+    const compound = classifyExercise(it.exercise).pattern === "compound";
     const range: [number, number] = isLowerLeg
       ? [ST.lowerLegRepRange[0], ST.lowerLegRepRange[1]]
-      : [REP.min, REP.max];
+      : compound
+        ? [REP.compound[0], REP.compound[1]]
+        : [REP.isolation[0], REP.isolation[1]];
     ruleIds.push("strength.repRange", "strength.progression");
     if (isLowerLeg) ruleIds.push("lower_leg.block", "strength.template");
-    const lower = it.muscles.some((m) => LOWER_BIG_MUSCLES.has(m));
-    const step = lower ? PROG.addLbLower : PROG.addLbUpper;
+    const increment = increments.get(it.exercise) ?? PROG.defaultIncrementLb;
 
-    const h = history.get(it.exercise) ?? null;
-    const weights = (h?.sets ?? []).map((s) => s.weightLb).filter((w): w is number => w !== null);
-    const lastWeight = weights.length ? Math.max(...weights) : null;
-    let target: number | null = null;
-    let note: string;
-    if (!h || h.sets.length === 0 || lastWeight === null) {
-      note = `Pick a weight you can do for ${dash(range)} with ${dash(REP.rirTarget as [number, number])} reps left`;
-    } else if (PROG.whenAllSetsAtMax && h.sets.every((s) => s.reps >= range[1] && s.weightLb === lastWeight)) {
-      target = lastWeight + step;
-      note = `Hit ${range[1]} reps on every set: add ${step} lb.`;
-    } else {
-      target = lastWeight;
-      note = `Keep ${lastWeight} lb and aim for more reps on every set (target ${range[1]}).`;
-    }
-    out.push({ exercise: it.exercise, sets, repRange: range, targetWeightLb: target, note, ruleIds });
+    const { targetWeightLb, note } = suggestLoad(range, history.get(it.exercise) ?? null, increment);
+    out.push({ exercise: it.exercise, sets, repRange: range, targetWeightLb, note, ruleIds });
   }
   return out;
 }

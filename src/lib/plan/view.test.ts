@@ -195,15 +195,15 @@ describe("humanizeParams labels", () => {
   it("uses friendlier labels for terse keys and passes a parent's unit to its children", () => {
     expect(
       humanizeParams({
-        addLbUpper: 5,
-        rirTarget: [1, 3],
+        defaultIncrementLb: 5,
+        rirCompound: [2, 3],
         swcSd: 0.5,
         minHoursBetweenHardCardioAndLift: 6,
         typicalSessionMin: { swim: 40 },
       }),
     ).toEqual([
-      { label: "Add (upper body)", value: "5 lb" },
-      { label: "Reps in reserve", value: "1–3" },
+      { label: "Default increment", value: "5 lb" },
+      { label: "Reps in reserve (big lifts)", value: "2–3" },
       { label: "Smallest worthwhile change", value: "0.5 SD" },
       { label: "Min hours between hard cardio and lift", value: "6 h" },
       { label: "Typical session", children: [{ label: "Swim", value: "40 min" }] },

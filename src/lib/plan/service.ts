@@ -16,11 +16,11 @@ import { readiness, type Readiness } from "@/lib/engine/readiness";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { dayType, strainTarget, type DayType, type StrainTarget } from "@/lib/engine/strain-target";
 import { seasonCalendar, weeklyTargets, type SeasonCalendar, type WeeklyTargets } from "@/lib/engine/season";
-import { PLYO, prescribe, TEMPLATES, type History, type TemplateItem } from "@/lib/engine/strength";
+import { PLYO, prescribe, suggestLoad, TEMPLATES, type History, type Prescription, type TemplateItem } from "@/lib/engine/strength";
 import { buildWeek, type PlannedSessionDraft, type StrengthTemplate } from "@/lib/engine/week";
 import { addDays, localDate, noonOf, weekStart as weekStartOf, zonedLocalToUtc } from "@/lib/log/dates";
 import type { LinkKind } from "@/lib/log/link-whoop";
-import { lastTime } from "@/lib/log/strength";
+import { ensureExercisesByName, exerciseIncrements, lastTime } from "@/lib/log/strength";
 import {
   loadDayInputs,
   loadWeekHistory,
@@ -167,6 +167,7 @@ async function generateWeek(
 
   const allItems = drafts.flatMap((d) => itemsFor(d) ?? []);
   const hist = allItems.length ? await strengthHistory(db, allItems) : new Map<string, History>();
+  const increments = allItems.length ? await exerciseIncrements(db) : new Map<string, number>();
   const taper = week.phase === "taper" || week.phase === "race";
   const meta: WeekMeta = { index: week.index, phase: week.phase, recovery: week.recovery, gainPhase: week.gainPhase };
   return drafts.map((d) => {
@@ -177,7 +178,7 @@ async function generateWeek(
         recoveryWeek: week.recovery,
         taper,
         jointStatus: settings.jointStatus,
-      });
+      }, increments);
     }
     // generated_at is the caller's clock, so provisional-week checks never depend on the DB clock.
     return { ...d, details, weekStart: ws, generatedAt: now };
@@ -646,4 +647,48 @@ export async function getStrainTarget(
     history.push({ type: dayType(dayRows.map((r) => ({ ...r, details: r.details as Record<string, unknown> }))), strain: cycle.strain });
   }
   return strainTarget(dayType(sessions), history);
+}
+
+const LIFT_KINDS = new Set(["strength", "lower_leg", "core"]);
+
+/**
+ * Today's planned lifting, for a workout logged today: the prescription lines of today's adapted
+ * strength, lower-leg and core sessions in slot order. A session already completed by a log or
+ * WHOOP is skipped; a hand check is not (logging it is how the check gets its details). Any
+ * other day gets none: a workout opened later is shown as logged, with no plan to fill in.
+ *
+ * The stored lines keep their sets and range, but the suggested weight is re-derived from each
+ * lift's latest session before `currentSessionId` (a week's prescriptions are fixed when it is
+ * built, and the two upper days share lifts). Never throws: logging must work without a plan.
+ */
+export async function todayPrescription(
+  db: Db,
+  sessionLocalDate: string,
+  now: Date,
+  tz: string,
+  currentSessionId?: string,
+): Promise<Prescription[]> {
+  try {
+    if (sessionLocalDate !== localDate(now, tz)) return [];
+    const { sessions } = await getDayPlan(db, sessionLocalDate, now, tz);
+    const lines = sessions
+      .filter((s) => LIFT_KINDS.has(s.kind) && s.completedRef === null)
+      .flatMap((s) => (s.details.prescription as Prescription[] | undefined) ?? []);
+    const byName = await ensureExercisesByName(db, lines.map((p) => p.exercise));
+    const increments = await exerciseIncrements(db);
+    const out: Prescription[] = [];
+    for (const p of lines) {
+      if (!p.ruleIds.includes("strength.progression")) {
+        out.push(p);
+        continue;
+      }
+      const history = await lastTime(db, byName.get(p.exercise)!.id, currentSessionId);
+      const increment = increments.get(p.exercise) ?? RULES["strength.progression"].params.defaultIncrementLb;
+      out.push({ ...p, ...suggestLoad(p.repRange, history, increment) });
+    }
+    return out;
+  } catch (err) {
+    console.error("todayPrescription failed:", err);
+    return [];
+  }
 }

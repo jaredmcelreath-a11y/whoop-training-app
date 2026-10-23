@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   appendEx,
+  filterExercises,
   formatLastTime,
   nextSetDefaults,
   parseExList,
+  plannedRowCount,
+  setRowKey,
   shortDate,
+  tagLine,
+  targetLine,
+  workoutBlocks,
 } from "./strength-view";
 
 describe("shortDate", () => {
@@ -93,5 +99,69 @@ describe("?ex= list", () => {
     expect(appendEx([a, b], c)).toBe(`${a},${b},${c}`);
     expect(appendEx([a, b], a)).toBe(`${a},${b}`);
     expect(appendEx([], a)).toBe(a);
+  });
+});
+
+describe("workoutBlocks", () => {
+  const rx = (exerciseId: string, exercise: string) => ({
+    exerciseId, exercise, sets: 3, repRange: [6, 10] as [number, number], targetWeightLb: null, note: "", ruleIds: [],
+  });
+  it("orders planned, then logged-only, then picked, without repeats", () => {
+    const blocks = workoutBlocks(
+      [rx("a", "A"), rx("b", "B")],
+      [{ exerciseId: "c", exerciseName: "C" }, { exerciseId: "a", exerciseName: "A" }],
+      [{ id: "d", name: "D" }, { id: "b", name: "B" }],
+    );
+    expect(blocks.map((b) => b.exerciseId)).toEqual(["a", "b", "c", "d"]);
+    expect(blocks[0].planned?.exercise).toBe("A");
+    expect(blocks[2].planned).toBeNull();
+  });
+});
+
+describe("plannedRowCount", () => {
+  const p = { exercise: "A", sets: 3, repRange: [6, 10] as [number, number], targetWeightLb: null, note: "", ruleIds: [] };
+  it("shows the planned sets still to do, and always one row", () => {
+    expect(plannedRowCount(p, 0)).toBe(3);
+    expect(plannedRowCount(p, 2)).toBe(1);
+    expect(plannedRowCount(p, 5)).toBe(1);
+    expect(plannedRowCount(null, 4)).toBe(1);
+  });
+});
+
+describe("targetLine", () => {
+  const p = { exercise: "Lat Pulldown", sets: 3, repRange: [6, 10] as [number, number], targetWeightLb: 105, note: "", ruleIds: [] };
+  it("reads sets by reps", () => expect(targetLine(p)).toBe("Target: 3 sets × 6–10 reps"));
+  it("reads seconds for holds", () =>
+    expect(targetLine({ ...p, exercise: "Plank", sets: 2, repRange: [20, 40], note: "Hold 20–40 seconds; add time when it feels easy." })).toBe(
+      "Target: 2 sets × 20–40 sec",
+    ));
+  it("says one set in the singular", () => expect(targetLine({ ...p, sets: 1 })).toBe("Target: 1 set × 6–10 reps"));
+});
+
+describe("tagLine", () => {
+  it("names the category and, for lifts, the pattern", () => {
+    expect(tagLine("strength", "compound")).toBe("Strength · Compound");
+    expect(tagLine("strength", "isolation")).toBe("Strength · Isolation");
+    expect(tagLine("core", null)).toBe("Core");
+  });
+});
+
+describe("filterExercises", () => {
+  const names = ["Seated Leg Extension", "Exercise Bike Sprint", "Cable Flex Row", "Lat Pulldown"].map((name) => ({ name }));
+  it("puts word-start matches first, then other matches, each alphabetical", () => {
+    expect(filterExercises(names, "ex").map((e) => e.name)).toEqual(["Exercise Bike Sprint", "Seated Leg Extension", "Cable Flex Row"]);
+  });
+  it("returns everything for an empty query", () => expect(filterExercises(names, "  ")).toHaveLength(4));
+  it("ignores case and spaces around the query", () =>
+    expect(filterExercises(names, "  LAT ").map((e) => e.name)).toEqual(["Lat Pulldown"]));
+});
+
+describe("setRowKey", () => {
+  it("keeps a row's identity when an earlier set is saved with the same values", () => {
+    expect(setRowKey("ex", 1, 10, 100)).toBe(setRowKey("ex", 1, 10, 100));
+  });
+  it("gives a fresh row when the carried values change", () => {
+    expect(setRowKey("ex", 1, 10, 105)).not.toBe(setRowKey("ex", 1, 10, 100));
+    expect(setRowKey("ex", 1, null, null)).not.toBe(setRowKey("ex", 2, null, null));
   });
 });

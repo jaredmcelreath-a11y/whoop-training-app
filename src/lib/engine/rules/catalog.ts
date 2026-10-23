@@ -383,8 +383,8 @@ type SleepDebtParams = { windowDays: number; debtMin: number };
 type GreenStreakParams = { days: number };
 type StrengthVolumeParams = { setsPerMusclePerWeek: Range };
 type StrengthFrequencyParams = { perMusclePerWeek: number };
-type RepRangeParams = { min: number; max: number; rirTarget: Range };
-type ProgressionParams = { addLbUpper: number; addLbLower: number; whenAllSetsAtMax: boolean };
+type RepRangeParams = { compound: Range; isolation: Range; rirCompound: Range; rirIsolation: Range };
+type ProgressionParams = { stepPct: number; defaultIncrementLb: number; whenAllSetsAtMax: boolean; calibrationRir: number };
 type StrengthTaperParams = { volumeFactor: number };
 type StrengthTemplateParams = {
   indirectSetCredit: number;
@@ -1219,12 +1219,32 @@ export const RULES = deepFreeze({
   "strength.repRange": rule<RepRangeParams>({
     id: "strength.repRange",
     area: "strength",
-    statement: "Work sets of 10-12 reps, stopping 1-3 reps short of failure.",
-    why: "Muscle grows across many rep ranges if sets end close to failure; 1-3 reps in reserve keeps fatigue manageable.",
-    params: { min: 10, max: 12, rirTarget: [1, 3] },
+    statement:
+      "Big machine lifts: 6-10 reps, stopping 2-3 reps short of failure. Smaller isolation lifts: 10-15 reps, stopping 1-2 reps short.",
+    why: "Muscle grows across many rep ranges if sets end close to failure; heavier sets build more strength.",
+    params: { compound: [6, 10], isolation: [10, 15], rirCompound: [2, 3], rirIsolation: [1, 2] },
     evidence: "consensus",
     citations: [
+      ACSM_2026,
       ACSM_2009,
+      {
+        authors: "Lopez P, Radaelli R, Taaffe DR, Newton RU, Galvão DA, Trajano GS, Teodoro JL, Kraemer WJ, Häkkinen K, Pinto RS",
+        year: 2021,
+        title: "Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain: Systematic Review and Network Meta-analysis",
+        venue: "Med Sci Sports Exerc 53(6):1206-1216",
+        url: "https://doi.org/10.1249/MSS.0000000000002585",
+        doi: "10.1249/MSS.0000000000002585",
+        evidence: "meta-analysis",
+      },
+      {
+        authors: "Refalo MC, Helms ER, Trexler ET, Hamilton DL, Fyfe JJ",
+        year: 2023,
+        title: "Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy: A Systematic Review with Meta-analysis",
+        venue: "Sports Med 53(3):649-665",
+        url: "https://doi.org/10.1007/s40279-022-01784-y",
+        doi: "10.1007/s40279-022-01784-y",
+        evidence: "meta-analysis",
+      },
       {
         authors: "Schoenfeld BJ, Grgic J, Ogborn D, Krieger JW",
         year: 2017,
@@ -1247,20 +1267,31 @@ export const RULES = deepFreeze({
       GALPIN_STRENGTH_2023,
     ],
     caveat:
-      "10-12 is a choice inside a wide effective range (Galpin: mostly 8-15). Heavier loads build more max strength. ACSM 2026 found training to failure gives no consistent extra benefit.",
+      "The ranges are evidence; splitting them by exercise type (heavier, further from failure on big lifts that also tire the legs for running) is practice. ACSM 2026 found training to failure gives no consistent extra benefit.",
   }),
 
   "strength.progression": rule<ProgressionParams>({
     id: "strength.progression",
     area: "strength",
     statement:
-      "Double progression: when every set reaches the top of the rep range, add 5 lb (upper body) or 10 lb (lower body) next time.",
-    why: "Add weight once you own the rep range; that small, steady overload is how strength keeps rising.",
-    params: { addLbUpper: 5, addLbLower: 10, whenAllSetsAtMax: true },
+      "Double progression: when every set reaches the top of the rep range, add about 2.5% of the weight, rounded to the machine's increment (5 lb unless set per exercise). With no history yet, start light and stop with about 3 reps left.",
+    why: "Add weight once you own the rep range; adding reps first, then load, works as well as either alone.",
+    params: { stepPct: 2.5, defaultIncrementLb: 5, whenAllSetsAtMax: true, calibrationRir: 3 },
     evidence: "consensus",
-    citations: [ACSM_2009],
+    citations: [
+      ACSM_2009,
+      {
+        authors: "Plotkin D, Coleman M, Van Every D, Maldonado J, Oberlin D, Israetel M, Feather J, Alto A, Vigotsky AD, Schoenfeld BJ",
+        year: 2022,
+        title: "Progressive overload without progressing load? The effects of load or repetition progression on muscular adaptations",
+        venue: "PeerJ 10:e14142",
+        url: "https://doi.org/10.7717/peerj.14142",
+        doi: "10.7717/peerj.14142",
+        evidence: "trial",
+      },
+    ],
     caveat:
-      "ACSM advises a 2-10% increase. On light lifts a fixed 5 lb can exceed 10% (e.g. 5 lb on a 30 lb dumbbell is ~17%); use the smallest available step there.",
+      "ACSM advises a 2-10% increase. On a light lift one machine increment can be more than that; set a smaller increment for that exercise. The no-history start is practice.",
   }),
 
   "strength.template": rule<StrengthTemplateParams>({

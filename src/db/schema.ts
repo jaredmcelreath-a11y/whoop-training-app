@@ -136,6 +136,10 @@ export const exercises = pgTable("exercises", {
     enum: ["strength", "bodyweight", "plyo", "core", "mobility"],
   }).notNull(),
   archived: boolean("archived").notNull().default(false),
+  /** Big multi-joint lift or single-joint one; picks the rep range (strength.repRange). */
+  pattern: text("pattern", { enum: ["compound", "isolation"] }),
+  /** This exercise's smallest load step in lb; null means strength.progression.defaultIncrementLb. */
+  incrementLb: doublePrecision("increment_lb"),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
 

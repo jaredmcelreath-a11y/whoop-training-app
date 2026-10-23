@@ -1,6 +1,8 @@
 /** Pure display helpers for the strength screen. */
 
 import { z } from "zod";
+import type { Prescription } from "@/lib/engine/strength";
+import { CATEGORY_LABEL, type Category, type Pattern } from "./exercise-catalog";
 
 type LoggedSet = { reps: number; weightLb: number | null };
 type LastTime = { date: string; sets: LoggedSet[] } | null;
@@ -59,4 +61,61 @@ export function parseExList(raw: string | string[] | undefined): string[] {
 /** The `?ex=` value with `id` added at the end (once). */
 export function appendEx(list: string[], id: string): string {
   return (list.includes(id) ? list : [...list, id]).join(",");
+}
+
+/** One exercise card on the workout page; `planned` is today's prescription line for it, if any. */
+export type Block = { exerciseId: string; name: string; planned: Prescription | null };
+
+/** Cards in order: today's planned lifts, then exercises logged without a plan, then manual picks. */
+export function workoutBlocks(
+  planned: readonly (Prescription & { exerciseId: string })[],
+  sets: readonly { exerciseId: string; exerciseName: string }[],
+  picks: readonly { id: string; name: string }[],
+): Block[] {
+  const out: Block[] = [];
+  const add = (exerciseId: string, name: string, p: Prescription | null) => {
+    if (!out.some((b) => b.exerciseId === exerciseId)) out.push({ exerciseId, name, planned: p });
+  };
+  for (const { exerciseId, ...p } of planned) add(exerciseId, p.exercise, p);
+  for (const s of sets) add(s.exerciseId, s.exerciseName, null);
+  for (const p of picks) add(p.id, p.name, null);
+  return out;
+}
+
+/** Entry rows to show: the planned sets not yet saved, and always at least one. */
+export function plannedRowCount(planned: Prescription | null, savedSets: number): number {
+  return planned ? Math.max(planned.sets - savedSets, 1) : 1;
+}
+
+/** "Target: 3 sets × 6–10 reps", or "× 20–40 sec" for a timed hold. */
+export function targetLine(p: Prescription): string {
+  const unit = /^Hold\b/.test(p.note) ? "sec" : "reps";
+  return `Target: ${p.sets} ${p.sets === 1 ? "set" : "sets"} × ${p.repRange[0]}–${p.repRange[1]} ${unit}`;
+}
+
+/** "Strength · Compound", or just the category for non-lifts. */
+export function tagLine(category: Category, pattern: Pattern | null): string {
+  const label = CATEGORY_LABEL[category];
+  return pattern ? `${label} · ${pattern === "compound" ? "Compound" : "Isolation"}` : label;
+}
+
+/**
+ * The exercise picker's search: names where a word starts with the query come first, then
+ * other names containing it, each alphabetical. An empty query keeps everything.
+ */
+export function filterExercises<E extends { name: string }>(all: readonly E[], query: string): E[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...all];
+  const byName = (a: E, b: E) => a.name.localeCompare(b.name);
+  const wordStart = (n: string) => n.toLowerCase().split(/[\s-]+/).some((w) => w.startsWith(q));
+  const hits = all.filter((e) => e.name.toLowerCase().includes(q));
+  return [...hits.filter((e) => wordStart(e.name)).sort(byName), ...hits.filter((e) => !wordStart(e.name)).sort(byName)];
+}
+
+/**
+ * React key for an entry row. It changes only when the row's position or its carried values
+ * change, so saving an earlier set doesn't remount a row that is mid-save or has typed values.
+ */
+export function setRowKey(exerciseId: string, setIndex: number, reps: number | null, weightLb: number | null): string {
+  return `${exerciseId}-${setIndex}-${reps ?? "x"}-${weightLb ?? "bw"}`;
 }
