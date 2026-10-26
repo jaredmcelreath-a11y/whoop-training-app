@@ -388,6 +388,10 @@ export async function getDayNutrition(db: Db, date: string, now: Date, tz: strin
   const enduranceMin = (d: string) =>
     weekRows.filter((r) => r.localDate === d && ENDURANCE.has(r.kind) && r.status !== "skipped").reduce((a, r) => a + r.durationMin, 0);
   const weekEnduranceMin = dateRange(ws, addDays(ws, DAYS_PER_WEEK - 1)).map(enduranceMin);
+  // The kcal swing counts lifting too (nutrition.dayDistribution); carbs stay on endurance.
+  const loadMin = (d: string) =>
+    enduranceMin(d) + weekRows.filter((r) => r.localDate === d && r.kind === "strength" && r.status !== "skipped").reduce((a, r) => a + r.durationMin, 0);
+  const weekLoadMin = dateRange(ws, addDays(ws, DAYS_PER_WEEK - 1)).map(loadMin);
 
   // Body inputs.
   const meanLb = await latestMeanLb(db, asOf);
@@ -455,6 +459,8 @@ export async function getDayNutrition(db: Db, date: string, now: Date, tz: strin
       weightKg: weight.kg,
       ffmKg,
       dayExerciseKcal: ex.kcal,
+      dayLoadMin: loadMin(date),
+      weekLoadMin,
     });
     const estReasons = Array.isArray(estimate.inputs.reasons) ? (estimate.inputs.reasons as Reason[]) : [];
     energy = {

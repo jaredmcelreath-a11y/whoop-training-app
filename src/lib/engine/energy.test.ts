@@ -286,6 +286,29 @@ describe("dayTargets", () => {
     expect(rest).toBeGreaterThanOrEqual(3200 * (1 - DIST.maxDailySwingPct / 100) - 1);
   });
 
+  it("never cuts a training day more than maxTrainingDayCutPct, and the week still averages out", () => {
+    // A light Monday (27 min) in a week averaging about 42 min a day, with a full rest day.
+    const week = [27, 50, 55, 63, 35, 65, 0];
+    const kcal = week.map((m) => dayTargets(day(0, { dayEnduranceMin: m, weekEnduranceMin: week })).kcal);
+    for (const [i, m] of week.entries()) {
+      if (m > 0) expect(kcal[i], `day ${i}`).toBeGreaterThanOrEqual(Math.floor(3200 * (1 - DIST.maxTrainingDayCutPct / 100)));
+    }
+    expect(kcal[6]).toBeLessThan(kcal[0]);
+    expect(Math.abs(kcal.reduce((a, b) => a + b, 0) - 7 * 3200)).toBeLessThanOrEqual(7);
+  });
+
+  it("counts strength minutes in the day's load when given", () => {
+    const week = [27, 50, 55, 63, 35, 65, 0];
+    const withLift = [27, 100, 55, 113, 35, 115, 0];
+    const endurance = dayTargets(day(0, { dayEnduranceMin: 50, weekEnduranceMin: week })).kcal;
+    const lifted = dayTargets(day(0, { dayEnduranceMin: 50, weekEnduranceMin: week, dayLoadMin: 100, weekLoadMin: withLift })).kcal;
+    expect(lifted).toBeGreaterThan(endurance);
+    // Carbs still follow endurance minutes only.
+    expect(dayTargets(day(0, { dayEnduranceMin: 50, weekEnduranceMin: week, dayLoadMin: 100, weekLoadMin: withLift })).carbsG).toBe(
+      dayTargets(day(0, { dayEnduranceMin: 50, weekEnduranceMin: week })).carbsG,
+    );
+  });
+
   it("a flat week gives every day the weekly average", () => {
     const flat = [60, 60, 60, 60, 60, 60, 60];
     expect(dayTargets(day(0, { dayEnduranceMin: 60, weekEnduranceMin: flat })).kcal).toBe(3200);

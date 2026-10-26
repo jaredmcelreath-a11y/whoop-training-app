@@ -304,6 +304,9 @@ export type DayTargetsInput = {
   ffmKg: number | null;
   /** Planned exercise kcal (plannedExerciseKcal); used only for the floor. */
   dayExerciseKcal: number;
+  /** Endurance plus strength minutes, for the kcal swing; default the endurance minutes. Carbs stay on endurance. */
+  dayLoadMin?: number;
+  weekLoadMin?: readonly number[];
 };
 
 export type DayTargetsResult = {
@@ -327,9 +330,10 @@ export type DayTargetsResult = {
  * is scaled down to match the other. Scaling down never exceeds the cap, and the week's kcal
  * then average exactly weeklyAvgKcal before rounding.
  */
-function daySwing(dayMin: number, week: number[], cap: number): number {
+function daySwing(dayMin: number, week: number[], cap: number, trainingCut: number): number {
   const m = week.length ? mean(week) : dayMin;
-  const raw = (x: number) => clamp((x - m) / Math.max(m, 1), -cap, cap);
+  // A day with any training is cut by at most trainingCut; a rest day can take the full cap.
+  const raw = (x: number) => clamp((x - m) / Math.max(m, 1), x > 0 ? -trainingCut : -cap, cap);
   let pos = 0;
   let neg = 0;
   for (const x of week) {
@@ -385,14 +389,15 @@ export function dayTargets(i: DayTargetsInput): DayTargetsResult {
   // 3. kcal distribution.
   const avg = Math.max(0, finite(i.weeklyAvgKcal) ? i.weeklyAvgKcal : 0);
   const cap = DD.maxDailySwingPct / PERCENT;
-  const week = i.weekEnduranceMin.filter(finite).map((x) => Math.max(0, x));
-  const swing = daySwing(dayMin, week, cap);
+  const loadMin = Math.max(0, finite(i.dayLoadMin) ? i.dayLoadMin : dayMin);
+  const week = (i.weekLoadMin ?? i.weekEnduranceMin).filter(finite).map((x) => Math.max(0, x));
+  const swing = daySwing(loadMin, week, cap, DD.maxTrainingDayCutPct / PERCENT);
   let kcal = avg * (1 + swing);
   reasons.push({
     ruleId: "nutrition.dayDistribution",
     text:
       `${swing >= 0 ? "+" : ""}${(swing * PERCENT).toFixed(1)}% vs the weekly average ${r0(avg)} kcal = ${r0(kcal)} kcal. ` +
-      `The swing is linear in this day's minutes relative to the week's mean, capped at ±${DD.maxDailySwingPct}% and balanced so the week averages out (practice).`,
+      `The swing is linear in this day's training minutes relative to the week's mean, capped at ±${DD.maxDailySwingPct}% (a training day at -${DD.maxTrainingDayCutPct}%) and balanced so the week averages out (practice).`,
   });
 
   // 4. Fat minimum.

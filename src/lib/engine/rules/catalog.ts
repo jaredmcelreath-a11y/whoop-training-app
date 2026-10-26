@@ -471,7 +471,7 @@ type InitialTdeeParams = {
   fallbackActivityFactor: number;
   mifflin: MifflinParams;
 };
-type DayDistributionParams = { maxDailySwingPct: number };
+type DayDistributionParams = { maxDailySwingPct: number; maxTrainingDayCutPct: number };
 type PreWorkoutParams = { minSessionMin: number; carbsGPerKg: Range; hoursBefore: Range; swimNoHeavyMealMin: number };
 type PostWorkoutParams = { withinHours: number; carbsGPerKg: number; proteinGPerKg: number };
 export type MicroTarget = { value: number; unit: NutrientUnit; kind: "rda" | "ai" | "upper" };
@@ -1838,13 +1838,14 @@ export const RULES = deepFreeze({
   "nutrition.dayDistribution": rule<DayDistributionParams>({
     id: "nutrition.dayDistribution",
     area: "nutrition",
-    statement: "Daily calories move above or below the weekly average with that day's planned load, by at most 25%.",
+    statement:
+      "Daily calories move above or below the weekly average with that day's planned load (endurance and strength minutes), by at most 25%. A training day is never more than 10% below the average.",
     why: "Eat more on big training days and less on rest days, while the weekly total stays on target.",
-    params: { maxDailySwingPct: 25 },
+    params: { maxDailySwingPct: 25, maxTrainingDayCutPct: 10 },
     evidence: "practice",
     citations: [ctx(THOMAS_2016)],
     caveat:
-      "Thomas 2016 (context) says nutrition should be periodized to each day's training, mainly through carbohydrate. The 25% cap is practice, not a tested value.",
+      "Thomas 2016 (context) says nutrition should be periodized to each day's training, mainly through carbohydrate. The 25% cap, the 10% limit on cutting a training day and counting lifting minutes as load are practice, not tested values.",
   }),
 
   "nutrition.preWorkout": rule<PreWorkoutParams>({
