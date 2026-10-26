@@ -48,12 +48,13 @@ const MS_PER_DAY = 86_400_000;
 
 /**
  * The look-back window's training (logged entries, plus WHOOP runs, rides and swims that have GPS
- * distance and aren't already logged), the latest VO2 max in it, and the starting paces.
+ * distance and aren't already logged), the latest VO2 max in it, and the starting paces. The
+ * window ends the Sunday before `weekStart`, or on `through` to include this week so far.
  */
-export async function projectionInputs(db: Db, weekStart: string, tz: string): Promise<ProjectionInputs> {
+export async function projectionInputs(db: Db, weekStart: string, tz: string, through?: string): Promise<ProjectionInputs> {
   const P = RULES["race.projection"].params;
   const from = addDays(weekStart, -P.lookbackWeeks * DAYS_PER_WEEK);
-  const to = addDays(weekStart, -1);
+  const to = through ?? addDays(weekStart, -1);
   const rows = await db
     .select()
     .from(cardioEntries)
@@ -66,7 +67,7 @@ export async function projectionInputs(db: Db, weekStart: string, tz: string): P
       .where(
         and(
           gte(workouts.start, new Date(Date.parse(`${from}T00:00:00Z`) - MS_PER_DAY)),
-          lt(workouts.start, new Date(Date.parse(`${weekStart}T00:00:00Z`) + MS_PER_DAY)),
+          lt(workouts.start, new Date(Date.parse(`${to}T00:00:00Z`) + 2 * MS_PER_DAY)),
           isNotNull(workouts.distanceM),
           notDismissed,
           sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
@@ -115,6 +116,14 @@ export async function projectionInputs(db: Db, weekStart: string, tz: string): P
       bikeMph: s?.startBikeMph ?? null,
     },
   };
+}
+
+/**
+ * The finish this week's workouts so far point to: the saved week's window plus this week through
+ * `today`. Never saved; the week's main number stays the weekly snapshot.
+ */
+export async function liveWeekProjection(db: Db, weekStart: string, today: string, tz: string): Promise<number> {
+  return project(await projectionInputs(db, weekStart, tz, today)).totalS;
 }
 
 const toSaved = (r: typeof raceProjections.$inferSelect): SavedProjection => ({

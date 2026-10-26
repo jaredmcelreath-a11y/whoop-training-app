@@ -9,7 +9,7 @@ import { requireSession } from "@/lib/auth/session";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { getEnv } from "@/lib/env";
 import { localDate, weekStart } from "@/lib/log/dates";
-import { ensureWeekProjection, projectionHistory } from "@/lib/plan/projection";
+import { ensureWeekProjection, liveWeekProjection, projectionHistory } from "@/lib/plan/projection";
 import { getPlanSettings } from "@/lib/plan/settings";
 import styles from "./projection.module.css";
 
@@ -38,11 +38,13 @@ async function Projection() {
   const db = getDb();
   const tz = getEnv().OWNER_TZ;
   const now = new Date();
-  const ws = weekStart(localDate(now, tz));
+  const today = localDate(now, tz);
+  const ws = weekStart(today);
   const P = RULES["race.projection"].params;
   const current = await ensureWeekProjection(db, ws, tz);
   // All saved weeks, so the chart starts from the very first projection.
   const history = await projectionHistory(db, ws, Number.MAX_SAFE_INTEGER);
   const { goalSec } = await getPlanSettings(db, now, tz);
-  return <ProjectionCard current={current} history={history} goalSec={goalSec} goalDefaultSec={P.defaultGoalSec} />;
+  const liveS = await liveWeekProjection(db, ws, today, tz);
+  return <ProjectionCard current={current} history={history} goalSec={goalSec} goalDefaultSec={P.defaultGoalSec} liveS={liveS} />;
 }

@@ -6,6 +6,7 @@ import { addDays } from "@/lib/log/dates";
 import { getPlanSettings, updatePlanSettings } from "./settings";
 import {
   ensureWeekProjection,
+  liveWeekProjection,
   projectionHistory,
   projectionInputs,
   recomputeWeekProjection,
@@ -105,6 +106,26 @@ describe("weekly snapshots", () => {
     for (const w of [-21, -14, -7, 0]) await ensureWeekProjection(db, addDays(WEEK, w), TZ);
     const h = await projectionHistory(db, WEEK, 3);
     expect(h.map((p) => p.weekStart)).toEqual([addDays(WEEK, -14), addDays(WEEK, -7), WEEK]);
+  });
+});
+
+describe("liveWeekProjection", () => {
+  it("adds this week's workouts so far, without changing the saved week", async () => {
+    await log("run", addDays(WEEK, -3), 5 * MI, 2400);
+    const saved = await ensureWeekProjection(db, WEEK, TZ);
+    expect(saved.estimates.run).toBe(true); // one run is not enough
+    expect(await liveWeekProjection(db, WEEK, "2026-10-21", TZ)).toBe(saved.totalS);
+    await log("run", addDays(WEEK, 1), 5 * MI, 2400); // Tuesday this week, 8:00 /mi
+    const live = await liveWeekProjection(db, WEEK, "2026-10-21", TZ);
+    expect(live).toBeLessThan(saved.totalS);
+    expect((await savedWeekProjection(db, WEEK))?.totalS).toBe(saved.totalS);
+  });
+
+  it("never counts days after today", async () => {
+    await log("run", addDays(WEEK, -3), 5 * MI, 2400);
+    await log("run", addDays(WEEK, 4), 5 * MI, 2400); // Friday, after "today"
+    const saved = await ensureWeekProjection(db, WEEK, TZ);
+    expect(await liveWeekProjection(db, WEEK, "2026-10-21", TZ)).toBe(saved.totalS);
   });
 });
 

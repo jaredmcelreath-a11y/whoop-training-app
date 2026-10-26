@@ -23,6 +23,13 @@ export function changeLine(current: number, previous: number | null): string {
   return `${d < 0 ? "▼" : "▲"} ${span(Math.abs(d))} from last week`;
 }
 
+/** "▼ 3:24 projected this week": where this week's workouts so far put the finish, vs the week's number. */
+export function thisWeekLine(live: number, week: number): string {
+  const d = Math.round(live - week);
+  if (d === 0) return "No change from this week's workouts yet";
+  return `${d < 0 ? "▼" : "▲"} ${span(Math.abs(d))} projected this week`;
+}
+
 /** "Goal: Under 6:00", from the setting or the race.projection default. */
 export function goalLine(goalSec: number | null): string {
   const g = goalSec ?? RULES["race.projection"].params.defaultGoalSec;

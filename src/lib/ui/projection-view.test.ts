@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeLine, goalLine, hms, legTime } from "./projection-view";
+import { changeLine, goalLine, hms, legTime, thisWeekLine } from "./projection-view";
 
 describe("projection text", () => {
   it("formats a finish time as h:mm:ss", () => {
@@ -12,6 +12,11 @@ describe("projection text", () => {
     expect(changeLine(24150, 20000)).toBe("▲ 1:09:10 from last week");
     expect(changeLine(1, 1)).toBe("Same as last week");
     expect(changeLine(5, null)).toBe("First Projection");
+  });
+  it("says how this week's workouts so far move the projection", () => {
+    expect(thisWeekLine(23946, 24150)).toBe("▼ 3:24 projected this week");
+    expect(thisWeekLine(24200, 24150)).toBe("▲ 0:50 projected this week");
+    expect(thisWeekLine(24150, 24150)).toBe("No change from this week's workouts yet");
   });
   it("shows the goal, defaulting to under 6:00", () => {
     expect(goalLine(null)).toBe("Goal: Under 6:00");
