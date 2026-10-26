@@ -538,9 +538,11 @@ export async function getDayPlan(
   const settings = await getPlanSettings(db, now, tz);
   const r = readiness(await loadDayInputs(db, date, tz, settings));
   const adapted = adapt(stored.map(toDraft), r).sessions;
-  // A session already done (or skipped) stays what it was: adaptation only reshapes what's left.
+  // A session already done (or skipped) keeps today's cuts, so it shows what was asked for, but is
+  // never swapped to another sport: a finished run stays a run.
   const sessions: DaySession[] = adapted.map((a, i) => {
-    const s = stored[i].status === "planned" ? a : { ...toDraft(stored[i]), adjusted: false, reasons: [] };
+    const swapped = stored[i].status !== "planned" && a.kind !== stored[i].kind;
+    const s = swapped ? { ...toDraft(stored[i]), adjusted: false, reasons: [] } : a;
     return {
       ...servePrescription(stored[i], s),
       id: stored[i].id,
@@ -574,6 +576,16 @@ export async function getDayPlan(
         logs.push({ localDate: date, plannedSessionId: null, ruleId, inputs: inputsOf(ruleId), effect: NO_SESSION_CHANGED });
       }
     }
+    // A rule that no longer applies today (say pain monitoring was turned off) leaves no row
+    // behind, so the day's before/now view shows only what really applied.
+    const keep = new Set(logs.map((l) => `${l.plannedSessionId ?? ""}|${l.ruleId}`));
+    const stale = (
+      await db
+        .select({ id: recommendationLog.id, sessionId: recommendationLog.plannedSessionId, ruleId: recommendationLog.ruleId, effect: recommendationLog.effect })
+        .from(recommendationLog)
+        .where(eq(recommendationLog.localDate, date))
+    ).filter((x) => x.effect !== NOT_ENOUGH_DATA && !keep.has(`${x.sessionId ?? ""}|${x.ruleId}`));
+    if (stale.length) await db.delete(recommendationLog).where(inArray(recommendationLog.id, stale.map((x) => x.id)));
     // Ruling 15b: re-reading refreshes a row's effect and inputs (e.g. once recovery is scored).
     if (logs.length) {
       await db

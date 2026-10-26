@@ -312,7 +312,36 @@ describe("pain monitoring", () => {
     expect(off.sessions.filter((x) => x.kind === "run").every((x) => !x.adjusted)).toBe(true);
   });
 
-  it("never changes a session that is already done, even under a pain hold", async () => {
+  it("keeps a recovery cut on a done session, so it still shows what was asked for", async () => {
+    await setup({ painMonitoring: false });
+    await seedRecovery(9001, TODAY, 60, 50); // yellow
+    await db.insert(workouts).values({
+      id: "w-done-yellow",
+      start: new Date("2026-10-21T12:00:00Z"),
+      end: new Date("2026-10-21T12:20:00Z"),
+      timezoneOffset: "-05:00",
+      sportName: "running",
+      scoreState: "SCORED",
+    });
+    const plan = await getDayPlan(db, TODAY, NOW, TZ);
+    const done = plan.sessions.find((x) => x.completedRef === "whoop:w-done-yellow")!;
+    expect(done.kind).toBe("run");
+    expect(done.adjusted).toBe(true);
+    expect(done.durationMin).toBeLessThan(done.before!.durationMin);
+  });
+
+  it("drops today's logged changes once their rule stops applying", async () => {
+    await setup();
+    await sorePain();
+    await getDayPlan(db, TODAY, NOW, TZ);
+    const pain = () => db.select().from(recommendationLog).where(and(eq(recommendationLog.localDate, TODAY), eq(recommendationLog.ruleId, "pain.monitoring")));
+    expect((await pain()).length).toBeGreaterThan(0);
+    await updatePlanSettings(db, { painMonitoring: false });
+    await getDayPlan(db, TODAY, NOW, TZ);
+    expect(await pain()).toHaveLength(0);
+  });
+
+  it("never swaps a done session to another sport, even under a pain hold", async () => {
     await setup();
     await db.insert(workouts).values({
       id: "w-done-run",
