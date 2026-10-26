@@ -298,6 +298,40 @@ describe("loadDayInputs", () => {
   });
 });
 
+describe("pain monitoring", () => {
+  const sorePain = () =>
+    db.insert(painEntries).values({ localDate: TODAY, area: "ankle", side: "both", score: 4, context: "after_run" });
+
+  it("logged pain starts a hold only while pain monitoring is on", async () => {
+    await setup();
+    await sorePain();
+    expect((await getDayPlan(db, TODAY, NOW, TZ)).readiness.painHold).not.toBeNull();
+    await updatePlanSettings(db, { painMonitoring: false });
+    const off = await getDayPlan(db, TODAY, NOW, TZ);
+    expect(off.readiness.painHold).toBeNull();
+    expect(off.sessions.filter((x) => x.kind === "run").every((x) => !x.adjusted)).toBe(true);
+  });
+
+  it("never changes a session that is already done, even under a pain hold", async () => {
+    await setup();
+    await db.insert(workouts).values({
+      id: "w-done-run",
+      start: new Date("2026-10-21T12:00:00Z"),
+      end: new Date("2026-10-21T12:25:00Z"),
+      timezoneOffset: "-05:00",
+      sportName: "running",
+      scoreState: "SCORED",
+    });
+    await sorePain();
+    const plan = await getDayPlan(db, TODAY, NOW, TZ);
+    expect(plan.readiness.painHold).not.toBeNull();
+    const done = plan.sessions.find((x) => x.completedRef === "whoop:w-done-run")!;
+    expect(done.kind).toBe("run");
+    expect(done.adjusted).toBe(false);
+    expect(done.reasons).toEqual([]);
+  });
+});
+
 describe("week boundaries in Chicago across the November DST change (Review Focus 5)", () => {
   it("Sunday 23:30 after the change is Sunday in week 2026-10-26", async () => {
     const at = new Date("2026-11-02T05:30:00Z"); // 23:30 CST, Sunday 2026-11-01

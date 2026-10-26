@@ -38,7 +38,7 @@ const CURRENT: PlanSettings = {
   poolLengthM: 22.86,
   wakeTime: null,
   painSide: null,
-  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null,
+  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null, painMonitoring: true,
 };
 
 function form(entries: Record<string, string>): FormData {
@@ -257,6 +257,15 @@ describe("formatClock", () => {
     expect(formatClock(660, "pace")).toBe("11:00");
     expect(formatClock(21600, "goal")).toBe("6:00");
     expect(formatClock(null, "goal")).toBe("");
+  });
+});
+
+describe("settingsFromForm pain monitoring", () => {
+  it("is on when the box is checked and off when it isn't", () => {
+    const on = settingsFromForm(form({ ...VALID, painMonitoring: "on" }), CURRENT);
+    expect(on.ok && on.settings.painMonitoring).toBe(true);
+    const off = settingsFromForm(form({ ...VALID }), CURRENT);
+    expect(off.ok && off.settings.painMonitoring).toBe(false);
   });
 });
 

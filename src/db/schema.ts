@@ -339,6 +339,8 @@ export const planSettings = pgTable(
     startBikeMph: doublePrecision("start_bike_mph"),
     /** Race goal in seconds; null means the race.projection default. */
     goalSec: integer("goal_sec"),
+    /** Off: logged pain starts no pain hold and the after-run pain question is skipped. */
+    painMonitoring: boolean("pain_monitoring").notNull().default(true),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],

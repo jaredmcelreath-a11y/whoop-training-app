@@ -538,14 +538,18 @@ export async function getDayPlan(
   const settings = await getPlanSettings(db, now, tz);
   const r = readiness(await loadDayInputs(db, date, tz, settings));
   const adapted = adapt(stored.map(toDraft), r).sessions;
-  const sessions: DaySession[] = adapted.map((s, i) => ({
-    ...servePrescription(stored[i], s),
-    id: stored[i].id,
-    status: stored[i].status,
-    completedRef: stored[i].completedRef,
-    completedManual: stored[i].completedManual,
-    ...(s.adjusted ? { before: snapshotOf(toDraft(stored[i])) } : {}),
-  }));
+  // A session already done (or skipped) stays what it was: adaptation only reshapes what's left.
+  const sessions: DaySession[] = adapted.map((a, i) => {
+    const s = stored[i].status === "planned" ? a : { ...toDraft(stored[i]), adjusted: false, reasons: [] };
+    return {
+      ...servePrescription(stored[i], s),
+      id: stored[i].id,
+      status: stored[i].status,
+      completedRef: stored[i].completedRef,
+      completedManual: stored[i].completedManual,
+      ...(s.adjusted ? { before: snapshotOf(toDraft(stored[i])) } : {}),
+    };
+  });
 
   if (date === today) {
     const inputsOf = (ruleId: string) => {

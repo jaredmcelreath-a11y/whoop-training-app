@@ -7,6 +7,7 @@ import { TabBar } from "@/components/tab-bar";
 import { getDb } from "@/db/client";
 import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
+import { getPlanSettings } from "@/lib/plan/settings";
 import { formatCardio, recentCardio } from "@/lib/log/cardio";
 import { toZonedLocal } from "@/lib/log/dates";
 import { formatWhoop } from "@/lib/log/link-whoop";
@@ -53,6 +54,7 @@ async function CardioContent({ searchParams }: { searchParams: Promise<{ kind?: 
           initialKind={kind}
           defaultStart={toZonedLocal(prefill?.start ?? new Date(), getEnv().OWNER_TZ)}
           defaultDurationMin={prefill?.durationMin}
+          askPain={(await getPlanSettings(getDb(), new Date(), getEnv().OWNER_TZ)).painMonitoring}
         />
       </section>
       <section className={base.card}>

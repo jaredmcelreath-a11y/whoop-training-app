@@ -1,0 +1,1 @@
+ALTER TABLE "plan_settings" ADD COLUMN "pain_monitoring" boolean DEFAULT true NOT NULL;

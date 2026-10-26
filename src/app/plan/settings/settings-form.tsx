@@ -43,7 +43,7 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
       </fieldset>
 
       <DaySelect name="longRideDow" label="Long ride day" value={settings.longRideDow} />
-      <DaySelect name="longRunDow" label="Long run / swim day" value={settings.longRunDow} />
+      <DaySelect name="longRunDow" label="Long run day" value={settings.longRunDow} />
       <DaySelect name="restDow" label="Rest day" value={settings.restDow} />
 
       <fieldset className={styles.field}>
@@ -88,6 +88,17 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
         </select>
         <span className={styles.disclaimer}>When set, the pain log skips the side picker.</span>
       </label>
+
+      <fieldset className={styles.field}>
+        <legend className={styles.label}>Pain Monitoring</legend>
+        <label className={styles.checkRow}>
+          <input type="checkbox" name="painMonitoring" defaultChecked={settings.painMonitoring} />
+          <span>Adjust Runs for Pain</span>
+        </label>
+        <p className={styles.disclaimer}>
+          On: pain above 3/10 swaps runs for easy rides until it settles. Off: pain you log is kept but changes nothing, and runs skip the pain question.
+        </p>
+      </fieldset>
 
       <fieldset className={styles.field}>
         <legend className={styles.label}>Race Projection</legend>

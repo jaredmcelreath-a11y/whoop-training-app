@@ -26,6 +26,8 @@ export type PlanSettings = {
   startBikeMph: number | null;
   /** Race goal in seconds (null: the race.projection default). */
   goalSec: number | null;
+  /** Off: logged pain starts no pain hold (pain.monitoring) and the after-run question is skipped. */
+  painMonitoring: boolean;
 };
 
 export const DEFAULT_RACE_DATE = "2027-10-17";
@@ -84,6 +86,7 @@ export const PlanSettingsInput = z
       .max(GOAL_H[1] * S_PER_H)
       .nullable()
       .optional(),
+    painMonitoring: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
     const weeks = daysBetween(v.seasonStart, v.raceDate) / DAYS_PER_WEEK;
@@ -134,6 +137,7 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     startRunSecPerMi: r.startRunSecPerMi ?? null,
     startBikeMph: r.startBikeMph ?? null,
     goalSec: r.goalSec ?? null,
+    painMonitoring: r.painMonitoring,
   };
 }
 
@@ -187,6 +191,7 @@ export async function updatePlanSettings(
       startRunSecPerMi: parsed.data.startRunSecPerMi ?? null,
       startBikeMph: parsed.data.startBikeMph ?? null,
       goalSec: parsed.data.goalSec ?? null,
+      painMonitoring: parsed.data.painMonitoring ?? true,
       updatedAt: new Date(),
     })
     .where(eq(planSettings.id, 1))

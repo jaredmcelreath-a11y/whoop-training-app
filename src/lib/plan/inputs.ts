@@ -185,10 +185,13 @@ export async function loadDayInputs(db: Db, date: string, tz: string, settings: 
     .filter((n) => n.asleepMin !== null && n.needBaselineMin !== null)
     .map((n) => (n.needBaselineMin as number) + (n.needStrainMin ?? 0) + (n.needNapMin ?? 0) - (n.asleepMin as number));
 
-  const painRows = await db
-    .select()
-    .from(painEntries)
-    .where(and(gte(painEntries.localDate, addDays(date, -(PAIN_LOOKBACK_DAYS - 1))), lte(painEntries.localDate, date)));
+  // With pain monitoring off, logged pain is kept but starts no hold.
+  const painRows = settings.painMonitoring
+    ? await db
+        .select()
+        .from(painEntries)
+        .where(and(gte(painEntries.localDate, addDays(date, -(PAIN_LOOKBACK_DAYS - 1))), lte(painEntries.localDate, date)))
+    : [];
   const pain: PainInput[] = painRows.map((p) => ({ area: p.area, date: p.localDate, max: p.score, context: p.context }));
 
   return {

@@ -494,6 +494,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     startRunSecPerMi: "value" in run ? run.value : null,
     startBikeMph: bike,
     goalSec: "value" in goal ? goal.value : null,
+    painMonitoring: f.get("painMonitoring") === "on",
   });
   if (!parsed.success) {
     const msgs = parsed.error.issues.map((i) => {
@@ -514,6 +515,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
       startRunSecPerMi: parsed.data.startRunSecPerMi ?? null,
       startBikeMph: parsed.data.startBikeMph ?? null,
       goalSec: parsed.data.goalSec ?? null,
+      painMonitoring: parsed.data.painMonitoring ?? true,
     },
   };
 }

@@ -39,10 +39,13 @@ export function CardioForm({
   defaultStart,
   initialKind = "run",
   defaultDurationMin,
+  askPain = true,
 }: {
   defaultStart: string;
   initialKind?: Kind;
   defaultDurationMin?: number;
+  /** Plan Settings pain monitoring: off skips the after-run pain question. */
+  askPain?: boolean;
 }) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [unit, setUnit] = useState(UNITS[initialKind][0]);
@@ -183,7 +186,7 @@ export function CardioForm({
         </button>
         <Status state={state} pending={pending} />
       </form>
-      {state.runId && !pending ? <AfterRunPrompt key={state.runId} runId={state.runId} /> : null}
+      {askPain && state.runId && !pending ? <AfterRunPrompt key={state.runId} runId={state.runId} /> : null}
     </>
   );
 }

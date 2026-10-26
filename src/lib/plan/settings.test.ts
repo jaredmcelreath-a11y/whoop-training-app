@@ -46,6 +46,12 @@ describe("getPlanSettings", () => {
 });
 
 describe("pain side and pool unit", () => {
+  it("keeps pain monitoring on by default and can turn it off", async () => {
+    expect((await getPlanSettings(db, NOW, TZ)).painMonitoring).toBe(true);
+    expect((await updatePlanSettings(db, { painMonitoring: false })).painMonitoring).toBe(false);
+    expect((await getPlanSettings(db, NOW, TZ)).painMonitoring).toBe(false);
+  });
+
   it("default to unset and yards", async () => {
     const s0 = await getPlanSettings(db, NOW, TZ);
     expect([s0.startSwimSecPer100Yd, s0.startRunSecPerMi, s0.startBikeMph, s0.goalSec]).toEqual([null, null, null, null]);
