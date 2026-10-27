@@ -19,7 +19,7 @@ import {
 } from "@/db/schema";
 import { NOT_ENOUGH_DATA } from "@/lib/engine/adapt";
 import { addDays, localDate, weekStart, zonedLocalToUtc } from "@/lib/log/dates";
-import { ensureDefaultExercises } from "@/lib/log/strength";
+import { NO_PLAN, ensureDefaultExercises } from "@/lib/log/strength";
 import { dismissWorkout } from "@/lib/log/log-boxes";
 import { getPlanSettings, updatePlanSettings } from "./settings";
 import { seasonCalendar, weeklyTargets } from "@/lib/engine/season";
@@ -37,6 +37,7 @@ import {
   remainingTargets,
   setManualDone,
   storedDaySessions,
+  todayLifts,
   todayPrescription,
 } from "./service";
 
@@ -1235,6 +1236,52 @@ describe("todayPrescription", () => {
     expect(await setManualDone(db, day.id, true, day.localDate)).toBe("done");
     const rx = await todayPrescription(db, day.localDate, noon(day.localDate), TZ);
     expect(rx.map((p) => p.exercise)).toContain("Machine Chest Press");
+  });
+
+  // A day with the main lift and at least one other lifting session.
+  const multiLiftDay = async () => {
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const lifts = (await rowsBetween(THIS_WEEK, NEXT_WEEK))
+      .filter((r) => ["strength", "lower_leg", "core"].includes(r.kind))
+      .sort((x, y) => x.slot - y.slot);
+    const date = lifts.map((r) => r.localDate).find((d) => lifts.filter((r) => r.localDate === d).length > 1)!;
+    return lifts.filter((r) => r.localDate === date);
+  };
+  const exercisesOf = (r: { details: unknown }) =>
+    ((r.details as { prescription?: { exercise: string }[] }).prescription ?? []).map((p) => p.exercise);
+
+  it("serves only the lift a workout was started as, and nothing for an empty one", async () => {
+    await setup();
+    const day = await multiLiftDay();
+    expect(day.length).toBeGreaterThan(1);
+    const date = day[0].localDate;
+    const second = day[1];
+    const rx = await todayPrescription(db, date, noon(date), TZ, undefined, second.id);
+    expect(rx.map((p) => p.exercise)).toEqual(exercisesOf(second));
+    expect(await todayPrescription(db, date, noon(date), TZ, undefined, NO_PLAN)).toEqual([]);
+  });
+
+  it("lists today's lifting sessions to start from, in slot order", async () => {
+    await setup();
+    const day = await multiLiftDay();
+    const date = day[0].localDate;
+    expect((await todayLifts(db, noon(date), TZ)).map((l) => l.id)).toEqual(day.map((r) => r.id));
+  });
+
+  it("completes the lift a finished workout was started as, not the main lift", async () => {
+    await setup();
+    const day = await multiLiftDay();
+    const date = day[0].localDate;
+    const [main, other] = day;
+    const [w] = await db
+      .insert(strengthSessions)
+      .values({ startedAt: noon(date), endedAt: new Date(noon(date).getTime() + 1_800_000), localDate: date, planRef: other.id })
+      .returning();
+    await markCompletion(db, date, TZ);
+    const after = await db.select().from(plannedSessions).where(eq(plannedSessions.localDate, date));
+    expect(after.find((r) => r.id === other.id)!.completedRef).toBe(`strength:${w.id}`);
+    expect(after.find((r) => r.id === main.id)!.completedRef).toBeNull();
+    expect((await todayLifts(db, noon(date), TZ)).map((l) => l.id)).not.toContain(other.id);
   });
 
   it("degrades to no plan when the plan can't be read", async () => {

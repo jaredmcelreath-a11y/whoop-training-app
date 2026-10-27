@@ -14,6 +14,7 @@ import {
   deleteSession,
   ensureDefaultExercises,
   finishSession,
+  NO_PLAN,
   removeSet,
   startOrResumeSession,
   unarchiveExercise,
@@ -37,13 +38,17 @@ function refresh(sessionId: string) {
   revalidatePath(`/log/strength/${sessionId}`);
 }
 
-/** Reuses today's unfinished workout instead of opening a second one. */
-export async function startWorkout(): Promise<void> {
+/**
+ * Reuses today's unfinished workout instead of opening a second one. The form's `plan` is the
+ * planned lift to follow (a planned_sessions id) or empty for a workout with no plan.
+ */
+export async function startWorkout(formData: FormData): Promise<void> {
   if (!(await requireSession())) redirect("/login");
+  const plan = Id.safeParse(formData.get("plan"));
   const db = getDb();
   await ensureDefaultExercises(db);
   // The open-session check runs right before the insert (inside startOrResumeSession).
-  const { id } = await startOrResumeSession(db, new Date(), getEnv().OWNER_TZ);
+  const { id } = await startOrResumeSession(db, new Date(), getEnv().OWNER_TZ, plan.success ? plan.data : NO_PLAN);
   revalidatePath("/log/strength");
   redirect(`/log/strength/${id}`);
 }

@@ -158,6 +158,11 @@ export const strengthSessions = pgTable("strength_sessions", {
   localDate: day("local_date").notNull(),
   notes: text("notes"),
   whoopWorkoutId: text("whoop_workout_id"),
+  /**
+   * What the workout was started as: a planned_sessions id (only that lift's plan), "none"
+   * (an empty workout), or null for workouts from before the choice existed (all of the day's lifts).
+   */
+  planRef: text("plan_ref"),
 });
 
 export const strengthSets = pgTable("strength_sets", {

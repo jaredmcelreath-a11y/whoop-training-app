@@ -1,0 +1,1 @@
+ALTER TABLE "strength_sessions" ADD COLUMN "plan_ref" text;

@@ -120,10 +120,14 @@ function hasPgCode(e: unknown, code: string): boolean {
   return false;
 }
 
-export async function startSession(db: Db, at: Date, tz: string): Promise<{ id: string }> {
+/** A workout's plan_ref when it was started empty, with no planned lift to follow. */
+export const NO_PLAN = "none";
+
+/** `planRef` is the planned session the workout follows, or NO_PLAN for an empty one. */
+export async function startSession(db: Db, at: Date, tz: string, planRef: string = NO_PLAN): Promise<{ id: string }> {
   const [row] = await db
     .insert(strengthSessions)
-    .values({ startedAt: at, localDate: localDate(at, tz) })
+    .values({ startedAt: at, localDate: localDate(at, tz), planRef })
     .returning({ id: strengthSessions.id });
   return row;
 }
@@ -140,13 +144,14 @@ async function openSessionsOn(db: Db, day: string): Promise<{ id: string }[]> {
  * Returns today's unfinished session, opening one only when none exists. There is no
  * unique index, so after inserting it re-reads today's open sessions: if an overlapping
  * start (a double tap) inserted one that sorts first, the fresh, empty row is dropped
- * and the earlier one is returned instead.
+ * and the earlier one is returned instead. An open workout is resumed as it was started, whatever
+ * `planRef` asks for.
  */
-export async function startOrResumeSession(db: Db, at: Date, tz: string): Promise<{ id: string }> {
+export async function startOrResumeSession(db: Db, at: Date, tz: string, planRef: string = NO_PLAN): Promise<{ id: string }> {
   const day = localDate(at, tz);
   const [open] = await openSessionsOn(db, day);
   if (open) return open;
-  const mine = await startSession(db, at, tz);
+  const mine = await startSession(db, at, tz, planRef);
   const [first] = await openSessionsOn(db, day);
   if (first && first.id !== mine.id) {
     await db.delete(strengthSessions).where(eq(strengthSessions.id, mine.id));

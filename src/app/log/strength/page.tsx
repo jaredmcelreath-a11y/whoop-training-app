@@ -9,6 +9,7 @@ import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { localDate } from "@/lib/log/dates";
 import { recentSessions } from "@/lib/log/strength";
+import { todayLifts } from "@/lib/plan/service";
 import { shortDate } from "@/lib/log/strength-view";
 import { startWorkout } from "./actions";
 import styles from "./strength.module.css";
@@ -38,13 +39,32 @@ async function Sessions() {
   const sessions = await recentSessions(getDb(), 10);
   const today = localDate(new Date(), getEnv().OWNER_TZ);
   const resumable = sessions.some((s) => !s.finished && s.localDate === today);
+  const lifts = resumable ? [] : await todayLifts(getDb(), new Date(), getEnv().OWNER_TZ);
 
   return (
     <>
       <form action={startWorkout} className={styles.startForm}>
-        <SubmitButton className={styles.primary} pendingLabel="Starting…">
-          {resumable ? "Resume today's workout" : "Start Workout"}
-        </SubmitButton>
+        {resumable ? (
+          <SubmitButton className={styles.primary} pendingLabel="Starting…">
+            Resume Today's Workout
+          </SubmitButton>
+        ) : (
+          <>
+            {lifts.map((l, i) => (
+              <SubmitButton
+                key={l.id}
+                name="plan"
+                value={l.id}
+                className={i === 0 ? styles.primary : styles.choice}
+              >
+                Start {l.title}
+              </SubmitButton>
+            ))}
+            <SubmitButton className={lifts.length ? styles.choice : styles.primary}>
+              {lifts.length ? "Start Empty Workout" : "Start Workout"}
+            </SubmitButton>
+          </>
+        )}
       </form>
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>Recent</h2>

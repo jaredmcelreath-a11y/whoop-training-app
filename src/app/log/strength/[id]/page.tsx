@@ -62,7 +62,7 @@ async function Workout({
 
   // Today's planned lifts first (only for a workout logged today), then exercises logged
   // without a plan, then the ones picked via ?ex= that have no sets yet.
-  const prescription = finished ? [] : await todayPrescription(db, session.localDate, new Date(), getEnv().OWNER_TZ, id);
+  const prescription = finished ? [] : await todayPrescription(db, session.localDate, new Date(), getEnv().OWNER_TZ, id, session.planRef);
   const byName = await ensureExercisesByName(db, prescription.map((p) => p.exercise));
   const all = await listExercises(db);
   const exList = parseExList((await searchParams).ex);
