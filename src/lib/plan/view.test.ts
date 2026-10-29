@@ -34,6 +34,7 @@ const CURRENT: PlanSettings = {
   longRideDow: 5,
   longRunDow: 6,
   restDow: 0,
+  secondRestDow: null,
   jointStatus: "caution",
   poolLengthM: 22.86,
   wakeTime: null,
@@ -266,6 +267,15 @@ describe("settingsFromForm pain monitoring", () => {
     expect(on.ok && on.settings.painMonitoring).toBe(true);
     const off = settingsFromForm(form({ ...VALID }), CURRENT);
     expect(off.ok && off.settings.painMonitoring).toBe(false);
+  });
+});
+
+describe("settingsFromForm second rest day", () => {
+  it("stores the chosen day, and None clears it", () => {
+    const set = settingsFromForm(form({ ...VALID, secondRestDow: "3" }), CURRENT);
+    expect(set.ok && set.settings.secondRestDow).toBe(3);
+    const none = settingsFromForm(form({ ...VALID, secondRestDow: "" }), CURRENT);
+    expect(none.ok && none.settings.secondRestDow).toBe(null);
   });
 });
 

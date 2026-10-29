@@ -403,6 +403,7 @@ const FIELD_LABEL: Record<string, string> = {
   longRideDow: "Long ride day",
   longRunDow: "Long run day",
   restDow: "Rest day",
+  secondRestDow: "Second rest day",
   jointStatus: "Joint status",
   poolLengthM: "Pool length",
   wakeTime: "Wake time",
@@ -485,6 +486,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     longRideDow: dow("longRideDow"),
     longRunDow: dow("longRunDow"),
     restDow: dow("restDow"),
+    secondRestDow: str(f, "secondRestDow") === "" ? null : dow("secondRestDow"),
     jointStatus,
     poolLengthM: Math.round(toMeters(len, unit) * PERCENT) / PERCENT,
     wakeTime: str(f, "wakeTime") || null,
@@ -508,6 +510,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     ok: true,
     settings: {
       ...parsed.data,
+      secondRestDow: parsed.data.secondRestDow ?? null,
       wakeTime: parsed.data.wakeTime ?? null,
       painSide: parsed.data.painSide ?? null,
       poolUnit: parsed.data.poolUnit ?? "yd",

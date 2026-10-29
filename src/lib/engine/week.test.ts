@@ -15,6 +15,7 @@ const SETTINGS: PlanSettings = {
   longRideDow: 5,
   longRunDow: 6,
   restDow: 0,
+  secondRestDow: null,
   jointStatus: "caution",
   poolLengthM: 25,
   wakeTime: null,
@@ -175,6 +176,17 @@ function checkInvariants(w: PlannedSessionDraft[], inp: BuildWeekInput) {
 }
 
 describe("buildWeek", () => {
+  it("a second rest day is a Rest row with nothing else on it, and the week's minutes still fit", () => {
+    for (const sc of SCENARIOS) {
+      const w = buildWeek(input(sc, {}, { secondRestDow: 3 }));
+      const thu = w.filter((s) => dow(s.localDate) === 3);
+      expect(thu.map((s) => s.kind), sc.name).toEqual(["rest"]);
+      expect(Math.abs(sum(ofKind(w, "bike")) - sc.targets.bikeMin), sc.name).toBeLessThanOrEqual(5);
+      expect(w.filter((s) => s.kind === "strength"), sc.name).toHaveLength(3);
+    }
+    expect(() => buildWeek(input(byName("base"), {}, { secondRestDow: SETTINGS.longRideDow }))).toThrow(RangeError);
+  });
+
   it("minutes per sport sum to the targets within 5 minutes", () => {
     for (const sc of SCENARIOS) {
       const w = buildWeek(input(sc));

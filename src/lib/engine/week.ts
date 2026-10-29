@@ -172,6 +172,10 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   if (new Set([restDow, longRideDow, longRunDow]).size !== 3) {
     throw new RangeError("long ride, long run and rest day must be three different days");
   }
+  const restDows = new Set([restDow, settings.secondRestDow ?? restDow]);
+  if (restDows.has(longRideDow) || restDows.has(longRunDow)) {
+    throw new RangeError("a rest day can't be the long ride or long run day");
+  }
 
   const WT = RULES["week.template"].params;
   const RUN = RULES["volume.run"].params;
@@ -187,7 +191,7 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
   const taperLike = phase === "taper" || phase === "race";
   const buildLike = phase === "build" || phase === "peak";
 
-  const days = Array.from({ length: DAYS_PER_WEEK }, (_, d) => d).filter((d) => d !== restDow);
+  const days = Array.from({ length: DAYS_PER_WEEK }, (_, d) => d).filter((d) => !restDows.has(d));
   const progress = input.buildProgress ?? 0;
   const longDow: Record<Sport, number> = { run: longRunDow, bike: longRideDow, swim: longRunDow };
   const minutes: Record<Sport, number> = {
@@ -493,7 +497,7 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
       out.push({ localDate, slot: 0, kind: "rest", title: "Race Day", durationMin: 0, intensity: "easy", details: { race: true }, ruleIds: ["season.raceWeek"] });
       continue;
     }
-    if (dow === restDow || (raceDow !== null && dow > raceDow)) {
+    if (restDows.has(dow) || (raceDow !== null && dow > raceDow)) {
       out.push({ localDate, slot: 0, kind: "rest", title: "Rest", durationMin: 0, intensity: "easy", details: {}, ruleIds: ["week.template"] });
       continue;
     }

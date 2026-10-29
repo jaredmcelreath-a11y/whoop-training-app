@@ -1,0 +1,1 @@
+ALTER TABLE "plan_settings" ADD COLUMN "second_rest_dow" integer;

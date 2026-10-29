@@ -548,6 +548,7 @@ const SETTINGS: PlanSettings = {
   longRideDow: 5,
   longRunDow: 6,
   restDow: 0,
+  secondRestDow: null,
   jointStatus: "unrestricted",
   poolLengthM: 25,
   wakeTime: null,

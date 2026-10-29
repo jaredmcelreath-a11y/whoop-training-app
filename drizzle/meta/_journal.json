@@ -120,6 +120,13 @@
       "when": 1793118686439,
       "tag": "0016_wandering_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793291789704,
+      "tag": "0017_lean_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

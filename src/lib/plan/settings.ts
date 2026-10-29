@@ -12,6 +12,8 @@ export type PlanSettings = {
   longRideDow: number;
   longRunDow: number;
   restDow: number;
+  /** A second weekly rest day, or null for one. */
+  secondRestDow: number | null;
   jointStatus: "unrestricted" | "caution" | "restricted";
   poolLengthM: number;
   /** "HH:MM", or null to derive wake from the first training window. */
@@ -71,6 +73,7 @@ export const PlanSettingsInput = z
     longRideDow: dow,
     longRunDow: dow,
     restDow: dow,
+    secondRestDow: dow.nullable().optional(),
     jointStatus: z.enum(["unrestricted", "caution", "restricted"]),
     poolLengthM: z.number().positive(),
     wakeTime: hhmm.nullable().optional(),
@@ -104,6 +107,14 @@ export const PlanSettingsInput = z
         message: "Long ride, long run and rest day must be three different days",
       });
     }
+    const second = v.secondRestDow ?? null;
+    if (second !== null && [v.longRideDow, v.longRunDow, v.restDow].includes(second)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["secondRestDow"],
+        message: "The second rest day must differ from the long ride, long run and rest day",
+      });
+    }
     v.windows.forEach((w, i) => {
       if (w.start >= w.end) {
         ctx.addIssue({
@@ -128,6 +139,7 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     longRideDow: r.longRideDow,
     longRunDow: r.longRunDow,
     restDow: r.restDow,
+    secondRestDow: r.secondRestDow ?? null,
     jointStatus: r.jointStatus,
     poolLengthM: r.poolLengthM,
     wakeTime: r.wakeTime ?? null,
@@ -184,6 +196,7 @@ export async function updatePlanSettings(
     .update(planSettings)
     .set({
       ...parsed.data,
+      secondRestDow: parsed.data.secondRestDow ?? null,
       wakeTime: parsed.data.wakeTime ?? null,
       painSide: parsed.data.painSide ?? null,
       poolUnit: parsed.data.poolUnit ?? "yd",

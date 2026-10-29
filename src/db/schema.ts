@@ -328,6 +328,8 @@ export const planSettings = pgTable(
     longRideDow: integer("long_ride_dow").notNull(),
     longRunDow: integer("long_run_dow").notNull(),
     restDow: integer("rest_dow").notNull(),
+    /** An optional second rest day; null means one rest day a week. */
+    secondRestDow: integer("second_rest_dow"),
     jointStatus: text("joint_status", {
       enum: ["unrestricted", "caution", "restricted"],
     }).notNull(),

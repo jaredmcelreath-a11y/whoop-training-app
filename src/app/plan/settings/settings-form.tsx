@@ -45,6 +45,7 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
       <DaySelect name="longRideDow" label="Long ride day" value={settings.longRideDow} />
       <DaySelect name="longRunDow" label="Long run day" value={settings.longRunDow} />
       <DaySelect name="restDow" label="Rest day" value={settings.restDow} />
+      <DaySelect name="secondRestDow" label="Second rest day" value={settings.secondRestDow} none="None" />
 
       <fieldset className={styles.field}>
         <legend className={styles.label}>Joint Status</legend>
@@ -140,11 +141,13 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
   );
 }
 
-function DaySelect({ name, label, value }: { name: string; label: string; value: number }) {
+/** `none` adds an empty first option, for a day that can be left unset. */
+function DaySelect({ name, label, value, none }: { name: string; label: string; value: number | null; none?: string }) {
   return (
     <label className={styles.field}>
       <span className={styles.label}>{label}</span>
-      <select name={name} defaultValue={String(value)} className={styles.select}>
+      <select name={name} defaultValue={value === null ? "" : String(value)} className={styles.select}>
+        {none ? <option value="">{none}</option> : null}
         {WEEKDAYS.map((d, i) => (
           <option key={d} value={i}>
             {d}

@@ -149,6 +149,12 @@ describe("PlanSettingsInput", () => {
   it("rejects rest day equal to long ride day", () => {
     expect(PlanSettingsInput.safeParse({ ...base, restDow: 5 }).success).toBe(false);
   });
+  it("takes an optional second rest day that differs from the other set days", () => {
+    const ok = (secondRestDow: number | null) => PlanSettingsInput.safeParse({ ...base, secondRestDow }).success;
+    expect(ok(null)).toBe(true);
+    expect(ok(3)).toBe(true);
+    for (const taken of [base.restDow, base.longRideDow, base.longRunDow]) expect(ok(taken)).toBe(false);
+  });
   for (const bad of ["2027-13-01", "2027-02-30", "2026-10-00"]) {
     it(`rejects the impossible date ${bad} as race date and as season start`, () => {
       const race = PlanSettingsInput.safeParse({ ...base, raceDate: bad });
