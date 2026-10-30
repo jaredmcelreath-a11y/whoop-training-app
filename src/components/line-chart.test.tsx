@@ -24,6 +24,15 @@ describe("LineChart", () => {
     expect(html).toContain("151.3 lb");
   });
 
+  it("uses a custom format on the axis, popups and caption", () => {
+    const html = renderToStaticMarkup(
+      <LineChart {...base} unit="/mi" format={(v) => `${Math.floor(v / 60)}m`} segments={[pts(["2026-10-01", 600], ["2026-10-08", 720])]} />,
+    );
+    expect(html).toContain("12m /mi");
+    expect(html).toContain(">10m</text>");
+    expect(html).not.toContain("720");
+  });
+
   it("keeps a goal above all data inside the viewBox padding", () => {
     const html = renderToStaticMarkup(
       <LineChart {...base} segments={[pts(["2026-10-01", 150], ["2026-10-08", 151])]} goal={200} width={320} height={140} pad={24} />,

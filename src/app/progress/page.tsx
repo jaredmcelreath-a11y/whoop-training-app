@@ -12,7 +12,7 @@ import { listMarkers, type MarkerSummary } from "@/lib/log/records";
 import { getBodyProgress, type BodyProgress } from "@/lib/progress/body";
 import { splitAtGaps, type LiftSeries, type Point, type Range } from "@/lib/progress/series";
 import { getTrainingProgress, type TrainingProgress } from "@/lib/progress/training";
-import { gainLine, paceLabel, parseRange, RANGE_LABEL, RANGES, scanSplitText, shortDate, signed1 } from "@/lib/progress/view";
+import { gainLine, minSec, paceLabel, parseRange, RANGE_LABEL, RANGES, scanSplitText, shortDate, signed1 } from "@/lib/progress/view";
 import styles from "./progress.module.css";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -315,10 +315,11 @@ function EnduranceSection({ training }: { training: TrainingProgress }) {
         emptyHref="/log/cardio"
       />
       <h3 className={styles.subTitle}>Run Pace</h3>
-      <p className={styles.sub}>Seconds per mile; lower is faster.{run !== undefined ? ` Latest ${paceLabel(run, "mi")}.` : ""}</p>
+      <p className={styles.sub}>Minutes per mile; lower is faster.{run !== undefined ? ` Latest ${paceLabel(run, "mi")}.` : ""}</p>
       <LineChart
         segments={splitAtGaps(training.runPace)}
-        unit="s/mi"
+        unit="/mi"
+        format={minSec}
         label="Run pace per session"
         emptyText="Log runs with distance to see pace"
         emptyHref="/log/cardio"

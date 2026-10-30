@@ -1,7 +1,15 @@
 /** Pure SVG geometry for the line chart: maps date/value points to pixel coordinates. */
 import { dayNumber, type Point } from "@/lib/progress/series";
 
-export type ChartOpts = { width: number; height: number; pad: number; yMin?: number; yMax?: number };
+export type ChartOpts = {
+  width: number;
+  height: number;
+  pad: number;
+  yMin?: number;
+  yMax?: number;
+  /** Y-axis label text; defaults to one decimal. */
+  format?: (value: number) => string;
+};
 export type ChartGeometry = {
   paths: string[];
   dots: { x: number; y: number; date: string; value: number }[];
@@ -20,7 +28,7 @@ const shortDate = (d: string) => `${MONTHS[Number(d.slice(5, 7)) - 1]} ${Number(
 const tickLabel = (v: number) => String(round1(v));
 
 export function chartGeometry(segments: Point[][], opts: ChartOpts): ChartGeometry {
-  const { width, height, pad } = opts;
+  const { width, height, pad, format = tickLabel } = opts;
   const all = segments.flat();
   const days = all.map((p) => dayNumber(p.date));
   const x0 = days.length ? Math.min(...days) : 0;
@@ -43,7 +51,7 @@ export function chartGeometry(segments: Point[][], opts: ChartOpts): ChartGeomet
   const dots = all.map((p) => ({ x: xOf(p.date), y: yOf(p.value), date: p.date, value: p.value }));
   const yTicks = Array.from({ length: TICK_COUNT }, (_, i) => {
     const v = lo + ((hi - lo) * i) / (TICK_COUNT - 1);
-    return { y: yOf(v), label: tickLabel(v) };
+    return { y: yOf(v), label: format(v) };
   });
   const dates = all.map((p) => p.date).sort();
   const firstDate = dates[0];

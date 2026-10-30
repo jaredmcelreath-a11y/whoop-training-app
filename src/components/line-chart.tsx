@@ -20,6 +20,8 @@ type Props = {
   unit: string;
   /** The unit in a dot's popup when it differs from the caption's (e.g. "lb" under "lb (7-day avg)"). */
   dotUnit?: string;
+  /** How values read on the axis, popups and caption; defaults to one decimal. */
+  format?: (value: number) => string;
   label: string;
   emptyText: string;
   emptyHref?: string;
@@ -36,6 +38,7 @@ export function LineChart({
   goal,
   unit,
   dotUnit = unit,
+  format = fmt,
   label,
   emptyText,
   emptyHref,
@@ -65,12 +68,13 @@ export function LineChart({
     pad,
     yMin: Math.min(...values),
     yMax: Math.max(...values),
+    format,
   });
   const rawCount = segments.reduce((n, s) => n + s.length, 0);
   const rawDots = g.dots.slice(0, rawCount);
   const linePaths = sec.length > 0 ? g.paths.slice(segments.length) : g.paths;
   const last = (sec.length > 0 ? sec : segments).flat().at(-1);
-  const tips = segments.flat().map((p, i) => ({ ...rawDots[i], text: `${fmt(p.value)} ${dotUnit} · ${shortDate(p.date)}` }));
+  const tips = segments.flat().map((p, i) => ({ ...rawDots[i], text: `${format(p.value)} ${dotUnit} · ${shortDate(p.date)}` }));
 
   return (
     <figure className={styles.chart} style={{ margin: 0 }}>
@@ -117,7 +121,7 @@ export function LineChart({
       </ChartTips>
       {last && (
         <figcaption className={styles.latest}>
-          {fmt(last.value)} {unit}
+          {format(last.value)} {unit}
         </figcaption>
       )}
     </figure>

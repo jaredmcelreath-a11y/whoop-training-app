@@ -20,12 +20,17 @@ export function shortDate(date: string): string {
   );
 }
 
-/** Seconds per distance as "m:ss /<per>", e.g. 95 -> "1:35 /100 yd". */
-export function paceLabel(sec: number, per: "100 yd" | "mi"): string {
+/** Seconds as "m:ss", e.g. 95 -> "1:35". */
+export function minSec(sec: number): string {
   const total = Math.round(sec);
   const m = Math.floor(total / SECONDS_PER_MINUTE);
   const s = total % SECONDS_PER_MINUTE;
-  return `${m}:${String(s).padStart(PAD_SECONDS, "0")} /${per}`;
+  return `${m}:${String(s).padStart(PAD_SECONDS, "0")}`;
+}
+
+/** Seconds per distance as "m:ss /<per>", e.g. 95 -> "1:35 /100 yd". */
+export function paceLabel(sec: number, per: "100 yd" | "mi"): string {
+  return `${minSec(sec)} /${per}`;
 }
 
 /** Signed to one decimal: 3 -> "+3.0", -1 -> "-1.0". */

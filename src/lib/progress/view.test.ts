@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScanDelta } from "./series";
-import { gainLine, paceLabel, parseRange, scanSplitText, shortDate } from "./view";
+import { gainLine, minSec, paceLabel, parseRange, scanSplitText, shortDate } from "./view";
 
 const scan = (scannedOn: string) => ({ scannedOn, weightLb: 150, leanMassLb: 120, fatMassLb: 30 });
 const delta = (leanLb: number | null, fatLb: number | null, leanSharePct: number | null): ScanDelta => ({
@@ -22,6 +22,11 @@ describe("parseRange", () => {
     expect(parseRange("x")).toBe("4w");
     expect(parseRange(undefined)).toBe("4w");
   });
+});
+
+describe("minSec", () => {
+  it("formats seconds as minutes and seconds", () => expect(minSec(754)).toBe("12:34"));
+  it("pads single-digit seconds", () => expect(minSec(605)).toBe("10:05"));
 });
 
 describe("paceLabel", () => {
