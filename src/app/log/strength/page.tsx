@@ -57,7 +57,7 @@ async function Sessions() {
                 value={l.id}
                 className={i === 0 ? styles.primary : styles.choice}
               >
-                Start {l.title}
+                {l.checked ? "Log" : "Start"} {l.title}
               </SubmitButton>
             ))}
             <SubmitButton className={lifts.length ? styles.choice : styles.primary}>

@@ -1284,6 +1284,45 @@ describe("todayPrescription", () => {
     expect((await todayLifts(db, noon(date), TZ)).map((l) => l.id)).not.toContain(other.id);
   });
 
+  it("still logs a lift WHOOP checked off, and the logged workout takes over the check", async () => {
+    await setup();
+    const day = await multiLiftDay();
+    const date = day[0].localDate;
+    const main = day[0];
+    const start = noon(date);
+    await db.insert(workouts).values({
+      id: "w-lift",
+      start,
+      end: new Date(start.getTime() + 2_700_000),
+      timezoneOffset: "-05:00",
+      sportName: "weightlifting",
+      scoreState: "SCORED",
+    });
+    await markCompletion(db, date, TZ);
+    const checked = await db.select().from(plannedSessions).where(eq(plannedSessions.id, main.id));
+    expect(checked[0].completedRef).toBe("whoop:w-lift");
+    const lifts = await todayLifts(db, noon(date), TZ);
+    expect(lifts.find((l) => l.id === main.id)?.checked).toBe(true);
+    const rx = await todayPrescription(db, date, noon(date), TZ, undefined, main.id);
+    expect(rx.map((p) => p.exercise)).toEqual(exercisesOf(main));
+
+    const later = new Date(start.getTime() + 10_800_000);
+    const [w] = await db
+      .insert(strengthSessions)
+      .values({ startedAt: later, endedAt: new Date(later.getTime() + 300_000), localDate: date, planRef: main.id })
+      .returning();
+    await markCompletion(db, date, TZ);
+    const [after] = await db.select().from(plannedSessions).where(eq(plannedSessions.id, main.id));
+    expect(after.status).toBe("done");
+    expect(after.completedRef).toBe(`strength:${w.id}`);
+    const [linked] = await db.select().from(strengthSessions).where(eq(strengthSessions.id, w.id));
+    expect(linked.whoopWorkoutId).toBe("w-lift");
+    expect((await todayLifts(db, noon(date), TZ)).map((l) => l.id)).not.toContain(main.id);
+    await markCompletion(db, date, TZ);
+    const rows = await db.select().from(plannedSessions).where(eq(plannedSessions.localDate, date));
+    expect(rows.filter((r) => r.completedRef === "whoop:w-lift")).toEqual([]);
+  });
+
   it("degrades to no plan when the plan can't be read", async () => {
     const broken = {} as Db;
     expect(await todayPrescription(broken, TODAY, NOW, TZ)).toEqual([]);
