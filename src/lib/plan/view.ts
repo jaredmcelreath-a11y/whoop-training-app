@@ -120,9 +120,10 @@ export const KIND_LABEL: Record<string, string> = {
 export type StripState = "done" | "today" | "future" | "missed" | "rest";
 
 /**
- * One state per day for the Plan week strip. Rest-only (or empty) days are "rest"; a day
- * whose non-rest sessions are all done is "done"; today is "today"; a past day with
- * anything unfinished is "missed"; everything else is "future".
+ * One state per day for the Plan week strip. Rest-only (or empty) days are "rest"; a day is
+ * "done" once its swim, bike and run sessions are all done (lifting doesn't hold it back), or on
+ * a day with no cardio, once all its sessions are; today is "today"; a past day that isn't done
+ * is "missed"; everything else is "future".
  */
 export function weekStrip(
   days: readonly { date: string; sessions: readonly { status: "planned" | "done" | "skipped"; kind: string }[] }[],
@@ -131,7 +132,8 @@ export function weekStrip(
   return days.map((d) => {
     const work = d.sessions.filter((s) => s.kind !== "rest");
     if (work.length === 0) return "rest";
-    if (work.every((s) => s.status === "done")) return "done";
+    const cardio = work.filter((s) => ENDURANCE_KINDS.has(s.kind));
+    if ((cardio.length ? cardio : work).every((s) => s.status === "done")) return "done";
     if (d.date === today) return "today";
     return d.date < today ? "missed" : "future";
   });

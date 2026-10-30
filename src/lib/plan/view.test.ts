@@ -356,6 +356,19 @@ describe("weekStrip", () => {
   it("counts a past day with a skipped session as missed", () => {
     expect(weekStrip([{ date: "2026-03-02", sessions: [s("done"), s("skipped", "swim")] }], "2026-03-04")).toEqual(["missed"]);
   });
+
+  it("checks a day once its cardio is done, whatever the lifting did", () => {
+    const lifts = [s("planned", "strength"), s("planned", "lower_leg"), s("skipped", "core")];
+    const day = { date: "2026-03-02", sessions: [s("done"), s("done", "bike"), ...lifts] };
+    expect(weekStrip([day], "2026-03-04")).toEqual(["done"]);
+    expect(weekStrip([{ ...day, sessions: [s("done"), s("planned", "bike"), ...lifts] }], "2026-03-04")).toEqual(["missed"]);
+  });
+
+  it("a lifting-only day still needs all of its sessions", () => {
+    const day = (core: "planned" | "done") => ({ date: "2026-03-02", sessions: [s("done", "strength"), s(core, "core")] });
+    expect(weekStrip([day("planned")], "2026-03-04")).toEqual(["missed"]);
+    expect(weekStrip([day("done")], "2026-03-04")).toEqual(["done"]);
+  });
 });
 
 describe("labels are Title Case", () => {
