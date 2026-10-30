@@ -51,6 +51,17 @@ describe("templates", () => {
   });
 });
 
+describe("dumbbell lifts", () => {
+  it("keeps the compound and isolation rep ranges", () => {
+    const REP = RULES["strength.repRange"].params;
+    const rx = prescribe(TEMPLATES.upperB, new Map(), { recoveryWeek: false, taper: false, jointStatus: "unrestricted" });
+    const range = (name: string) => rx.find((p) => p.exercise === name)?.repRange;
+    expect(range("Close-Grip Dumbbell Press")).toEqual(REP.compound);
+    expect(range("Seated Dumbbell Shoulder Press")).toEqual(REP.compound);
+    expect(range("Bent-Over Dumbbell Reverse Fly")).toEqual(REP.isolation);
+  });
+});
+
 describe("progressionStep", () => {
   it("adds about 2.5% rounded to the increment, at least one increment", () => {
     expect(progressionStep(100, 5, 2.5)).toBe(5);

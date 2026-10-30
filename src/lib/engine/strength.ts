@@ -5,9 +5,9 @@
  *
  * Muscle mapping: sets count fully toward an exercise's primary muscles and at strength.template.indirectSetCredit
  * toward its secondary muscles (rows/pulldowns: biceps, rear delts; presses: triceps, front delts). Primary below:
- *   Machine Chest Press -> chest            Seated Dip Machine -> chest + triceps (a true dual press)
- *   Lat Pulldown, Seated Row -> back        Machine Shoulder Press -> front_delts
- *   Dumbbell Lateral Raise -> side_delts    Machine Reverse Fly -> rear_delts
+ *   Machine Chest Press -> chest            Close-Grip Dumbbell Press -> chest + triceps (a true dual press)
+ *   Lat Pulldown, Seated Row -> back        Seated Dumbbell Shoulder Press -> front_delts
+ *   Dumbbell Lateral Raise -> side_delts    Bent-Over Dumbbell Reverse Fly -> rear_delts
  *   Machine Bicep Curl, Cable Bicep Curl -> biceps      Rope Triceps Pulldown -> triceps
  *   Leg Press, Seated Leg Extension -> quads            Seated Leg Curl -> hamstrings
  *   Barbell Deadlift -> hamstrings + glutes             Glute Abductor Machine -> glutes
@@ -56,21 +56,21 @@ export const TEMPLATES: Record<TemplateName, TemplateItem[]> = {
   upperA: [
     item("Machine Chest Press", 3, ["chest"], ["triceps", "front_delts"]),
     item("Lat Pulldown", 3, ["back"], ["biceps", "rear_delts"]),
-    item("Machine Shoulder Press", 3, ["front_delts"], ["triceps", "side_delts"]),
+    item("Seated Dumbbell Shoulder Press", 3, ["front_delts"], ["triceps", "side_delts"]),
     item("Seated Row", 2, ["back"], ["biceps", "rear_delts"]),
     item("Dumbbell Lateral Raise", 4, ["side_delts"]),
-    item("Machine Reverse Fly", 3, ["rear_delts"]),
+    item("Bent-Over Dumbbell Reverse Fly", 3, ["rear_delts"]),
     item("Machine Bicep Curl", 3, ["biceps"]),
     item("Rope Triceps Pulldown", 1, ["triceps"]),
   ],
   upperB: [
     item("Machine Chest Press", 4, ["chest"], ["triceps", "front_delts"]),
-    item("Seated Dip Machine", 3, ["chest", "triceps"], ["front_delts"]),
+    item("Close-Grip Dumbbell Press", 3, ["chest", "triceps"], ["front_delts"]),
     item("Lat Pulldown", 3, ["back"], ["biceps", "rear_delts"]),
     item("Seated Row", 2, ["back"], ["biceps", "rear_delts"]),
-    item("Machine Shoulder Press", 3, ["front_delts"], ["triceps", "side_delts"]),
+    item("Seated Dumbbell Shoulder Press", 3, ["front_delts"], ["triceps", "side_delts"]),
     item("Dumbbell Lateral Raise", 3, ["side_delts"]),
-    item("Machine Reverse Fly", 2, ["rear_delts"]),
+    item("Bent-Over Dumbbell Reverse Fly", 2, ["rear_delts"]),
     item("Cable Bicep Curl", 2, ["biceps"]),
   ],
   lower: [
