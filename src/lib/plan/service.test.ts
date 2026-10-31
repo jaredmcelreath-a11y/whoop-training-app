@@ -19,7 +19,7 @@ import {
 } from "@/db/schema";
 import { NOT_ENOUGH_DATA } from "@/lib/engine/adapt";
 import { addDays, localDate, weekStart, zonedLocalToUtc } from "@/lib/log/dates";
-import { NO_PLAN, ensureDefaultExercises } from "@/lib/log/strength";
+import { NO_PLAN, ensureDefaultExercises, finishSession } from "@/lib/log/strength";
 import { dismissWorkout } from "@/lib/log/log-boxes";
 import { getPlanSettings, updatePlanSettings } from "./settings";
 import { seasonCalendar, weeklyTargets } from "@/lib/engine/season";
@@ -37,8 +37,10 @@ import {
   remainingTargets,
   setManualDone,
   storedDaySessions,
+  startYesterdayLift,
   todayLifts,
   todayPrescription,
+  yesterdayLifts,
 } from "./service";
 
 // All values below are invented test data.
@@ -1321,6 +1323,36 @@ describe("todayPrescription", () => {
     await markCompletion(db, date, TZ);
     const rows = await db.select().from(plannedSessions).where(eq(plannedSessions.localDate, date));
     expect(rows.filter((r) => r.completedRef === "whoop:w-lift")).toEqual([]);
+  });
+
+  it("logs yesterday's WHOOP-checked lift against yesterday, ending with its activity", async () => {
+    await setup();
+    const day = await multiLiftDay();
+    const date = day[0].localDate;
+    const main = day[0];
+    const start = noon(date);
+    const end = new Date(start.getTime() + 2_700_000);
+    await db.insert(workouts).values({ id: "w-late", start, end, timezoneOffset: "-05:00", sportName: "weightlifting", scoreState: "SCORED" });
+    await markCompletion(db, date, TZ);
+    const nextDay = noon(addDays(date, 1));
+    expect((await yesterdayLifts(db, nextDay, TZ)).map((l) => l.id)).toEqual([main.id]);
+
+    const w = (await startYesterdayLift(db, main.id, nextDay, TZ))!;
+    const [open] = await db.select().from(strengthSessions).where(eq(strengthSessions.id, w.id));
+    expect(open.localDate).toBe(date);
+    expect(open.whoopWorkoutId).toBe("w-late");
+    const rx = await todayPrescription(db, date, nextDay, TZ, w.id, main.id);
+    expect(rx.map((p) => p.exercise)).toEqual(exercisesOf(main));
+    expect(await todayPrescription(db, date, nextDay, TZ, w.id, null)).toEqual([]);
+
+    await finishSession(db, w.id, nextDay);
+    const [closed] = await db.select().from(strengthSessions).where(eq(strengthSessions.id, w.id));
+    expect(closed.endedAt).toEqual(end);
+    expect(await yesterdayLifts(db, nextDay, TZ)).toEqual([]);
+    const [after] = await db.select().from(plannedSessions).where(eq(plannedSessions.id, main.id));
+    expect(after.completedRef).toBe(`strength:${w.id}`);
+    expect(await startYesterdayLift(db, main.id, nextDay, TZ)).toBeNull();
+    expect(await yesterdayLifts(db, noon(addDays(date, 2)), TZ)).toEqual([]);
   });
 
   it("degrades to no plan when the plan can't be read", async () => {

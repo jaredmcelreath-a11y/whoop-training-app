@@ -9,7 +9,7 @@ import { requireSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { localDate } from "@/lib/log/dates";
 import { recentSessions } from "@/lib/log/strength";
-import { todayLifts } from "@/lib/plan/service";
+import { todayLifts, yesterdayLifts } from "@/lib/plan/service";
 import { shortDate } from "@/lib/log/strength-view";
 import { startWorkout } from "./actions";
 import styles from "./strength.module.css";
@@ -40,6 +40,11 @@ async function Sessions() {
   const today = localDate(new Date(), getEnv().OWNER_TZ);
   const resumable = sessions.some((s) => !s.finished && s.localDate === today);
   const lifts = resumable ? [] : await todayLifts(getDb(), new Date(), getEnv().OWNER_TZ);
+  const late = resumable ? [] : await yesterdayLifts(getDb(), new Date(), getEnv().OWNER_TZ);
+  const choices = [
+    ...late.map((l) => ({ id: l.id, label: `Log ${l.title} From ${shortDate(l.date)}` })),
+    ...lifts.map((l) => ({ id: l.id, label: `${l.checked ? "Log" : "Start"} ${l.title}` })),
+  ];
 
   return (
     <>
@@ -50,18 +55,18 @@ async function Sessions() {
           </SubmitButton>
         ) : (
           <>
-            {lifts.map((l, i) => (
+            {choices.map((c, i) => (
               <SubmitButton
-                key={l.id}
+                key={c.id}
                 name="plan"
-                value={l.id}
+                value={c.id}
                 className={i === 0 ? styles.primary : styles.choice}
               >
-                {l.checked ? "Log" : "Start"} {l.title}
+                {c.label}
               </SubmitButton>
             ))}
-            <SubmitButton className={lifts.length ? styles.choice : styles.primary}>
-              {lifts.length ? "Start Empty Workout" : "Start Workout"}
+            <SubmitButton className={choices.length ? styles.choice : styles.primary}>
+              {choices.length ? "Start Empty Workout" : "Start Workout"}
             </SubmitButton>
           </>
         )}

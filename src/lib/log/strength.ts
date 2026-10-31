@@ -184,10 +184,16 @@ export async function removeSet(db: Db, setId: string): Promise<void> {
   await db.delete(strengthSets).where(eq(strengthSets.id, setId));
 }
 
+/** A workout linked before it finishes was logged late: it ends when its WHOOP activity did, not now. */
 export async function finishSession(db: Db, sessionId: string, at: Date): Promise<void> {
+  const [linked] = await db
+    .select({ end: workouts.end })
+    .from(strengthSessions)
+    .innerJoin(workouts, eq(workouts.id, strengthSessions.whoopWorkoutId))
+    .where(eq(strengthSessions.id, sessionId));
   const [s] = await db
     .update(strengthSessions)
-    .set({ endedAt: at })
+    .set({ endedAt: linked?.end ?? at })
     .where(eq(strengthSessions.id, sessionId))
     .returning({ startedAt: strengthSessions.startedAt, whoopWorkoutId: strengthSessions.whoopWorkoutId });
   if (!s || s.whoopWorkoutId) return;

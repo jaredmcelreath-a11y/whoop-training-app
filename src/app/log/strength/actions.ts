@@ -20,6 +20,7 @@ import {
   unarchiveExercise,
 } from "@/lib/log/strength";
 import { appendEx, parseExList } from "@/lib/log/strength-view";
+import { startYesterdayLift } from "@/lib/plan/service";
 import { parseNumber } from "@/lib/log/units";
 import { SetInput, formError } from "@/lib/log/validate";
 
@@ -47,8 +48,11 @@ export async function startWorkout(formData: FormData): Promise<void> {
   const plan = Id.safeParse(formData.get("plan"));
   const db = getDb();
   await ensureDefaultExercises(db);
+  const now = new Date();
+  const tz = getEnv().OWNER_TZ;
+  const late = plan.success ? await startYesterdayLift(db, plan.data, now, tz) : null;
   // The open-session check runs right before the insert (inside startOrResumeSession).
-  const { id } = await startOrResumeSession(db, new Date(), getEnv().OWNER_TZ, plan.success ? plan.data : NO_PLAN);
+  const { id } = late ?? (await startOrResumeSession(db, now, tz, plan.success ? plan.data : NO_PLAN));
   revalidatePath("/log/strength");
   redirect(`/log/strength/${id}`);
 }

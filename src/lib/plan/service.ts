@@ -21,7 +21,7 @@ import { PLYO, prescribe, suggestLoad, TEMPLATES, type History, type Prescriptio
 import { buildWeek, type PlannedSessionDraft, type StrengthTemplate } from "@/lib/engine/week";
 import { addDays, localDate, noonOf, weekStart as weekStartOf, zonedLocalToUtc } from "@/lib/log/dates";
 import type { LinkKind } from "@/lib/log/link-whoop";
-import { NO_PLAN, ensureExercisesByName, exerciseIncrements, lastTime } from "@/lib/log/strength";
+import { NO_PLAN, ensureExercisesByName, exerciseIncrements, lastTime, startOrResumeSession } from "@/lib/log/strength";
 import {
   loadDayInputs,
   loadWeekHistory,
@@ -710,12 +710,46 @@ export async function todayLifts(db: Db, now: Date, tz: string): Promise<{ id: s
   }
 }
 
+/** Yesterday's lifts WHOOP checked off with no workout logged: still loggable until the day after. */
+export async function yesterdayLifts(db: Db, now: Date, tz: string): Promise<{ id: string; title: string; date: string }[]> {
+  try {
+    const date = addDays(localDate(now, tz), -1);
+    await markCompletion(db, date, tz);
+    return (await rowsOfDay(db, date))
+      .filter((r) => LIFT_KINDS.has(r.kind) && whoopChecked(r))
+      .map((r) => ({ id: r.id, title: r.title, date }));
+  } catch (err) {
+    console.error("yesterdayLifts failed:", err);
+    return [];
+  }
+}
+
+/**
+ * Starts (or resumes) the workout for a lift from yesterday, dated and timed by the WHOOP activity
+ * that checked it off and linked to it. Null when `plannedId` is not such a lift.
+ */
+export async function startYesterdayLift(db: Db, plannedId: string, now: Date, tz: string): Promise<{ id: string } | null> {
+  const date = addDays(localDate(now, tz), -1);
+  const [row] = await db.select().from(plannedSessions).where(eq(plannedSessions.id, plannedId));
+  if (!row || row.localDate !== date || !whoopChecked(row)) return null;
+  const whoopId = (row.completedRef as string).slice(WHOOP_REF.length);
+  const [activity] = await db.select({ start: workouts.start }).from(workouts).where(eq(workouts.id, whoopId));
+  if (!activity) return null;
+  const session = await startOrResumeSession(db, activity.start, tz, plannedId);
+  await db
+    .update(strengthSessions)
+    .set({ whoopWorkoutId: whoopId })
+    .where(and(eq(strengthSessions.id, session.id), isNull(strengthSessions.whoopWorkoutId)));
+  return session;
+}
+
 /**
  * Today's planned lifting, for a workout logged today: the prescription lines of today's adapted
  * strength, lower-leg and core sessions in slot order. `planRef` narrows it to the one session the
  * workout was started as (none for NO_PLAN); null, a workout from before that choice, gets them all. A session already completed by a log is
- * skipped; a hand or WHOOP check is not (logging it is how the check gets its details). Any
- * other day gets none: a workout opened later is shown as logged, with no plan to fill in.
+ * skipped; a hand or WHOOP check is not (logging it is how the check gets its details). A workout
+ * started for one of yesterday's lifts gets that lift's stored lines. Any other day gets none: a
+ * workout opened later is shown as logged, with no plan to fill in.
  *
  * The stored lines keep their sets and range, but the suggested weight is re-derived from each
  * lift's latest session before `currentSessionId` (a week's prescriptions are fixed when it is
@@ -730,8 +764,10 @@ export async function todayPrescription(
   planRef: string | null = null,
 ): Promise<Prescription[]> {
   try {
-    if (sessionLocalDate !== localDate(now, tz) || planRef === NO_PLAN) return [];
-    const { sessions } = await getDayPlan(db, sessionLocalDate, now, tz);
+    const today = localDate(now, tz);
+    const late = planRef !== null && sessionLocalDate === addDays(today, -1);
+    if ((sessionLocalDate !== today && !late) || planRef === NO_PLAN) return [];
+    const sessions = late ? await storedDaySessions(db, sessionLocalDate) : (await getDayPlan(db, sessionLocalDate, now, tz)).sessions;
     const lines = sessions
       .filter((s) => LIFT_KINDS.has(s.kind) && !s.completedRef?.startsWith(STRENGTH_REF) && (planRef === null || s.id === planRef))
       .flatMap((s) => (s.details.prescription as Prescription[] | undefined) ?? []);
