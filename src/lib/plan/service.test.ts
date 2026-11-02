@@ -23,7 +23,7 @@ import { NO_PLAN, ensureDefaultExercises, finishSession } from "@/lib/log/streng
 import { dismissWorkout } from "@/lib/log/log-boxes";
 import { getPlanSettings, updatePlanSettings } from "./settings";
 import { seasonCalendar, weeklyTargets } from "@/lib/engine/season";
-import { loadDayInputs, loadWeekHistory, longestRunMin } from "./inputs";
+import { loadDayInputs, loadWeekHistory, longestRunMin, longestSwimMin } from "./inputs";
 import {
   ensureWeek,
   getDayPlan,
@@ -682,6 +682,15 @@ describe("Ruling 16 fixes", () => {
     await db.insert(cardioEntries).values({ kind: "run", startedAt: at("2026-10-19", "07:00"), localDate: "2026-10-19", durationS: 1200 });
     await whoopAt("w-run-dup", "running", at("2026-10-19", "06:55"), 40);
     expect(await longestRunMin(db, TODAY, TZ)).toBe(25);
+  });
+
+  it("the long-swim lookback takes logged and WHOOP swims, not runs", async () => {
+    expect(await longestSwimMin(db, TODAY, TZ)).toBeNull();
+    await db.insert(cardioEntries).values({ kind: "swim", startedAt: at("2026-10-18", "07:00"), localDate: "2026-10-18", durationS: 1620 });
+    await whoopAt("w-long-run", "running", at("2026-10-19", "07:00"), 60);
+    expect(await longestSwimMin(db, TODAY, TZ)).toBe(27);
+    await whoopAt("w-swim", "swimming", at("2026-10-20", "07:00"), 35);
+    expect(await longestSwimMin(db, TODAY, TZ)).toBe(35);
   });
 
   it("(e) logs recommendation rows only for today", async () => {

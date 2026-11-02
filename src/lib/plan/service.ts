@@ -27,6 +27,7 @@ import {
   loadWeekHistory,
   localDateAtOffset,
   longestRunMin,
+  longestSwimMin,
   overlapsLogged,
   whoopSports,
   type Span,
@@ -168,6 +169,7 @@ async function generateWeek(
     targets,
     settings,
     longestRunMinLastLookback: await longestRunMin(db, lookbackEnd, tz),
+    longestSwimMinLastLookback: await longestSwimMin(db, lookbackEnd, tz),
     buildProgress: buildProgress(cal, week.index),
   });
 

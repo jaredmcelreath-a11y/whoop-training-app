@@ -35,6 +35,8 @@ export type BuildWeekInput = {
   settings: PlanSettings;
   /** Longest single run in the last volume.run.longRunLookbackDays days; null = no extra cap. */
   longestRunMinLastLookback: number | null;
+  /** Longest single swim in the last volume.swim.lookbackDays days (null = none); undefined skips the swim cap. */
+  longestSwimMinLastLookback?: number | null;
   /** 0 in base, rising to 1 through build (see season.buildProgress); grows the long ride and run. */
   buildProgress?: number;
   /** Strength templates to place, in chronological order. Defaults to Upper A, Lower, Upper B. */
@@ -301,6 +303,30 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
         droppedMin: dropped,
       };
       pushRule(longRun.ruleIds, "volume.run");
+    }
+  }
+
+  // ---- 2b. Long-swim cap (volume.swim): builds from recent swims, never moved to bike or run ----
+  const longSwim = longOf("swim");
+  const swimLookback = input.longestSwimMinLastLookback;
+  if (longSwim && swimLookback !== undefined) {
+    const SWIM = RULES["volume.swim"].params;
+    // Whole rounding steps, so rounding (3b) can't lift a swim past it.
+    const grown = Math.floor(((swimLookback ?? 0) + SWIM.longSwimStepMin) / WT.roundToMin) * WT.roundToMin;
+    const swimCap = Math.min(SWIM.longSwimCapMin, Math.max(SWIM.longSwimFloorMin, grown));
+    const swims = ofSport("swim");
+    let trimmed = 0;
+    for (const s of swims) {
+      if (s.durationMin > swimCap) {
+        trimmed += s.durationMin - swimCap;
+        s.durationMin = swimCap;
+        pushRule(s.ruleIds, "volume.swim");
+      }
+    }
+    if (trimmed > 0) {
+      const dropped = spread(trimmed, swims.filter((s) => !s.long).sort((a, b) => a.dow - b.dow), swimCap);
+      longSwim.details.longSwimCap = { capMin: swimCap, lookbackLongestMin: swimLookback, trimmedMin: trimmed, movedMin: trimmed - dropped, droppedMin: dropped };
+      pushRule(longSwim.ruleIds, "volume.swim");
     }
   }
 

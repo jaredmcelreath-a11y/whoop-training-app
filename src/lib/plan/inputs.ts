@@ -365,12 +365,20 @@ export async function loadWeekHistory(
  * not linked to an entry and don't overlap a logged run. Null when there is none.
  */
 export async function longestRunMin(db: Db, endDate: string, tz: string): Promise<number | null> {
-  const { longRunLookbackDays } = RULES["volume.run"].params;
-  const from = addDays(endDate, -(longRunLookbackDays - 1));
+  return longestMin(db, "run", RULES["volume.run"].params.longRunLookbackDays, endDate, tz);
+}
+
+/** The same for swims, over volume.swim.lookbackDays (for the long-swim cap). */
+export async function longestSwimMin(db: Db, endDate: string, tz: string): Promise<number | null> {
+  return longestMin(db, "swim", RULES["volume.swim"].params.lookbackDays, endDate, tz);
+}
+
+async function longestMin(db: Db, kind: "run" | "swim", lookbackDays: number, endDate: string, tz: string): Promise<number | null> {
+  const from = addDays(endDate, -(lookbackDays - 1));
   const runs = await db
     .select({ kind: cardioEntries.kind, startedAt: cardioEntries.startedAt, durationS: cardioEntries.durationS })
     .from(cardioEntries)
-    .where(and(eq(cardioEntries.kind, "run"), gte(cardioEntries.localDate, from), lte(cardioEntries.localDate, endDate)));
+    .where(and(eq(cardioEntries.kind, kind), gte(cardioEntries.localDate, from), lte(cardioEntries.localDate, endDate)));
   const [lo, hi] = utcBounds(from, endDate);
   const whoop = (
     await db
@@ -380,7 +388,7 @@ export async function longestRunMin(db: Db, endDate: string, tz: string): Promis
         and(
           gte(workouts.start, lo),
           lt(workouts.start, hi),
-          inArray(workouts.sportName, whoopSports("run")),
+          inArray(workouts.sportName, whoopSports(kind)),
           notDismissed,
           sql`not exists (select 1 from ${cardioEntries} where ${cardioEntries.whoopWorkoutId} = ${workouts.id})`,
         ),

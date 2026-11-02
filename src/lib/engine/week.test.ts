@@ -347,6 +347,35 @@ describe("buildWeek", () => {
     }
   });
 
+  it("caps the long swim a step above the longest recent swim, leaving bike and run alone", () => {
+    const SWIM = RULES["volume.swim"].params;
+    const sc = byName("build");
+    const uncapped = buildWeek(input(sc));
+    const w = buildWeek(input(sc, { longestSwimMinLastLookback: 27 }));
+    const swims = ofKind(w, "swim");
+    const long = swims.find((x) => x.details.long)!;
+    expect(long.durationMin).toBe(SWIM.longSwimFloorMin);
+    for (const s of swims) expect(s.durationMin).toBeLessThanOrEqual(long.durationMin);
+    expect(long.ruleIds).toContain("volume.swim");
+    expect((long.details.longSwimCap as { droppedMin: number }).droppedMin).toBeGreaterThan(0);
+    for (const k of ["bike", "run"]) expect(ofKind(w, k).map((x) => x.durationMin), k).toEqual(ofKind(uncapped, k).map((x) => x.durationMin));
+
+    const grown = ofKind(buildWeek(input(sc, { longestSwimMinLastLookback: 40 })), "swim").find((x) => x.details.long)!;
+    expect(grown.durationMin).toBe(40 + SWIM.longSwimStepMin);
+    const none = ofKind(buildWeek(input(sc, { longestSwimMinLastLookback: null })), "swim").find((x) => x.details.long)!;
+    expect(none.durationMin).toBe(SWIM.longSwimFloorMin);
+  });
+
+  it("never plans a long swim over the cap, and skips the cap without a lookback", () => {
+    const SWIM = RULES["volume.swim"].params;
+    const peak = byName("peak");
+    const sc = { ...peak, targets: { ...peak.targets, swimMin: 270, enduranceMin: peak.targets.enduranceMin + 105 } };
+    const free = ofKind(buildWeek(input(sc)), "swim").find((x) => x.details.long)!;
+    expect(free.durationMin).toBeGreaterThan(SWIM.longSwimCapMin);
+    const capped = ofKind(buildWeek(input(sc, { longestSwimMinLastLookback: 200 })), "swim");
+    expect(Math.max(...capped.map((x) => x.durationMin))).toBe(SWIM.longSwimCapMin);
+  });
+
   it("caps the long run at the lookback longest × (1 + longRunMaxIncreasePct) (Ruling 6)", () => {
     const sc = byName("build");
     const longest = 40;

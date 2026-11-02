@@ -33,6 +33,26 @@ const MUJIKA_PADILLA_2003: Citation = {
   evidence: "expert",
 };
 
+const FEIJEN_2020: Citation = {
+  authors: "Feijen S, Tate A, Kuppens K, Claes A, Struyf F",
+  year: 2020,
+  title: "Swim-Training Volume and Shoulder Pain Across the Life Span of the Competitive Swimmer: A Systematic Review",
+  venue: "J Athl Train 55(1):32-41",
+  url: "https://doi.org/10.4085/1062-6050-439-18",
+  doi: "10.4085/1062-6050-439-18",
+  evidence: "expert",
+};
+
+const SOUSA_2021: Citation = {
+  authors: "Sousa CV, Aguiar S, Olher RR, et al. (Knechtle B senior author)",
+  year: 2021,
+  title: "What Is the Best Discipline to Predict Overall Triathlon Performance? An Analysis of Sprint, Olympic, Ironman 70.3, and Ironman 140.6",
+  venue: "Front Physiol 12:654552",
+  url: "https://doi.org/10.3389/fphys.2021.654552",
+  doi: "10.3389/fphys.2021.654552",
+  evidence: "trial",
+};
+
 const BOMPA_2019: Citation = {
   authors: "Bompa TO, Buzzichelli CA",
   year: 2019,
@@ -357,6 +377,7 @@ type RunVolumeParams = {
   longRunLookbackDays: number;
   longRunCapFloorMin: number;
 };
+type SwimVolumeParams = { longSwimStepMin: number; longSwimFloorMin: number; longSwimCapMin: number; lookbackDays: number };
 type SplitParams = { swim: number; bike: number; run: number; earlyRunShare: number; earlyWeeks: number };
 type LoadCheckParams = { overPct: number; weeks: number; trailingWeeks: number };
 type StrainRange = [number, number];
@@ -775,6 +796,19 @@ export const RULES = deepFreeze({
     ],
     caveat:
       "The hours come from what amateur half-Ironman athletes actually did, not a dose trial. The 10% weekly cap is conservative practice; no study shows 10% beats other rates. The 50% missed-week threshold for restarting at the starting volume is practice too, not a studied value.",
+  }),
+
+  "volume.swim": rule<SwimVolumeParams>({
+    id: "volume.swim",
+    area: "volume",
+    statement:
+      "The long swim is at most 5 min longer than your longest swim of the past 30 days, never under 30 min and never over 70 min. Minutes it loses go to the other swims while they stay under that limit; the rest are dropped, never moved to the bike or run.",
+    why: "Shoulder pain rises with swim volume and sudden jumps, and the swim matters least to a half-Ironman finish.",
+    params: { longSwimStepMin: 5, longSwimFloorMin: 30, longSwimCapMin: 70, lookbackDays: 30 },
+    evidence: "practice",
+    citations: [ctx(FEIJEN_2020), ctx(SOUSA_2021)],
+    caveat:
+      "No study tests how long a long swim should be. Feijen 2020 (12 studies, 1,460 swimmers) found more shoulder pain with higher swim volume and advises against sudden large increases, without a cutoff; it studied competitive swimmers. Sousa 2021 found the bike, not the swim, best predicts half-Ironman finish time. The 5-min step, 30-min floor, 70-min cap and 30-day window are coaching practice; the cap is about 1.5 times a typical race swim and can be raised later.",
   }),
 
   "volume.run": rule<RunVolumeParams>({
