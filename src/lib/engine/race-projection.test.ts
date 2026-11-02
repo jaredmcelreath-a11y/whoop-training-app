@@ -8,6 +8,7 @@ const none = { swimSecPer100Yd: null, runSecPerMi: null, bikeMph: null };
 const empty: ProjectionInputs = { swims: [], rides: [], runs: [], vo2max: null, start: none };
 const MI = 1609.344;
 const YD = 0.9144;
+const ride = (mi: number, s: number) => ({ distanceM: mi * MI, durationS: s });
 
 describe("vdotHalfMarathonS", () => {
   it("matches the published VDOT 50 half marathon (about 1:31:39)", () => {
@@ -54,6 +55,25 @@ describe("project", () => {
     const vdot = vdotHalfMarathonS(50);
     const blended = project({ ...empty, runs: [run, run], vo2max: 50 });
     expect(Math.abs(blended.run.seconds - (training + 0.3 * (vdot - training)) * 1.1)).toBeLessThanOrEqual(1);
+  });
+
+  it("moves the bike estimate with the cube root of indoor watts growth, still an estimate", () => {
+    const watts = { baseline: 90, recent: [100, 120, 110] };
+    const p = project({ ...empty, indoorWatts: watts });
+    // The faster half of 100, 110, 120 is 110 and 120: median 115.
+    const mph = P.defaultBikeMph * (115 / 90) ** P.indoorPowerSpeedExponent;
+    expect(p.bike).toEqual({ seconds: Math.round((P.bikeMi / mph) * 3600), estimate: true });
+    // Too few later rides, or no baseline yet: the fallback speed stands.
+    expect(project({ ...empty, indoorWatts: { baseline: 90, recent: [120] } }).bike.seconds).toBe(12600);
+    expect(project({ ...empty, indoorWatts: { baseline: null, recent: [100, 120] } }).bike.seconds).toBe(12600);
+  });
+
+  it("lets outdoor rides replace the indoor estimate, and keeps it plausible", () => {
+    const outdoor = [ride(20, 3600), ride(20, 3600)];
+    const fromRides = project({ ...empty, rides: outdoor }).bike;
+    expect(project({ ...empty, rides: outdoor, indoorWatts: { baseline: 50, recent: [500, 500] } }).bike).toEqual(fromRides);
+    const huge = project({ ...empty, indoorWatts: { baseline: 1, recent: [100000, 100000] } }).bike.seconds;
+    expect(huge).toBe(Math.round((P.bikeMi / P.plausibleBikeMph[1]) * 3600));
   });
 
   it("rides faster in a race than the training average", () => {

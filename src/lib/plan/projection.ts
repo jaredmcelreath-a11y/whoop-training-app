@@ -3,7 +3,7 @@
  * training dated through the previous Sunday, is saved the first time it's needed, and never
  * changes after that, except that the current week is recomputed when the starting paces change.
  */
-import { and, desc, eq, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { cardioEntries, planSettings, raceProjections, weeklyMetrics, workouts } from "@/db/schema";
 import { notDismissed } from "@/lib/log/dismissed";
@@ -104,8 +104,28 @@ export async function projectionInputs(db: Db, weekStart: string, tz: string, th
     .where(and(gte(weeklyMetrics.weekStart, from), lte(weeklyMetrics.weekStart, to), isNotNull(weeklyMetrics.vo2max)))
     .orderBy(desc(weeklyMetrics.weekStart))
     .limit(1);
+  // Indoor rides with watts, oldest first: the first minSessions set the baseline for the rest.
+  const indoorRides = await db
+    .select({ id: cardioEntries.id, localDate: cardioEntries.localDate, avgWatts: cardioEntries.avgWatts })
+    .from(cardioEntries)
+    .where(
+      and(
+        eq(cardioEntries.kind, "bike"),
+        eq(cardioEntries.indoor, true),
+        isNotNull(cardioEntries.avgWatts),
+        gte(cardioEntries.durationS, P.indoorMinRideMin * S_PER_MIN),
+        lte(cardioEntries.localDate, to),
+      ),
+    )
+    .orderBy(asc(cardioEntries.startedAt));
+  const first = indoorRides.slice(0, P.minSessions);
+  const indoorWatts = {
+    baseline: first.length === P.minSessions ? first.reduce((t, r) => t + (r.avgWatts as number), 0) / first.length : null,
+    recent: indoorRides.slice(P.minSessions).filter((r) => r.localDate >= from).map((r) => r.avgWatts as number),
+  };
   const [s] = await db.select().from(planSettings).where(eq(planSettings.id, 1));
   return {
+    indoorWatts,
     swims,
     rides,
     runs,
@@ -148,7 +168,12 @@ async function compute(db: Db, weekStart: string, tz: string) {
     transitionS: p.transitionS,
     totalS: p.totalS,
     estimates: { swim: p.swim.estimate, bike: p.bike.estimate, run: p.run.estimate },
-    inputs: { counts: { swims: inputs.swims.length, rides: inputs.rides.length, runs: inputs.runs.length }, vo2max: inputs.vo2max, start: inputs.start },
+    inputs: {
+      counts: { swims: inputs.swims.length, rides: inputs.rides.length, runs: inputs.runs.length },
+      vo2max: inputs.vo2max,
+      start: inputs.start,
+      indoorWatts: inputs.indoorWatts,
+    },
   };
 }
 

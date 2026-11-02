@@ -49,6 +49,19 @@ describe("projectionInputs", () => {
     expect([i.runs.length, i.swims.length, i.rides.length]).toEqual([1, 0, 0]);
   });
 
+  it("sets an indoor watts baseline from the first two indoor rides, then lists later ones in the window", async () => {
+    const indoor = (day: number, watts: number, min = 40) =>
+      db.insert(cardioEntries).values({ kind: "bike", startedAt: new Date(`${addDays(WEEK, day)}T12:00:00Z`), localDate: addDays(WEEK, day), durationS: min * 60, distanceM: null, indoor: true, avgWatts: watts });
+    await indoor(-60, 80);
+    expect((await projectionInputs(db, WEEK, TZ)).indoorWatts).toEqual({ baseline: null, recent: [] });
+    await indoor(-55, 100);
+    await indoor(-50, 150); // after the baseline, but outside the window
+    await indoor(-6, 140, 20); // too short
+    await indoor(-5, 120);
+    await indoor(2, 200); // this week: waits for next week
+    expect((await projectionInputs(db, WEEK, TZ)).indoorWatts).toEqual({ baseline: 90, recent: [120] });
+  });
+
   it("ignores training and VO2 max older than the look-back window", async () => {
     await log("swim", addDays(WEEK, -50), 1000 * YD, 1200);
     await db.insert(weeklyMetrics).values({ weekStart: addDays(WEEK, -49), vo2max: 40, whoopAge: null });

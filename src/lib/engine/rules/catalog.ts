@@ -406,6 +406,8 @@ type RaceProjectionParams = {
   plausibleSwimSecPer100Yd: Range;
   plausibleRunSecPerMi: Range;
   plausibleBikeMph: Range;
+  indoorMinRideMin: number;
+  indoorPowerSpeedExponent: number;
 };
 type StrainTargetParams = {
   minDays: number;
@@ -630,7 +632,7 @@ export const RULES = deepFreeze({
     id: "race.projection",
     area: "race",
     statement:
-      "The projected half Ironman finish adds up a swim, bike and run from your last few weeks of training (logged sessions, plus WHOOP runs, rides and swims that have GPS distance), plus transitions. A leg with too few sessions uses your starting pace (or a first-timer default) and is marked as an estimate. It is recomputed once a week and can go up or down; a second line shows where this week's workouts so far point, without changing the week's number.",
+      "The projected half Ironman finish adds up a swim, bike and run from your last few weeks of training (logged sessions, plus WHOOP runs, rides and swims that have GPS distance), plus transitions. A leg with too few sessions uses your starting pace (or a first-timer default) and is marked as an estimate. Until you have outdoor rides, the bike estimate moves with the cube root of how much your indoor average watts have grown since your first 2 indoor rides of 30 min or more. It is recomputed once a week and can go up or down; a second line shows where this week's workouts so far point, without changing the week's number.",
     why: "Your own recent paces are the best guide to race day; the factors turn training paces into race paces.",
     params: {
       swimYd: 2112,
@@ -658,6 +660,8 @@ export const RULES = deepFreeze({
       plausibleSwimSecPer100Yd: [40, 600],
       plausibleRunSecPerMi: [240, 1200],
       plausibleBikeMph: [5, 40],
+      indoorMinRideMin: 30,
+      indoorPowerSpeedExponent: 1 / 3,
     },
     evidence: "practice",
     citations: [
@@ -711,9 +715,18 @@ export const RULES = deepFreeze({
         url: "https://marathonhandbook.com/average-half-ironman-times/",
         evidence: "practice",
       }),
+      ctx({
+        authors: "Martin JC, Milliken DL, Cobb JE, McFadden KL, Coggan AR",
+        year: 1998,
+        title: "Validation of a mathematical model for road cycling power",
+        venue: "J Appl Biomech 14(3):276-291",
+        url: "https://doi.org/10.1123/jab.14.3.276",
+        doi: "10.1123/jab.14.3.276",
+        evidence: "trial",
+      }),
     ],
     caveat:
-      "No study validates a whole half Ironman projection for one athlete, so this is practice. Riegel's exponent is calibrated up to the half marathon (Vickers 2016); the off-the-bike slowdown comes from short cycle-run trials (Tew 2005), so a long race may cost more; the open-water, bike race-effort and easy-to-race factors and the first-timer defaults are practice. WHOOP's VO2 max has only WHOOP's own validation, so it gets the smaller share of the run blend.",
+      "No study validates a whole half Ironman projection for one athlete, so this is practice. Riegel's exponent is calibrated up to the half marathon (Vickers 2016); the off-the-bike slowdown comes from short cycle-run trials (Tew 2005), so a long race may cost more; the open-water, bike race-effort and easy-to-race factors and the first-timer defaults are practice. WHOOP's VO2 max has only WHOOP's own validation, so it gets the smaller share of the run blend. The indoor bike scaling uses the road power model (Martin 1998), where air drag makes speed on the flat rise with about the cube root of power; it tracks fitness, not road speed: gym watt readings differ between machines, it assumes the first rides match the fallback speed, and it ignores the bike, position, hills and wind.",
   }),
 
   "season.gainPhase": rule<GainPhaseParams>({

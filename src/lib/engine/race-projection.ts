@@ -13,6 +13,11 @@ export type ProjectionInputs = {
   runs: Session[];
   vo2max: number | null;
   start: { swimSecPer100Yd: number | null; runSecPerMi: number | null; bikeMph: number | null };
+  /**
+   * Indoor rides' average watts: `baseline` is the mean of the first minSessions ever (null until
+   * there are that many), `recent` the later ones in the look-back window.
+   */
+  indoorWatts?: { baseline: number | null; recent: number[] };
 };
 export type LegResult = { seconds: number; estimate: boolean };
 export type Projection = { swim: LegResult; bike: LegResult; run: LegResult; transitionS: number; totalS: number; estimate: boolean };
@@ -73,11 +78,22 @@ export function project(raw: ProjectionInputs): Projection {
     : (inputs.start.swimSecPer100Yd ?? P.defaultSwimSecPer100Yd);
   const swim = { seconds: Math.round(swimPace * (P.swimYd / PER_100) * P.openWaterFactor), estimate: !swimFromTraining };
 
-  // Bike: training speed lifted to race effort; a fallback speed is already a race speed.
+  // Bike: training speed lifted to race effort; a fallback speed is already a race speed. With no
+  // outdoor rides, indoor watts move the fallback by how much they have grown since the first rides
+  // (speed on the flat goes with the cube root of power), and it stays an estimate.
   const bikeFromTraining = enough(inputs.rides.length);
+  const fallbackMph = inputs.start.bikeMph ?? P.defaultBikeMph;
+  const indoor = inputs.indoorWatts;
+  const indoorRatio =
+    !bikeFromTraining && indoor?.baseline && enough(indoor.recent.length)
+      ? -fasterHalfMedian(indoor.recent.map((w) => -w)) / indoor.baseline
+      : null;
+  const [minMph, maxMph] = P.plausibleBikeMph;
   const mph = bikeFromTraining
     ? -fasterHalfMedian(inputs.rides.map((r) => -(r.distanceM / M_PER_MI) / (r.durationS / S_PER_H))) * P.bikeRaceFactor
-    : (inputs.start.bikeMph ?? P.defaultBikeMph);
+    : indoorRatio === null
+      ? fallbackMph
+      : Math.min(maxMph, Math.max(minMph, fallbackMph * indoorRatio ** P.indoorPowerSpeedExponent));
   const bike = { seconds: Math.round((P.bikeMi / mph) * S_PER_H), estimate: !bikeFromTraining };
 
   // Run: easy training scaled to the half marathon, blended with VO2 max, then off the bike.
