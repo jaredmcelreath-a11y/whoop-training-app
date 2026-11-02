@@ -224,6 +224,9 @@ export async function loadDayInputs(db: Db, date: string, tz: string, settings: 
  *   exactly weekIndex long and index i is season week i (Ruling 16c).
  * - WHOOP workouts that are generic "activity", or that overlap a logged entry of the same kind,
  *   are not counted.
+ * - Swim minutes the long-swim cap dropped from a week's plan (volume.swim) count toward it: in a
+ *   finished week only when that long swim was done, so the shorter swim never slows the bike and
+ *   run ramp but a missed week still caps the next one.
  * A finished week with WHOOP cycles but no training is a real 0 (a missed week).
  */
 export async function loadWeekHistory(
@@ -274,7 +277,7 @@ export async function loadWeekHistory(
     .where(and(gte(cycles.start, clo), lt(cycles.start, chi)));
 
   const planned = await db
-    .select({ kind: plannedSessions.kind, durationMin: plannedSessions.durationMin, localDate: plannedSessions.localDate })
+    .select({ kind: plannedSessions.kind, durationMin: plannedSessions.durationMin, localDate: plannedSessions.localDate, details: plannedSessions.details, status: plannedSessions.status })
     .from(plannedSessions)
     .where(
       and(
@@ -313,8 +316,16 @@ export async function loadWeekHistory(
     if (c.state === SCORED && c.strain !== null) strain.set(ws, (strain.get(ws) ?? 0) + c.strain);
   }
   const plannedByWeek = new Map<string, { endMin: number; runMin: number }>();
+  const swimCapDropped = new Map<string, { any: number; done: number }>();
   for (const p of planned) {
     const ws = weekStart(p.localDate);
+    const cap = (p.details as { longSwimCap?: { droppedMin?: number } } | null)?.longSwimCap;
+    if (cap?.droppedMin) {
+      const d = swimCapDropped.get(ws) ?? { any: 0, done: 0 };
+      d.any += cap.droppedMin;
+      if (p.status === "done") d.done += cap.droppedMin;
+      swimCapDropped.set(ws, d);
+    }
     const t = plannedByWeek.get(ws) ?? { endMin: 0, runMin: 0 };
     t.endMin += p.durationMin;
     if (p.kind === "run") t.runMin += p.durationMin;
@@ -350,6 +361,9 @@ export async function loadWeekHistory(
     if (!value) {
       value = prev ?? startLevel;
       ratio = null;
+    } else {
+      const dropped = swimCapDropped.get(ws);
+      value = { ...value, endMin: value.endMin + (dropped ? (finished ? dropped.done : dropped.any) : 0) };
     }
     out.actualEnduranceMin.push(value.endMin);
     out.actualRunMin.push(value.runMin);

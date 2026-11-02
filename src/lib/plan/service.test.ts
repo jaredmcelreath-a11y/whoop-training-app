@@ -664,6 +664,29 @@ describe("Ruling 16 fixes", () => {
     expect(h).toEqual({ actualEnduranceMin: [300, 30], actualRunMin: [45, 0], strainRatio: [null, null] });
   });
 
+  it("counts swim minutes the long-swim cap dropped, so bike and run keep ramping", async () => {
+    const cal = seasonCalendar({ seasonStart: "2026-10-12", raceDate: "2027-10-17" });
+    await db.insert(cardioEntries).values({ kind: "swim", startedAt: at("2026-10-20", "07:00"), localDate: "2026-10-20", durationS: 1800 });
+    const before = await loadWeekHistory(db, cal, 2, "2026-10-28", TZ);
+    await db.insert(plannedSessions).values({
+      localDate: "2026-10-20",
+      slot: 0,
+      kind: "swim",
+      title: "Long swim 30 min",
+      durationMin: 30,
+      intensity: "z2",
+      details: { long: true, longSwimCap: { capMin: 30, droppedMin: 25 } },
+      ruleIds: [],
+      weekStart: "2026-10-19",
+    });
+    // Not done: a skipped swim gets no credit.
+    expect(await loadWeekHistory(db, cal, 2, "2026-10-28", TZ)).toEqual(before);
+    await db.update(plannedSessions).set({ status: "done" }).where(eq(plannedSessions.localDate, "2026-10-20"));
+    const after = await loadWeekHistory(db, cal, 2, "2026-10-28", TZ);
+    expect(after.actualEnduranceMin[1]).toBe(before.actualEnduranceMin[1] + 25);
+    expect(after.actualRunMin).toEqual(before.actualRunMin);
+  });
+
   it("a dismissed WHOOP run counts nowhere in the run history", async () => {
     const cal = seasonCalendar({ seasonStart: "2026-10-12", raceDate: "2027-10-17" });
     const longestBefore = await longestRunMin(db, TODAY, TZ);
