@@ -138,6 +138,19 @@ export function remainingTargets(targets: WeeklyTargets, kept: Pick<Row, "kind" 
   return { enduranceMin: runMin + swimMin + bikeMin, runMin, swimMin, bikeMin };
 }
 
+/** A week's whole targets from its history, before any kept rows are subtracted. */
+async function fullTargets(db: Db, cal: SeasonCalendar, index: number, settings: PlanSettings, today: string, tz: string): Promise<WeeklyTargets> {
+  const history = await loadWeekHistory(db, cal, index, today, tz);
+  return weeklyTargets(cal, index, history, { jointStatus: settings.jointStatus });
+}
+
+/** True when kept + new rows stay within every sport's target and the endurance total. */
+function withinTargets(t: WeeklyTargets, rows: Pick<Row, "kind" | "durationMin">[]): boolean {
+  const used: Record<EnduranceKind, number> = { swim: 0, bike: 0, run: 0 };
+  for (const r of rows) if (isEndurance(r.kind)) used[r.kind] += r.durationMin;
+  return used.run <= t.runMin && used.swim <= t.swimMin && used.bike <= t.bikeMin && used.run + used.swim + used.bike <= t.enduranceMin;
+}
+
 /**
  * One week's rows from the engine under `settings`, or [] when the week is outside the season.
  * History, targets, the single-run cap and strength prescriptions are read at generation time.
@@ -156,8 +169,7 @@ async function generateWeek(
 ): Promise<Insert[]> {
   const week = cal.weeks.find((w) => w.weekStart === ws);
   if (!week) return [];
-  const history = await loadWeekHistory(db, cal, week.index, today, tz);
-  const full = weeklyTargets(cal, week.index, history, { jointStatus: settings.jointStatus });
+  const full = await fullTargets(db, cal, week.index, settings, today, tz);
   const targets = kept.length ? remainingTargets(full, kept) : full;
   // Ruling 6: the lookback ends the day before the week, or today for a future week.
   const lookbackEnd = addDays(ws, -1) < today ? addDays(ws, -1) : today;
@@ -210,7 +222,9 @@ async function insertRows(db: Db, rows: Insert[]): Promise<number> {
  *   (done, skipped or completed) row, and only where `guard` holds. A partly done day stays as is.
  * - Regenerated: each week that lost rows, oldest first so each sees the one before it in its
  *   history; only days ≥ from (≤ until) that have no rows left are filled.
- * - Whole-week caps (final review A): the new layout is built from the week's targets less the
+ * - Whole-week caps (final review A): the week's whole layout fills the days when its new rows
+ *   plus the kept rows fit every target, so a mid-week rebuild with nothing changed keeps the
+ *   week as it was. Otherwise the new layout is built from the week's targets less the
  *   minutes on the rows it keeps, so kept + new never exceeds the week's caps (when the kept rows
  *   alone exceed a target, nothing of that sport is added). The new layout still spans the whole
  *   week, and its sessions on days that are not being filled are dropped, which can only
@@ -252,17 +266,25 @@ async function replaceFrom(
     const keptDates = new Set(keptRows.map((r) => r.localDate));
     const keptLong = new Set(keptRows.filter((r) => isEndurance(r.kind) && isLong(r)).map((r) => r.kind));
     const keptRunDates = keptRows.filter((r) => r.kind === "run").map((r) => r.localDate);
-    const walkRun = (cal.weeks.find((w) => w.weekStart === ws)?.index ?? walkRunWeeks) < walkRunWeeks;
-    const rows = (await generateWeek(db, ws, settings, cal, today, tz, now, keptRows)).filter(
-      (r) =>
-        r.localDate >= from &&
-        (until === null || r.localDate <= until) &&
-        !keptDates.has(r.localDate) &&
-        // One long session per sport per week: a long session already kept is not repeated.
-        !(isLong(r) && keptLong.has(r.kind)) &&
-        // Walk-run weeks never run on consecutive days, kept runs included.
-        !(walkRun && r.kind === "run" && keptRunDates.some((d) => d === addDays(r.localDate, -1) || d === addDays(r.localDate, 1))),
-    );
+    const index = cal.weeks.find((w) => w.weekStart === ws)?.index;
+    const walkRun = (index ?? walkRunWeeks) < walkRunWeeks;
+    const fill = (drafts: Insert[]) =>
+      drafts.filter(
+        (r) =>
+          r.localDate >= from &&
+          (until === null || r.localDate <= until) &&
+          !keptDates.has(r.localDate) &&
+          // One long session per sport per week: a long session already kept is not repeated.
+          !(isLong(r) && keptLong.has(r.kind)) &&
+          // Walk-run weeks never run on consecutive days, kept runs included.
+          !(walkRun && r.kind === "run" && keptRunDates.some((d) => d === addDays(r.localDate, -1) || d === addDays(r.localDate, 1))),
+      );
+    // The week's whole layout first: when its filled days plus the kept rows fit the targets (the
+    // usual case when the kept days followed the same layout), the rest of the week stays as the
+    // engine lays it out. Otherwise the layout from the targets left after the kept rows.
+    let rows = keptRows.length ? fill(await generateWeek(db, ws, settings, cal, today, tz, now)) : [];
+    const fits = index !== undefined && rows.length > 0 && withinTargets(await fullTargets(db, cal, index, settings, today, tz), [...keptRows, ...rows]);
+    if (!fits) rows = fill(await generateWeek(db, ws, settings, cal, today, tz, now, keptRows));
     created += await insertRows(db, rows);
   }
   return { deleted: deleted.length, created };

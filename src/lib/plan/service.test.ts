@@ -788,6 +788,19 @@ describe("whole-week caps after a partial rebuild (final review A)", () => {
     expect(40 + r.enduranceMin).toBeLessThanOrEqual(100);
   });
 
+  it("a mid-week rebuild with nothing changed keeps the rest of the week as it was", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    // Monday and Tuesday done as planned.
+    for (const r of (await weekRows(THIS_WEEK)).filter((r) => r.localDate < TODAY && ENDURANCE.includes(r.kind))) {
+      await db.update(plannedSessions).set({ status: "done", completedRef: `cardio:${r.id}` }).where(eq(plannedSessions.id, r.id));
+    }
+    const key = (r: R & { title: string }) => `${r.localDate} ${r.kind} ${r.title} ${r.durationMin}`;
+    const before = (await weekRows(THIS_WEEK)).filter((r) => r.localDate >= TODAY).map(key);
+    await regenerateFuture(db, TODAY, NOW, TZ);
+    expect((await weekRows(THIS_WEEK)).filter((r) => r.localDate >= TODAY).map(key)).toEqual(before);
+  });
+
   it("a provisional week opened on Friday after a low actual stays within its caps", async () => {
     await setup();
     await ensureWeek(db, THIS_WEEK, NOW, TZ);
