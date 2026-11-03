@@ -2,6 +2,7 @@
 import { RULES } from "@/lib/engine/rules/catalog";
 import type { Evidence } from "@/lib/engine/rules/types";
 import type { Phase, SeasonWeek } from "@/lib/engine/season";
+import type { SwimSets } from "@/lib/engine/swim-sets";
 import { addDays, weekStart } from "@/lib/log/dates";
 import { fromMeters, parseNumber, toMeters } from "@/lib/log/units";
 import { PlanSettingsInput, type PlanSettings } from "./settings";
@@ -83,9 +84,28 @@ type LongRunCap = { capMin: number; lookbackLongestMin: number | null; lookbackD
 type LongBound = { boundMin: number; droppedMin: number };
 type Strides = { reps: number; seconds: number; note?: string };
 
-/** Plain-language notes from a session's details (caps, paused running, plyometrics, strides). */
+/**
+ * A swim's sets, one line per part: "Warm-up: 5 min easy, rest when you need to", "Drill: …",
+ * "Main set: 2 down-and-backs (about 95 yd), rest 30 s. Repeat for 17 min", "Cool-down: …".
+ */
+export function swimSetLines(s: SwimSets): string[] {
+  const out = [`Warm-up: ${s.warmUpMin} min easy, rest when you need to`];
+  if (s.drill) out.push(`Drill: ${s.drill.min} min ${s.drill.name}, one down-and-back at a time. ${s.drill.cue}`);
+  const n = s.rep.downBacks;
+  out.push(
+    s.nonstop
+      ? `Main set: ${s.mainMin} min nonstop`
+      : `Main set: ${n} down-and-back${n === 1 ? "" : "s"} (about ${s.rep.distance} ${s.rep.unit}), rest ${s.rep.restSeconds} s. Repeat for ${s.mainMin} min`,
+  );
+  out.push(`Cool-down: ${s.coolDownMin} min easy`);
+  return out;
+}
+
+/** Plain-language notes from a session's details (swim sets, caps, paused running, plyometrics, strides). */
 export function detailNotes(details: Record<string, unknown>): string[] {
   const out: string[] = [];
+  const sets = details.swimSets as SwimSets | undefined;
+  if (sets) out.push(...swimSetLines(sets));
   // A quality session's note repeats its structure (shown on its own line), unless running is paused.
   const note = typeof details.note === "string" ? details.note : "";
   if (note && (!details.structure || note.includes("paused"))) out.push(note);

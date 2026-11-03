@@ -5,6 +5,7 @@
  */
 import { RULES, type RuleId } from "@/lib/engine/rules/catalog";
 import type { Phase, WeeklyTargets } from "@/lib/engine/season";
+import { planSwimSets } from "@/lib/engine/swim-sets";
 import { addDays } from "@/lib/log/dates";
 import type { PlanSettings } from "@/lib/plan/settings";
 
@@ -447,6 +448,27 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
 
   // Drop anything trimmed to nothing.
   const sessions = cardio.filter((c) => c.durationMin > 0);
+
+  // Swim sets (week.swimSets) for easy and long swims, from the final durations. Quality swims keep
+  // their own structure and a race-eve shakeout stays plain.
+  const pace = settings.startSwimSecPer100Yd ?? RULES["race.projection"].params.defaultSwimSecPer100Yd;
+  const setSwims = sessions.filter((c) => c.sport === "swim" && !HARD.has(c.intensity) && !c.details.shakeout).sort((a, b) => a.dow - b.dow);
+  let drillIndex = weekIndex;
+  for (const c of setSwims) {
+    const sets = planSwimSets({
+      durationMin: c.durationMin,
+      long: c.long,
+      weekIndex,
+      recovery,
+      drillIndex: c.long ? 0 : drillIndex++,
+      poolLengthM: settings.poolLengthM,
+      poolUnit: settings.poolUnit,
+      secPer100Yd: pace,
+    });
+    if (!sets) continue;
+    c.details.swimSets = sets;
+    pushRule(c.ruleIds, "week.swimSets");
+  }
 
   if (!runAllowed && targets.runMin > 0) {
     // pain.jointStatus "restricted": running is paused and its minutes are not reallocated.

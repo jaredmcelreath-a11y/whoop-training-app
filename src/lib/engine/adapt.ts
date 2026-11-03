@@ -10,6 +10,7 @@
  */
 import { RULES, type RuleId } from "@/lib/engine/rules/catalog";
 import { DOCTOR_NOTE, type Readiness } from "@/lib/engine/readiness";
+import { fitSwimSets, type SwimSets } from "@/lib/engine/swim-sets";
 import type { DraftIntensity, DraftKind, PlannedSessionDraft } from "@/lib/engine/week";
 
 export type AdaptedSession = PlannedSessionDraft & { adjusted: boolean; reasons: { ruleId: string; text: string }[] };
@@ -83,6 +84,16 @@ function refitWalkRun(s: PlannedSessionDraft) {
   const extra = s.durationMin - reps * cycle;
   if (extra > 0) s.details.extraWalkMin = extra;
   else delete s.details.extraWalkMin;
+}
+
+/** Fit walk-run intervals and swim sets (week.swimSets) into the session's new duration. */
+function refitLayouts(s: PlannedSessionDraft) {
+  refitWalkRun(s);
+  const sets = s.details.swimSets as SwimSets | undefined;
+  if (!sets) return;
+  const fit = fitSwimSets(sets, s.durationMin);
+  if (fit) s.details.swimSets = fit;
+  else delete s.details.swimSets;
 }
 
 /** Shrink the hard block in proportion to a duration cut; never grows it. */
@@ -207,7 +218,7 @@ export function adapt(sessions: PlannedSessionDraft[], r: Readiness): { sessions
         dropHard(s);
         s.intensity = "z1";
         s.durationMin = shrink(s.durationMin, RED.maxMin);
-        refitWalkRun(s);
+        refitLayouts(s);
         s.title = enduranceTitle(s);
         note(w, "recovery.redSwap", `Recovery ${score}(red) — swapped to easy ${s.durationMin} min`);
       } else if (s.kind === "strength") {
@@ -234,7 +245,7 @@ export function adapt(sessions: PlannedSessionDraft[], r: Readiness): { sessions
       const old = s.durationMin;
       s.durationMin = shrink(old, Math.round(old * LOW.volumeFactor));
       scaleHard(s, old);
-      refitWalkRun(s);
+      refitLayouts(s);
       s.title = enduranceTitle(s);
       note(w, "recovery.lowStreak", `${LOW.days} low-recovery days in a row — cut to ${pct}% (${s.durationMin} min); a rest day is fine too`);
     }
@@ -261,7 +272,7 @@ export function adapt(sessions: PlannedSessionDraft[], r: Readiness): { sessions
       } else {
         scaleHard(s, old);
       }
-      refitWalkRun(s);
+      refitLayouts(s);
       s.title = enduranceTitle(s);
       const easy = wasHard && YELLOW.dropHighIntensity ? `, easy z2 instead of ${wasHard}` : "";
       const how = `shortened to ${s.durationMin} min${easy}`;

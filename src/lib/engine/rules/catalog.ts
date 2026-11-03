@@ -53,6 +53,35 @@ const SOUSA_2021: Citation = {
   evidence: "trial",
 };
 
+const OLIVEIRA_2012: Citation = {
+  authors: "Oliveira MF, Caputo F, Dekerle J, Denadai BS, Greco CC",
+  year: 2012,
+  title: "Stroking parameters during continuous and intermittent exercise in regional-level competitive swimmers",
+  venue: "Int J Sports Med 33(9):696-701",
+  url: "https://doi.org/10.1055/s-0031-1298003",
+  doi: "10.1055/s-0031-1298003",
+  evidence: "trial",
+};
+
+const SEIFERT_2005: Citation = {
+  authors: "Seifert L, Chollet D, Allard P",
+  year: 2005,
+  title: "Arm coordination symmetry and breathing effect in front crawl",
+  venue: "Hum Mov Sci 24:234-56",
+  url: "https://lida.sport-iat.de/ta/Record/4015041",
+  evidence: "trial",
+};
+
+const AMBROSINI_2024: Citation = {
+  authors: "Ambrosini L, et al.",
+  year: 2024,
+  title: "A Higher Kick Frequency Swimming Training Program Optimizes Swim-to-Cycle Transition in Triathlon",
+  venue: "J Strength Cond Res 38(5):976-84",
+  url: "https://doi.org/10.1519/JSC.0000000000004731",
+  doi: "10.1519/JSC.0000000000004731",
+  evidence: "trial",
+};
+
 const BOMPA_2019: Citation = {
   authors: "Bompa TO, Buzzichelli CA",
   year: 2019,
@@ -378,6 +407,20 @@ type RunVolumeParams = {
   longRunCapFloorMin: number;
 };
 type SwimVolumeParams = { longSwimStepMin: number; longSwimFloorMin: number; longSwimCapMin: number; lookbackDays: number };
+type SwimSetsParams = {
+  warmUpMin: number;
+  coolDownMin: number;
+  drillMin: number;
+  minMainSetMin: number;
+  easyStartRepYd: number;
+  longStartRepYd: number;
+  repGrowthPct: number;
+  everyWeeks: number;
+  startRestSeconds: number;
+  restStepSeconds: number;
+  minRestSeconds: number;
+  drills: { name: string; cue: string }[];
+};
 type SplitParams = { swim: number; bike: number; run: number; earlyRunShare: number; earlyWeeks: number };
 type LoadCheckParams = { overPct: number; weeks: number; trailingWeeks: number };
 type StrainRange = [number, number];
@@ -1672,6 +1715,36 @@ export const RULES = deepFreeze({
     citations: [],
     caveat:
       "Every value here is coaching practice, not a tested number: the session counts, the 40% long-session share (60% with 2 sessions, so the long one is clearly longer), the build-phase growth of the long ride and run (peaks near 3 h and 1 h 40 min, in line with common half-Ironman plans rather than a study), rounding swims and rides to 5 min (runs keep whole minutes, since their 10% steps are smaller), typical session lengths, the shortest worthwhile quality block, the minimum warm-up and cool-down and the cap on a session's hard share, strength, lower-leg and core durations, the walk-run progression and the strides. The volume caps (volume.*) and intensity.distribution still bound the week.",
+  }),
+
+  "week.swimSets": rule<SwimSetsParams>({
+    id: "week.swimSets",
+    area: "week",
+    statement:
+      "Each swim opens with 5 min easy and ends with 3 min easy. Easy swims add a 5 min technique drill. The main set repeats down-and-backs with a rest between to fill the time: reps start near 100 yd on easy swims and 150 yd on the long swim, with 30 s rest. Every 2 weeks reps grow 20% and rest drops 5 s, to no less than 15 s; recovery weeks hold. When one rep would fill the main set, it becomes one nonstop swim.",
+    why: "Short rests keep pace and technique steadier than one long swim, and growing reps build toward a nonstop race swim.",
+    params: {
+      warmUpMin: 5,
+      coolDownMin: 3,
+      drillMin: 5,
+      minMainSetMin: 5,
+      easyStartRepYd: 100,
+      longStartRepYd: 150,
+      repGrowthPct: 20,
+      everyWeeks: 2,
+      startRestSeconds: 30,
+      restStepSeconds: 5,
+      minRestSeconds: 15,
+      drills: [
+        { name: "catch-up", cue: "Leave one hand out front until the other hand touches it." },
+        { name: "side kick", cue: "Kick on your side with the bottom arm reaching forward, and roll to breathe." },
+        { name: "fingertip drag", cue: "Drag your fingertips along the water as each arm comes forward." },
+      ],
+    },
+    evidence: "practice",
+    citations: [ctx(OLIVEIRA_2012), ctx(SEIFERT_2005), ctx(AMBROSINI_2024)],
+    caveat:
+      "No study tests set design for adult beginners. Oliveira 2012 found 13 trained swimmers held about a 3% faster pace in 12 × 150 s sets with 30 s rest than in a continuous swim at the same blood lactate. Seifert 2005 found breathing disrupts non-experts' arm stroke more than elite swimmers'. Ambrosini 2024 (15 triathletes, 8 weeks) found kick training lengthened the stroke. The rep sizes, rests, 20% step every 2 weeks (about 10% a week, like volume.run), the drills and the pace used to switch to a nonstop swim are coaching practice.",
   }),
   // ----- nutrition (Plan 4) -------------------------------------------------
   "nutrition.protein": rule<ProteinParams>({

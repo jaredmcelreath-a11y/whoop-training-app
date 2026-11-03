@@ -648,3 +648,32 @@ describe("buildWeek", () => {
         }
   }, 120_000); // exhaustive sweep; slow when the full suite runs in parallel
 });
+
+describe("week.swimSets", () => {
+  type Sets = { warmUpMin: number; drill: { name: string; min: number } | null; mainMin: number; coolDownMin: number };
+  const parts = (s: Sets) => s.warmUpMin + (s.drill?.min ?? 0) + s.mainMin + s.coolDownMin;
+
+  it("gives every easy and long swim sets that fill it, with drills only on easy swims", () => {
+    const w = buildWeek(input(byName("base")));
+    const swims = ofKind(w, "swim");
+    expect(swims.length).toBeGreaterThan(1);
+    for (const s of swims) {
+      const sets = s.details.swimSets as Sets;
+      expect(sets, s.title).toBeDefined();
+      expect(parts(sets)).toBe(s.durationMin);
+      expect(Boolean(sets.drill)).toBe(!s.details.long);
+      expect(s.ruleIds).toContain("week.swimSets");
+    }
+  });
+
+  it("rotates drills across the week's easy swims", () => {
+    const easy = ofKind(buildWeek(input(byName("base"), {}, { secondRestDow: null })), "swim").filter((s) => !s.details.long);
+    const names = easy.map((s) => (s.details.swimSets as Sets).drill?.name);
+    if (names.length > 1) expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("leaves quality swims to their own structure", () => {
+    const w = buildWeek(input(byName("taper")));
+    for (const s of ofKind(w, "swim").filter((x) => HARD.has(x.intensity))) expect(s.details.swimSets).toBeUndefined();
+  });
+});

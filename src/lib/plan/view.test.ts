@@ -122,6 +122,20 @@ describe("session detail lines", () => {
   it("returns nothing for empty details", () => {
     expect(detailNotes({})).toEqual([]);
   });
+
+  it("spells out a swim's sets, then a nonstop main set", () => {
+    const rep = { downBacks: 2, distance: 95, unit: "yd" as const, restSeconds: 30, repMin: 2.3 };
+    const drill = { name: "catch-up", cue: "Leave one hand out front until the other hand touches it.", min: 5 };
+    expect(detailNotes({ swimSets: { warmUpMin: 5, drill, rep, mainMin: 17, nonstop: false, coolDownMin: 3 } })).toEqual([
+      "Warm-up: 5 min easy, rest when you need to",
+      "Drill: 5 min catch-up, one down-and-back at a time. Leave one hand out front until the other hand touches it.",
+      "Main set: 2 down-and-backs (about 95 yd), rest 30 s. Repeat for 17 min",
+      "Cool-down: 3 min easy",
+    ]);
+    const nonstop = detailNotes({ swimSets: { warmUpMin: 5, drill: null, rep: { ...rep, downBacks: 1 }, mainMin: 32, nonstop: true, coolDownMin: 3 } });
+    expect(nonstop).toContain("Main set: 32 min nonstop");
+    expect(nonstop.some((n) => n.startsWith("Drill"))).toBe(false);
+  });
 });
 
 describe("humanizeParams", () => {

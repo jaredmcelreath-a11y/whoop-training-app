@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { RULES } from "@/lib/engine/rules/catalog";
 import { adapt, applyPainHold } from "@/lib/engine/adapt";
 import { readiness, type DayInputs } from "@/lib/engine/readiness";
+import { planSwimSets, type SwimSets } from "@/lib/engine/swim-sets";
 import { buildWeek, type PlannedSessionDraft } from "@/lib/engine/week";
 import type { PlanSettings } from "@/lib/plan/settings";
 
@@ -382,6 +383,18 @@ describe("adapt: yellow", () => {
     expect(o.details.structure).toBeUndefined();
     expect(o.title).not.toMatch(/tempo/i);
     expect(o.reasons[0].ruleId).toBe("recovery.yellowScale");
+  });
+
+  it("a shortened swim's sets refit to the new duration", () => {
+    const sets = planSwimSets({ durationMin: 40, long: false, weekIndex: 0, recovery: false, drillIndex: 0, poolLengthM: 25, poolUnit: "m", secPer100Yd: 150 })!;
+    const [o] = adapt(
+      [s({ kind: "swim", title: "Easy swim 40 min", durationMin: 40, details: { swimSets: sets } })],
+      readiness(day({ recoveryScore: 50 })),
+    ).sessions;
+    const fit = o.details.swimSets as SwimSets;
+    expect(o.durationMin).toBeLessThan(40);
+    expect(fit.rep).toEqual(sets.rep);
+    expect(fit.warmUpMin + (fit.drill?.min ?? 0) + fit.mainMin + fit.coolDownMin).toBe(o.durationMin);
   });
 });
 
