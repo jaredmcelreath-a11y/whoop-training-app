@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 import { keepInputOnSubmit } from "@/components/keep-input";
 import cardio from "../cardio/cardio.module.css";
+import { DETAIL_FIELDS, SEGMENT_GROUPS, SEGMENTS } from "@/lib/log/scan-extras";
 import { logScan, type RecordState } from "../records-actions";
+import records from "../records.module.css";
 import base from "../strength/strength.module.css";
 
 const FIELDS: { name: string; label: string; step?: string }[] = [
@@ -39,19 +41,32 @@ export function ScanForm({ today }: { today: string }) {
           className={base.input}
         />
       </label>
-      <div className={cardio.row}>
+      <div className={records.grid}>
         {FIELDS.map((f) => (
-          <label key={f.name} className={cardio.field}>
-            <span className={cardio.label}>{f.label}</span>
-            <input
-              name={f.name}
-              inputMode="decimal"
-              autoComplete="off"
-              className={base.input}
-            />
-          </label>
+          <NumberField key={f.name} name={f.name} label={f.label} />
         ))}
       </div>
+      <details className={records.details}>
+        <summary className={records.detailsSummary}>Scan details (optional)</summary>
+        {SEGMENT_GROUPS.map((g) => (
+          <fieldset key={g.key} className={records.fieldset}>
+            <legend className={cardio.label}>{g.label}</legend>
+            <div className={records.grid}>
+              {SEGMENTS.map((seg) => (
+                <NumberField key={seg.key} name={`${g.key}.${seg.key}`} label={seg.label} />
+              ))}
+            </div>
+          </fieldset>
+        ))}
+        <div className={records.grid}>
+          {DETAIL_FIELDS.map((f) => (
+            <NumberField key={f.key} name={f.key} label={f.label} />
+          ))}
+        </div>
+      </details>
+      <p className={records.hint}>
+        Saving on a date that already has a scan fills in that scan; blank fields keep what it has.
+      </p>
       <label className={cardio.field}>
         <span className={cardio.label}>Source (optional)</span>
         <input
@@ -75,6 +90,15 @@ export function ScanForm({ today }: { today: string }) {
         </p>
       ) : null}
     </form>
+  );
+}
+
+function NumberField({ name, label }: { name: string; label: string }) {
+  return (
+    <label className={cardio.field}>
+      <span className={cardio.label}>{label}</span>
+      <input name={name} inputMode="decimal" autoComplete="off" className={base.input} />
+    </label>
   );
 }
 

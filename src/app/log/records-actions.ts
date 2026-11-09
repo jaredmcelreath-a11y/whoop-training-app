@@ -12,6 +12,7 @@ import {
   deleteScan,
 } from "@/lib/log/records";
 import { parseNumber } from "@/lib/log/units";
+import { ScanExtras, readScanExtras, scanExtrasLabel } from "@/lib/log/scan-extras";
 import { LabInput, ScanInput, formError } from "@/lib/log/validate";
 
 const Id = z.uuid();
@@ -45,6 +46,15 @@ export async function logScan(
   for (const k of SCAN_NUMBERS) raw[k] = parseNumber(formData.get(k));
   const source = String(formData.get("source") ?? "").trim();
   if (source) raw.source = source;
+  const extras = readScanExtras((name) => parseNumber(formData.get(name)));
+  if (extras) {
+    const checked = ScanExtras.safeParse(extras);
+    if (!checked.success) {
+      const issue = checked.error.issues[0];
+      return { error: `Check ${scanExtrasLabel(issue.path)}: ${issue.message}.` };
+    }
+    raw.extras = checked.data;
+  }
   const parsed = ScanInput.safeParse(raw);
   if (!parsed.success) return { error: formError(parsed.error) };
   await addScan(getDb(), parsed.data);

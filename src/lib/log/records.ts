@@ -2,26 +2,50 @@ import { asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bodyScans, labPanels, labResults } from "@/db/schema";
 import { localDate } from "./dates";
+import { mergeScanExtras } from "./scan-extras";
 import type { LabInput, ScanInput } from "./validate";
 
 const DEFAULT_SOURCE = "manual";
 
+/**
+ * Saves a scan. A date that already has a scan fills that one in instead: entered values replace
+ * its values, blank ones keep them, and the extras merge (segment groups per segment), so a scan's
+ * detail can be added after its headline values. The source changes only when one is given.
+ */
 export async function addScan(
   db: Db,
   input: ScanInput,
 ): Promise<{ id: string }> {
+  const values = {
+    weightLb: input.weightLb ?? null,
+    leanMassLb: input.leanMassLb ?? null,
+    skeletalMuscleLb: input.skeletalMuscleLb ?? null,
+    fatMassLb: input.fatMassLb ?? null,
+    bodyFatPct: input.bodyFatPct ?? null,
+    bmrKcal: input.bmrKcal ?? null,
+    teeKcal: input.teeKcal ?? null,
+    visceralFatLevel: input.visceralFatLevel ?? null,
+  };
+  const [prev] = await db
+    .select()
+    .from(bodyScans)
+    .where(eq(bodyScans.scannedOn, input.scannedOn))
+    .orderBy(asc(bodyScans.id))
+    .limit(1);
+  if (prev) {
+    const entered = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== null));
+    const source = input.source?.trim();
+    await db
+      .update(bodyScans)
+      .set({ ...entered, extras: mergeScanExtras(prev.extras, input.extras), ...(source ? { source } : {}) })
+      .where(eq(bodyScans.id, prev.id));
+    return { id: prev.id };
+  }
   const [row] = await db
     .insert(bodyScans)
     .values({
       scannedOn: input.scannedOn,
-      weightLb: input.weightLb ?? null,
-      leanMassLb: input.leanMassLb ?? null,
-      skeletalMuscleLb: input.skeletalMuscleLb ?? null,
-      fatMassLb: input.fatMassLb ?? null,
-      bodyFatPct: input.bodyFatPct ?? null,
-      bmrKcal: input.bmrKcal ?? null,
-      teeKcal: input.teeKcal ?? null,
-      visceralFatLevel: input.visceralFatLevel ?? null,
+      ...values,
       extras: input.extras ?? null,
       source: input.source?.trim() || DEFAULT_SOURCE,
     })

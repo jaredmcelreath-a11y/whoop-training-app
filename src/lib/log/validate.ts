@@ -109,8 +109,8 @@ export const ScanInput = z
     extras: z.record(z.string(), z.unknown()).optional(),
     source: z.string().max(100).optional(),
   })
-  .refine((v) => v.weightLb != null || v.leanMassLb != null || v.fatMassLb != null, {
-    message: "enter a weight or a mass value",
+  .refine((v) => v.weightLb != null || v.leanMassLb != null || v.fatMassLb != null || Object.keys(v.extras ?? {}).length > 0, {
+    message: "enter a weight, a mass value or a scan detail",
     path: ["weightLb"],
   });
 export type ScanInput = z.infer<typeof ScanInput>;

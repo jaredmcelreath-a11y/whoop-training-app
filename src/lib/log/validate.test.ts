@@ -84,6 +84,8 @@ describe("ScanInput", () => {
     ).toBe(true);
     expect(ScanInput.safeParse({ scannedOn: "2026-10-20", weightLb: 170, visceralFatLevel: 0 }).success).toBe(false);
     expect(ScanInput.safeParse({ scannedOn: "2026-13-40", weightLb: 170 }).success).toBe(false);
+    expect(ScanInput.safeParse({ scannedOn: "2026-10-20", extras: { bioAge: 25 } }).success).toBe(true);
+    expect(ScanInput.safeParse({ scannedOn: "2026-10-20", extras: {} }).success).toBe(false);
   });
 });
 

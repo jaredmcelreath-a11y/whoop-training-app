@@ -42,6 +42,28 @@ describe("scans", () => {
   });
 });
 
+describe("scans on a date that already has one", () => {
+  it("fill in that scan: entered values replace, blank ones keep, extras merge per segment", async () => {
+    const { id } = await addScan(db, {
+      scannedOn: "2026-06-01",
+      weightLb: 175,
+      bodyFatPct: 15,
+      source: "evolt",
+      extras: { bioAge: 30, segmentalLeanLb: { torso: 50 } },
+    });
+    const again = await addScan(db, {
+      scannedOn: "2026-06-01",
+      bodyFatPct: 16,
+      extras: { segmentalLeanLb: { leftLeg: 18 }, totalBodyWaterLb: 85 },
+    });
+    expect(again.id).toBe(id);
+    const list = await listScans(db);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ weightLb: 175, bodyFatPct: 16, source: "evolt" });
+    expect(list[0].extras).toEqual({ bioAge: 30, totalBodyWaterLb: 85, segmentalLeanLb: { torso: 50, leftLeg: 18 } });
+  });
+});
+
 describe("lab panels", () => {
   it("keeps the last value for a repeated marker", async () => {
     const { id } = await addLabPanel(db, {
