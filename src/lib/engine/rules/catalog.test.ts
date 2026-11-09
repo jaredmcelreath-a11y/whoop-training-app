@@ -38,7 +38,7 @@ const REQUIRED: Record<string, string[]> = {
   "pain.jointStatus": ["caution", "restricted"],
   "lower_leg.block": ["sessionsPerWeek", "tibialisSets", "soleusSets", "gastrocSets"],
   "week.template": ["sessionsPerWeek", "longShare", "coreSessionsPerWeek", "walkRun"],
-  "week.swimSets": ["warmUpMin", "coolDownMin", "drillMin", "easyStartRepYd", "longStartRepYd", "repGrowthPct", "everyWeeks", "startRestSeconds", "minRestSeconds", "drills"],
+  "week.swimSets": ["warmUpMin", "coolDownMin", "drillMin", "startRepYd", "repGrowthPct", "everyWeeks", "startRestSeconds", "minRestSeconds", "drills"],
   "strain.dailyTarget": ["minDays", "lookbackDays", "lowPercentile", "highPercentile", "fallback"],
   "race.projection": ["openWaterFactor", "riegelExponent", "easyToRaceFactor", "offBikeFactor", "vo2Weight", "bikeRaceFactor", "transitionMin", "lookbackWeeks", "minSessions"],
   // Plan 4 (nutrition and hydration). Tasks 5–8 depend on these names.

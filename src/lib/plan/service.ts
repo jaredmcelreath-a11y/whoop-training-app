@@ -341,26 +341,18 @@ async function rowsOfDay(db: Db, date: string): Promise<Row[]> {
   return db.select().from(plannedSessions).where(eq(plannedSessions.localDate, date)).orderBy(asc(plannedSessions.slot));
 }
 
-/**
- * Marks planned swim/bike/run/strength sessions on `date` done when a matching activity exists:
- * a cardio_entries row of the same kind ("cardio:<id>"), a finished strength_session
- * ("strength:<id>"), or else an unlinked WHOOP workout that started that local day (by its own
- * offset, else `tz`) with a sport from link-whoop's SPORTS list ("whoop:<id>"). Generic WHOOP
- * "activity" never completes a session, and a WHOOP workout overlapping a logged entry of its own
- * kind is skipped (it is that entry, recorded twice). Each activity completes at most one
- * session. A finished workout started for a planned lift (its plan_ref) completes that lift
- * first, whatever its kind, and never any other, taking over a WHOOP check on that lift. Returns
- * how many sessions were newly marked.
- */
-export async function markCompletion(db: Db, date: string, tz: string): Promise<number> {
-  // A manual check is open too: a matching activity upgrades it to a real ref.
-  const day = await rowsOfDay(db, date);
-  const rows = day.filter((r) => (r.status === "planned" || r.completedManual) && r.completedRef === null);
-  const open = rows.filter((r) => (LINK_KINDS as string[]).includes(r.kind));
-  // A lift WHOOP checked off stays open to the workout logged for it.
-  const openLifts = [...rows, ...day.filter(whoopChecked)].filter((r) => LIFT_KINDS.has(r.kind));
-  if (!open.length && !openLifts.length) return 0;
+type DayActivities = {
+  cardio: { id: string; kind: string; startedAt: Date; durationS: number }[];
+  lifts: { id: string; startedAt: Date; endedAt: Date | null; planRef: string | null }[];
+  whoopFree: { id: string; sport: string | null }[];
+};
 
+/**
+ * What was done on `date`: its cardio entries, finished strength sessions, and the WHOOP workouts
+ * that started that local day (by their own offset, else `tz`), are linked to no log, aren't
+ * dismissed, and don't overlap a logged entry of their own kind.
+ */
+async function dayActivities(db: Db, date: string, tz: string): Promise<DayActivities> {
   const cardio = await db
     .select({ id: cardioEntries.id, kind: cardioEntries.kind, startedAt: cardioEntries.startedAt, durationS: cardioEntries.durationS })
     .from(cardioEntries)
@@ -391,26 +383,56 @@ export async function markCompletion(db: Db, date: string, tz: string): Promise<
     ...cardio.map((c) => ({ kind: c.kind, start: c.startedAt, end: new Date(c.startedAt.getTime() + c.durationS * 1000) })),
     ...lifts.map((l) => ({ kind: "strength" as const, start: l.startedAt, end: l.endedAt ?? l.startedAt })),
   ];
-  const whoopFree = whoop.filter((w) => !overlapsLogged(w, logged));
+  return { cardio, lifts, whoopFree: whoop.filter((w) => !overlapsLogged(w, logged)) };
+}
 
-  const forPlan = (l: { planRef: string | null }) => l.planRef !== null && l.planRef !== NO_PLAN;
-  const candidates = (kind: LinkKind): string[] => [
+const forPlan = (l: { planRef: string | null }) => l.planRef !== null && l.planRef !== NO_PLAN;
+
+/** The refs of `a` that can complete a session of `kind`: logs of that kind first, then WHOOP. */
+function activityRefs(a: DayActivities, kind: LinkKind): string[] {
+  return [
     ...(kind === "strength"
-      ? lifts.filter((l) => !forPlan(l)).map((l) => `strength:${l.id}`)
-      : cardio.filter((c) => c.kind === kind).map((c) => `cardio:${c.id}`)),
-    ...whoopFree.filter((w) => w.sport !== null && whoopSports(kind).includes(w.sport)).map((w) => `whoop:${w.id}`),
+      ? a.lifts.filter((l) => !forPlan(l)).map((l) => `strength:${l.id}`)
+      : a.cardio.filter((c) => c.kind === kind).map((c) => `cardio:${c.id}`)),
+    ...a.whoopFree.filter((w) => w.sport !== null && whoopSports(kind).includes(w.sport)).map((w) => `whoop:${w.id}`),
   ];
-  const targeted = lifts.filter(forPlan).map((l) => ({ ref: `strength:${l.id}`, sessionId: l.planRef as string }));
+}
+
+async function usedRefs(db: Db, refs: string[]): Promise<Set<string | null>> {
+  if (!refs.length) return new Set();
+  const rows = await db.select({ ref: plannedSessions.completedRef }).from(plannedSessions).where(inArray(plannedSessions.completedRef, refs));
+  return new Set(rows.map((r) => r.ref));
+}
+
+/**
+ * Marks planned swim/bike/run/strength sessions on `date` done when a matching activity exists:
+ * a cardio_entries row of the same kind ("cardio:<id>"), a finished strength_session
+ * ("strength:<id>"), or else an unlinked WHOOP workout that started that local day (by its own
+ * offset, else `tz`) with a sport from link-whoop's SPORTS list ("whoop:<id>"). Generic WHOOP
+ * "activity" never completes a session, and a WHOOP workout overlapping a logged entry of its own
+ * kind is skipped (it is that entry, recorded twice). Each activity completes at most one
+ * session. A finished workout started for a planned lift (its plan_ref) completes that lift
+ * first, whatever its kind, and never any other, taking over a WHOOP check on that lift.
+ *
+ * A swapped day: a swim, ride or run with nothing done that day takes an unused activity of its
+ * sport from the day after, else the day before, when that day is in the same week and has no
+ * session of that sport planned (a long ride moved onto the rest day next to it). Returns how many
+ * sessions were newly marked.
+ */
+export async function markCompletion(db: Db, date: string, tz: string): Promise<number> {
+  // A manual check is open too: a matching activity upgrades it to a real ref.
+  const day = await rowsOfDay(db, date);
+  const rows = day.filter((r) => (r.status === "planned" || r.completedManual) && r.completedRef === null);
+  const open = rows.filter((r) => (LINK_KINDS as string[]).includes(r.kind));
+  // A lift WHOOP checked off stays open to the workout logged for it.
+  const openLifts = [...rows, ...day.filter(whoopChecked)].filter((r) => LIFT_KINDS.has(r.kind));
+  if (!open.length && !openLifts.length) return 0;
+
+  const acts = await dayActivities(db, date, tz);
+  const candidates = (kind: LinkKind) => activityRefs(acts, kind);
+  const targeted = acts.lifts.filter(forPlan).map((l) => ({ ref: `strength:${l.id}`, sessionId: l.planRef as string }));
   const all = [...new Set([...LINK_KINDS.flatMap(candidates), ...targeted.map((t) => t.ref)])];
-  if (!all.length) return 0;
-  const used = new Set(
-    (
-      await db
-        .select({ ref: plannedSessions.completedRef })
-        .from(plannedSessions)
-        .where(inArray(plannedSessions.completedRef, all))
-    ).map((r) => r.ref),
-  );
+  const used = await usedRefs(db, all);
 
   const pairs: { id: string; ref: string }[] = [];
   for (const t of targeted) {
@@ -424,6 +446,21 @@ export async function markCompletion(db: Db, date: string, tz: string): Promise<
     if (!ref) continue;
     pairs.push({ id: s.id, ref });
     used.add(ref);
+  }
+
+  for (const s of open) {
+    if (!isEndurance(s.kind) || s.completedManual || pairs.some((p) => p.id === s.id)) continue;
+    for (const n of [addDays(date, 1), addDays(date, -1)]) {
+      if (weekStartOf(n) !== weekStartOf(date)) continue;
+      if ((await rowsOfDay(db, n)).some((r) => r.kind === s.kind)) continue;
+      const refs = activityRefs(await dayActivities(db, n, tz), s.kind);
+      const taken = await usedRefs(db, refs);
+      const ref = refs.find((c) => !used.has(c) && !taken.has(c));
+      if (!ref) continue;
+      pairs.push({ id: s.id, ref });
+      used.add(ref);
+      break;
+    }
   }
 
   let marked = 0;

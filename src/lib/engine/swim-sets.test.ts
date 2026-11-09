@@ -30,12 +30,12 @@ describe("planSwimSets", () => {
     expect(s.nonstop).toBe(false);
   });
 
-  it("starts easy reps at 2 down-and-backs and long reps at 3 in a 25 yd pool, rest 30 s", () => {
+  it("starts easy and long reps at 2 down-and-backs in a 25 yd pool, rest 30 s", () => {
     const easy = planSwimSets(base())!;
     expect(easy.rep).toMatchObject({ downBacks: 2, distance: 100, unit: "yd", restSeconds: P.startRestSeconds });
     const long = planSwimSets(base({ long: true, durationMin: 45 }))!;
     expect(long.drill).toBeNull();
-    expect(long.rep).toMatchObject({ downBacks: 3, distance: 150 });
+    expect(long.rep).toMatchObject({ downBacks: 2, distance: 100 });
   });
 
   it("counts down-and-backs in a 70 ft pool and rounds the distance to 5", () => {
@@ -45,18 +45,20 @@ describe("planSwimSets", () => {
     expect(s.rep.unit).toBe("yd");
   });
 
-  it("shows meters for a meter pool", () => {
+  it("shows meters for a meter pool, rounding the rep down to whole down-and-backs", () => {
     const s = planSwimSets(base({ poolLengthM: 25, poolUnit: "m" }))!;
     expect(s.rep.unit).toBe("m");
-    expect(s.rep.distance).toBe(100);
+    expect(s.rep.distance).toBe(50); // 100 yd is 91 m: one 50 m down-and-back fits, two don't
   });
 
   it("grows reps 20% and cuts rest 5 s every 2 weeks, rest never under 15 s", () => {
     const at = (weekIndex: number) => planSwimSets(base({ long: true, durationMin: 60, weekIndex }))!.rep;
-    expect(at(1).downBacks).toBe(3); // 150 yd
-    expect(at(2).downBacks).toBe(4); // 180 yd
+    expect(at(1).downBacks).toBe(2); // 100 yd
+    expect(at(2).downBacks).toBe(2); // 120 yd target holds at 2
     expect(at(2).restSeconds).toBe(25);
-    expect(at(4).downBacks).toBe(4); // 216 yd
+    expect(at(4).downBacks).toBe(2); // 144 yd
+    expect(at(6).downBacks).toBe(3); // 173 yd
+    expect(at(8).downBacks).toBe(4); // 207 yd
     expect(at(6).restSeconds).toBe(P.minRestSeconds);
     expect(at(20).restSeconds).toBe(P.minRestSeconds);
   });

@@ -49,9 +49,10 @@ export function planSwimSets(input: SwimSetsInput): SwimSets | null {
   // A recovery week holds the step of the week before it.
   const week = input.recovery ? Math.max(0, input.weekIndex - 1) : input.weekIndex;
   const step = Math.floor(week / P.everyWeeks);
-  const repYd = (input.long ? P.longStartRepYd : P.easyStartRepYd) * (1 + P.repGrowthPct / PERCENT) ** step;
+  const repYd = P.startRepYd * (1 + P.repGrowthPct / PERCENT) ** step;
   const downBackM = input.poolLengthM * LENGTHS_PER_DOWN_BACK;
-  const downBacks = Math.max(1, Math.round((repYd * M_PER_YD) / downBackM));
+  // Rounded down, so a rep never asks for more than the target; small early steps hold.
+  const downBacks = Math.max(1, Math.floor((repYd * M_PER_YD) / downBackM + 1e-9));
   const unit = input.poolUnit === "m" ? "m" : "yd";
   const repM = downBacks * downBackM;
   const distance = Math.round((unit === "m" ? repM : repM / M_PER_YD) / ROUND_TO) * ROUND_TO;

@@ -412,8 +412,7 @@ type SwimSetsParams = {
   coolDownMin: number;
   drillMin: number;
   minMainSetMin: number;
-  easyStartRepYd: number;
-  longStartRepYd: number;
+  startRepYd: number;
   repGrowthPct: number;
   everyWeeks: number;
   startRestSeconds: number;
@@ -1721,15 +1720,14 @@ export const RULES = deepFreeze({
     id: "week.swimSets",
     area: "week",
     statement:
-      "Each swim opens with 5 min easy and ends with 3 min easy. Easy swims add a 5 min technique drill. The main set repeats down-and-backs with a rest between to fill the time: reps start near 100 yd on easy swims and 150 yd on the long swim, with 30 s rest. Every 2 weeks reps grow 20% and rest drops 5 s, to no less than 15 s; recovery weeks hold. When one rep would fill the main set, it becomes one nonstop swim.",
+      "Each swim opens with 5 min easy and ends with 3 min easy. Easy swims add a 5 min technique drill. The main set repeats down-and-backs with a rest between to fill the time: reps start near 100 yd with 30 s rest. Every 2 weeks the rep target grows 20% and rest drops 5 s, to no less than 15 s; recovery weeks hold. A rep is the most whole down-and-backs that fit the target, so early steps often hold. When one rep would fill the main set, it becomes one nonstop swim.",
     why: "Short rests keep pace and technique steadier than one long swim, and growing reps build toward a nonstop race swim.",
     params: {
       warmUpMin: 5,
       coolDownMin: 3,
       drillMin: 5,
       minMainSetMin: 5,
-      easyStartRepYd: 100,
-      longStartRepYd: 150,
+      startRepYd: 100,
       repGrowthPct: 20,
       everyWeeks: 2,
       startRestSeconds: 30,
@@ -1744,7 +1742,7 @@ export const RULES = deepFreeze({
     evidence: "practice",
     citations: [ctx(OLIVEIRA_2012), ctx(SEIFERT_2005), ctx(AMBROSINI_2024)],
     caveat:
-      "No study tests set design for adult beginners. Oliveira 2012 found 13 trained swimmers held about a 3% faster pace in 12 × 150 s sets with 30 s rest than in a continuous swim at the same blood lactate. Seifert 2005 found breathing disrupts non-experts' arm stroke more than elite swimmers'. Ambrosini 2024 (15 triathletes, 8 weeks) found kick training lengthened the stroke. The rep sizes, rests, 20% step every 2 weeks (about 10% a week, like volume.run), the drills and the pace used to switch to a nonstop swim are coaching practice.",
+      "No study tests set design for adult beginners. Oliveira 2012 found 13 trained swimmers held about a 3% faster pace in 12 × 150 s sets with 30 s rest than in a continuous swim at the same blood lactate. Seifert 2005 found breathing disrupts non-experts' arm stroke more than elite swimmers'. Ambrosini 2024 (15 triathletes, 8 weeks) found kick training lengthened the stroke. The rep sizes, rounding down, rests, 20% step every 2 weeks (about 10% a week, like volume.run), the drills and the pace used to switch to a nonstop swim are coaching practice.",
   }),
   // ----- nutrition (Plan 4) -------------------------------------------------
   "nutrition.protein": rule<ProteinParams>({

@@ -480,6 +480,44 @@ describe("markCompletion", () => {
     expect(after.completedRef).toBe(`cardio:${entry.id}`);
     expect(await markCompletion(db, swim.localDate, TZ)).toBe(0);
   });
+
+  const rideOn = (date: string) =>
+    db
+      .insert(cardioEntries)
+      .values({ kind: "bike", startedAt: new Date(zonedLocalToUtc(`${date}T09:00`, TZ)), localDate: date, durationS: 60 * 60 })
+      .returning();
+
+  it("a ride done on the day after, which plans no ride, completes the missed one (a swapped rest day)", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const rows = await rowsBetween(THIS_WEEK, NEXT_WEEK);
+    const ride = rows.find((r) => r.kind === "bike" && r.localDate < NEXT_WEEK && !rows.some((o) => o.kind === "bike" && o.localDate === addDays(r.localDate, 1)) && addDays(r.localDate, 1) < NEXT_WEEK)!;
+    const [entry] = await rideOn(addDays(ride.localDate, 1));
+    expect(await markCompletion(db, ride.localDate, TZ)).toBe(1);
+    const [after] = await db.select().from(plannedSessions).where(eq(plannedSessions.id, ride.id));
+    expect(after.completedRef).toBe(`cardio:${entry.id}`);
+  });
+
+  it("a ride on a day that plans its own ride stays with that day", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const rows = await rowsBetween(THIS_WEEK, NEXT_WEEK);
+    const ride = rows.find((r) => r.kind === "bike")!;
+    const next = addDays(ride.localDate, 1);
+    const { id: _id, ...copy } = ride;
+    await db.insert(plannedSessions).values({ ...copy, localDate: next, slot: 9 });
+    await rideOn(next);
+    expect(await markCompletion(db, ride.localDate, TZ)).toBe(0);
+  });
+
+  it("a run in the next week never completes this week's", async () => {
+    await setup();
+    await ensureWeek(db, THIS_WEEK, NOW, TZ);
+    const sunday = addDays(THIS_WEEK, 6);
+    expect((await rowsBetween(THIS_WEEK, NEXT_WEEK)).some((r) => r.kind === "run" && r.localDate === sunday)).toBe(true);
+    await db.insert(cardioEntries).values({ kind: "run", startedAt: new Date(zonedLocalToUtc(`${NEXT_WEEK}T09:00`, TZ)), localDate: NEXT_WEEK, durationS: 30 * 60 });
+    expect(await markCompletion(db, sunday, TZ)).toBe(0);
+  });
 });
 
 describe("provisional weeks (Ruling 15a)", () => {
