@@ -677,3 +677,25 @@ describe("week.swimSets", () => {
     for (const s of ofKind(w, "swim").filter((x) => HARD.has(x.intensity))) expect(s.details.swimSets).toBeUndefined();
   });
 });
+
+describe("recovery week (season.recoveryWeek)", () => {
+  // Invented: this week's 165 ride minutes, and the recovery week's 70% of them.
+  const F = RULES["season.recoveryWeek"].params.volumeFactor;
+  const normal = { enduranceMin: 266, runMin: 41, swimMin: 60, bikeMin: 165 };
+  const cut = { enduranceMin: 218, runMin: Math.round(41 * F), swimMin: 60, bikeMin: Math.round(165 * F) };
+  const week = (recovery: boolean, targets: WeeklyTargets) =>
+    buildWeek(input({ name: "x", weekIndex: 2, phase: "base", recovery, targets }));
+  const rides = (w: PlannedSessionDraft[]) => ofKind(w, "bike");
+  const longRide = (w: PlannedSessionDraft[]) => rides(w).find((r) => r.details.long)!.durationMin;
+
+  it("keeps the full week's number of rides, each shorter", () => {
+    const full = week(false, normal);
+    const rec = week(true, cut);
+    expect(rides(rec)).toHaveLength(rides(full).length);
+    expect(sum(rides(rec))).toBe(cut.bikeMin - (cut.bikeMin % WT.roundToMin));
+  });
+
+  it("never makes the long ride longer than the full week's", () => {
+    expect(longRide(week(true, cut))).toBeLessThan(longRide(week(false, normal)));
+  });
+});

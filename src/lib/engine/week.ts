@@ -217,7 +217,10 @@ export function buildWeek(input: BuildWeekInput): PlannedSessionDraft[] {
     const total = minutes[sport];
     if (total <= 0) continue;
     const [lo, hi] = WT.sessionsPerWeek[sport];
-    const n = Math.min(hi, Math.max(lo, Math.round(total / WT.typicalSessionMin[sport])));
+    // A recovery week keeps the full week's session count, each session shorter: counting from its
+    // cut total would drop a session and hand its minutes to the long one.
+    const fullTotal = recovery ? total / RULES["season.recoveryWeek"].params.volumeFactor : total;
+    const n = Math.min(hi, Math.max(lo, Math.round(fullTotal / WT.typicalSessionMin[sport])));
     const longMin = Math.round(total * longShareFor(n, sport, progress));
     // The long swim goes on the least busy day away from the long run and long ride.
     if (sport === "swim") {

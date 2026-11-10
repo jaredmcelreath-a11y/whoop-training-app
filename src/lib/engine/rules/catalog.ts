@@ -798,7 +798,8 @@ export const RULES = deepFreeze({
   "season.recoveryWeek": rule<RecoveryWeekParams>({
     id: "season.recoveryWeek",
     area: "season",
-    statement: "Every 4th week (never in taper) is a recovery week at 70% of the surrounding volume, with no hard sessions.",
+    statement:
+      "Every 4th week (never in taper) is a recovery week at 70% of the surrounding volume, with no hard sessions. It keeps the full week's number of swims, rides and runs, each one shorter.",
     why: "A lighter week every month lets fatigue clear so the next block can build. Common practice, lightly studied.",
     params: { every: 4, volumeFactor: 0.7 },
     evidence: "expert",
