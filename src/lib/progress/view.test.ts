@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScanDelta } from "./series";
-import { gainLine, minSec, paceLabel, parseRange, scanSplitText, shortDate } from "./view";
+import { gainLine, liftChart, minSec, paceLabel, parseRange, scanSplitText, shortDate } from "./view";
 
 const scan = (scannedOn: string) => ({ scannedOn, weightLb: 150, leanMassLb: 120, fatMassLb: 30 });
 const delta = (leanLb: number | null, fatLb: number | null, leanSharePct: number | null): ScanDelta => ({
@@ -64,4 +64,21 @@ describe("scanSplitText", () => {
 
 describe("shortDate", () => {
   it("formats without shifting the day", () => expect(shortDate("2026-10-03")).toBe("Oct 3"));
+});
+
+describe("liftChart", () => {
+  // Invented weeks.
+  const week = (weekStart: string, volumeLb: number | null, totalReps: number, sets = 3) => ({ weekStart, sets, volumeLb, totalReps });
+  it("plots weight moved for a weighted lift and describes the latest week", () => {
+    const c = liftChart({ name: "Leg Press", weekly: [week("2026-11-02", 7400, 30), week("2026-11-09", 8100, 30)] });
+    expect(c.unit).toBe("lb");
+    expect(c.points).toEqual([{ date: "2026-11-02", value: 7400 }, { date: "2026-11-09", value: 8100 }]);
+    expect(c.text).toBe("Leg Press: 8,100 lb moved over 3 sets");
+  });
+  it("plots total reps for bodyweight work", () => {
+    const c = liftChart({ name: "Dead Bug", weekly: [week("2026-11-09", null, 24, 2)] });
+    expect(c.unit).toBe("reps");
+    expect(c.points).toEqual([{ date: "2026-11-09", value: 24 }]);
+    expect(c.text).toBe("Dead Bug: 24 reps over 2 sets");
+  });
 });

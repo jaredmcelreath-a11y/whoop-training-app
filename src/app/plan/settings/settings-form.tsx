@@ -101,6 +101,14 @@ export function PlanSettingsForm({ settings }: { settings: PlanSettings }) {
         </p>
       </fieldset>
 
+      <label className={styles.field}>
+        <span className={styles.label}>Lift Charts From</span>
+        <input type="date" name="liftsSince" defaultValue={settings.liftsSince ?? ""} className={styles.input} />
+        <span className={styles.disclaimer}>
+          Progress lift charts leave out sets before this date, so a new gym&apos;s machines start fresh. Blank shows all. Nothing is deleted.
+        </span>
+      </label>
+
       <fieldset className={styles.field}>
         <legend className={styles.label}>Race Projection</legend>
         <label className={styles.field}>

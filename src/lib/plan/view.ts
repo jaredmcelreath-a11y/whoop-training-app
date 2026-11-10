@@ -433,6 +433,7 @@ const FIELD_LABEL: Record<string, string> = {
   startRunSecPerMi: "Starting run pace",
   startBikeMph: "Starting bike speed",
   goalSec: "Race goal",
+  liftsSince: "Lift charts from",
 };
 
 const S_PER_MIN = 60;
@@ -519,6 +520,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
     startBikeMph: bike,
     goalSec: "value" in goal ? goal.value : null,
     painMonitoring: f.get("painMonitoring") === "on",
+    liftsSince: str(f, "liftsSince") || null,
   });
   if (!parsed.success) {
     const msgs = parsed.error.issues.map((i) => {
@@ -541,6 +543,7 @@ export function settingsFromForm(f: FormData, current: PlanSettings): FormResult
       startBikeMph: parsed.data.startBikeMph ?? null,
       goalSec: parsed.data.goalSec ?? null,
       painMonitoring: parsed.data.painMonitoring ?? true,
+      liftsSince: parsed.data.liftsSince ?? null,
     },
   };
 }

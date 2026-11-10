@@ -12,7 +12,7 @@ import { listMarkers, type MarkerSummary } from "@/lib/log/records";
 import { getBodyProgress, type BodyProgress } from "@/lib/progress/body";
 import { splitAtGaps, type LiftSeries, type Point, type Range } from "@/lib/progress/series";
 import { getTrainingProgress, type TrainingProgress } from "@/lib/progress/training";
-import { gainLine, minSec, paceLabel, parseRange, RANGE_LABEL, RANGES, scanSplitText, shortDate, signed1 } from "@/lib/progress/view";
+import { gainLine, liftChart, minSec, paceLabel, parseRange, RANGE_LABEL, RANGES, scanSplitText, shortDate, signed1, thousands } from "@/lib/progress/view";
 import styles from "./progress.module.css";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -241,14 +241,6 @@ function LabsList({ markers }: { markers: MarkerSummary[] }) {
   );
 }
 
-function liftText(l: LiftSeries): string {
-  const last = l.weekly[l.weekly.length - 1];
-  if (!last) return `${l.name}: no sets`;
-  return last.topWeightLb === null
-    ? `${l.name}: top ${last.topReps} reps`
-    : `${l.name}: top ${last.topWeightLb} lb × ${last.topReps}`;
-}
-
 function LiftsSection({ lifts, range }: { lifts: LiftSeries[]; range: Range }) {
   if (lifts.length === 0) {
     return (
@@ -259,22 +251,28 @@ function LiftsSection({ lifts, range }: { lifts: LiftSeries[]; range: Range }) {
   }
   return (
     <>
-      <p className={styles.sub}>Top set per week, last {RANGE_LABEL[range].toLowerCase()}.</p>
+      <p className={styles.sub}>
+        Total weight moved per week (sets × reps × weight), last {RANGE_LABEL[range].toLowerCase()}. Bodyweight work shows total reps.
+      </p>
       {lifts.map((l) => {
-        const points: Point[] = l.weekly.flatMap((w) =>
-          w.topWeightLb === null ? [] : [{ date: w.weekStart, value: w.topWeightLb }],
-        );
-        if (points.length < MIN_LIFT_WEEKS) {
+        const c = liftChart(l);
+        if (c.points.length < MIN_LIFT_WEEKS) {
           return (
             <p key={l.exerciseId} className={styles.text}>
-              {liftText(l)}
+              {c.text}
             </p>
           );
         }
         return (
           <div key={l.exerciseId}>
             <h3 className={styles.subTitle}>{l.name}</h3>
-            <LineChart segments={splitAtGaps(points)} unit="lb" label={`${l.name} top weight per week`} emptyText="" />
+            <LineChart
+              segments={splitAtGaps(c.points)}
+              unit={c.unit}
+              format={thousands}
+              label={`${l.name} ${c.unit === "lb" ? "weight moved" : "reps"} per week`}
+              emptyText=""
+            />
           </div>
         );
       })}

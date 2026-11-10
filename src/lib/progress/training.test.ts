@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@/db/client";
 import { createTestDb } from "@/db/test-db";
 import { cardioEntries, exercises, plannedSessions, strengthSessions, strengthSets, weeklyMetrics } from "@/db/schema";
+import { getPlanSettings, updatePlanSettings } from "@/lib/plan/settings";
 import { getTrainingProgress } from "./training";
 
 // All values below are invented test data.
@@ -69,10 +70,29 @@ describe("getTrainingProgress", () => {
     expect(p.whoopAge).toEqual([]);
     expect(p.lifts).toHaveLength(1);
     expect(p.lifts[0].name).toBe("Old Lift");
-    expect(p.lifts[0].weekly).toEqual([{ weekStart: "2026-10-19", topWeightLb: 100, topReps: 5, sets: 1 }]);
+    expect(p.lifts[0].weekly).toEqual([{ weekStart: "2026-10-19", topWeightLb: 100, topReps: 5, sets: 1, volumeLb: 500, totalReps: 5 }]);
     const wide = await getTrainingProgress(db, NOW, TZ, "2m");
     expect(wide.vo2max).toHaveLength(2);
     expect(wide.lifts[0].weekly).toHaveLength(2);
+  });
+
+  it("leaves out lifts before the lift-charts date", async () => {
+    const [ex] = await db.insert(exercises).values({ name: "Leg Press", category: "strength" }).returning();
+    const sets = [];
+    for (const d of ["2026-10-13", "2026-10-20"]) {
+      const [s] = await db.insert(strengthSessions).values({ startedAt: new Date(`${d}T12:00:00Z`), localDate: d }).returning();
+      sets.push({ clientId: crypto.randomUUID(), sessionId: s.id, exerciseId: ex.id, setIndex: 0, reps: 10, weightLb: 200, completedAt: new Date(`${d}T12:05:00Z`) });
+    }
+    await db.insert(strengthSets).values(sets);
+    await getPlanSettings(db, NOW, TZ);
+    await updatePlanSettings(db, { liftsSince: "2026-10-19" });
+    try {
+      const p = await getTrainingProgress(db, NOW, TZ, "4w");
+      expect(p.lifts[0].weekly.map((w) => w.weekStart)).toEqual(["2026-10-19"]);
+    } finally {
+      await updatePlanSettings(db, { liftsSince: null });
+    }
+    expect((await getTrainingProgress(db, NOW, TZ, "4w")).lifts[0].weekly).toHaveLength(2);
   });
 
   it("summarises adherence from past non-rest rows in range", async () => {

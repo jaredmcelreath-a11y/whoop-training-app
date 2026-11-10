@@ -348,6 +348,8 @@ export const planSettings = pgTable(
     goalSec: integer("goal_sec"),
     /** Off: logged pain starts no pain hold and the after-run pain question is skipped. */
     painMonitoring: boolean("pain_monitoring").notNull().default(true),
+    /** Progress lift charts leave out sets before this date (a gym change); null shows all. */
+    liftsSince: day("lifts_since"),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [check("plan_settings_single_row", sql`${t.id} = 1`)],

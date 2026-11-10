@@ -127,6 +127,13 @@
       "when": 1793291789704,
       "tag": "0017_lean_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794271459121,
+      "tag": "0018_common_vision",
+      "breakpoints": true
     }
   ]
 }

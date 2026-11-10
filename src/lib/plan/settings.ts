@@ -30,6 +30,8 @@ export type PlanSettings = {
   goalSec: number | null;
   /** Off: logged pain starts no pain hold (pain.monitoring) and the after-run question is skipped. */
   painMonitoring: boolean;
+  /** Progress lift charts leave out sets before this date (a gym change); null shows all. */
+  liftsSince: string | null;
 };
 
 export const DEFAULT_RACE_DATE = "2027-10-17";
@@ -90,6 +92,7 @@ export const PlanSettingsInput = z
       .nullable()
       .optional(),
     painMonitoring: z.boolean().optional(),
+    liftsSince: dateStr.nullable().optional(),
   })
   .superRefine((v, ctx) => {
     const weeks = daysBetween(v.seasonStart, v.raceDate) / DAYS_PER_WEEK;
@@ -150,6 +153,7 @@ function toSettings(r: typeof planSettings.$inferSelect): PlanSettings {
     startBikeMph: r.startBikeMph ?? null,
     goalSec: r.goalSec ?? null,
     painMonitoring: r.painMonitoring,
+    liftsSince: r.liftsSince ?? null,
   };
 }
 
@@ -205,6 +209,7 @@ export async function updatePlanSettings(
       startBikeMph: parsed.data.startBikeMph ?? null,
       goalSec: parsed.data.goalSec ?? null,
       painMonitoring: parsed.data.painMonitoring ?? true,
+      liftsSince: parsed.data.liftsSince ?? null,
       updatedAt: new Date(),
     })
     .where(eq(planSettings.id, 1))

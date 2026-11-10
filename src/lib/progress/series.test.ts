@@ -130,11 +130,11 @@ describe("liftSeries", () => {
   const set = (localDate: string, reps: number, weightLb: number | null, exerciseId = "a", exerciseName = "Lift A") => ({ localDate, exerciseId, exerciseName, reps, weightLb });
   it("takes the heaviest weight and the most reps at it", () => {
     const out = liftSeries([set("2026-10-19", 10, 100), set("2026-10-20", 8, 110), set("2026-10-21", 9, 110)]);
-    expect(out).toEqual([{ exerciseId: "a", name: "Lift A", weekly: [{ weekStart: "2026-10-19", topWeightLb: 110, topReps: 9, sets: 3 }] }]);
+    expect(out).toEqual([{ exerciseId: "a", name: "Lift A", weekly: [{ weekStart: "2026-10-19", topWeightLb: 110, topReps: 9, sets: 3, volumeLb: 1000 + 880 + 990, totalReps: 27 }] }]);
   });
   it("uses the max reps when every weight is null", () => {
     const out = liftSeries([set("2026-10-19", 12, null, "b", "Pull-up"), set("2026-10-20", 15, null, "b", "Pull-up")]);
-    expect(out[0].weekly).toEqual([{ weekStart: "2026-10-19", topWeightLb: null, topReps: 15, sets: 2 }]);
+    expect(out[0].weekly).toEqual([{ weekStart: "2026-10-19", topWeightLb: null, topReps: 15, sets: 2, volumeLb: null, totalReps: 27 }]);
   });
   it("sorts exercises by most recent set and weeks ascending", () => {
     const out = liftSeries([set("2026-10-21", 5, 50, "a"), set("2026-10-12", 5, 40, "a"), set("2026-10-22", 5, 60, "b", "Lift B")]);

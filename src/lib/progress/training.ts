@@ -1,5 +1,5 @@
 /**
- * Training progress loader: plan adherence, lift top sets and endurance trends for the Progress
+ * Training progress loader: plan adherence, lift weight moved and endurance trends for the Progress
  * tab. Every series is limited to the selected range. Missing data yields empty arrays.
  */
 import { and, asc, eq, gte, lte, ne } from "drizzle-orm";
@@ -7,6 +7,7 @@ import type { Db } from "@/db/client";
 import { cardioEntries, exercises, plannedSessions, strengthSessions, strengthSets, weeklyMetrics } from "@/db/schema";
 import { addDays, localDate, weekStart } from "@/lib/log/dates";
 import { METERS_PER_MILE, METERS_PER_YARD } from "@/lib/log/units";
+import { getPlanSettings } from "@/lib/plan/settings";
 import { liftSeries, RANGE_DAYS, weeklyAdherence, type AdherenceWeek, type LiftSeries, type Point, type Range } from "./series";
 
 const SWIM_PACE_YARDS = 100;
@@ -30,6 +31,9 @@ export async function getTrainingProgress(db: Db, now: Date, tz: string, range: 
     .from(plannedSessions)
     .where(and(gte(plannedSessions.localDate, from), lte(plannedSessions.localDate, today), ne(plannedSessions.kind, "rest")));
 
+  // Sets before the lift-charts date (a gym change) are left out; they stay in the log.
+  const { liftsSince } = await getPlanSettings(db, now, tz);
+  const liftsFrom = liftsSince !== null && liftsSince > from ? liftsSince : from;
   const sets = await db
     .select({
       localDate: strengthSessions.localDate,
@@ -41,7 +45,7 @@ export async function getTrainingProgress(db: Db, now: Date, tz: string, range: 
     .from(strengthSets)
     .innerJoin(strengthSessions, eq(strengthSets.sessionId, strengthSessions.id))
     .innerJoin(exercises, eq(strengthSets.exerciseId, exercises.id))
-    .where(and(gte(strengthSessions.localDate, from), lte(strengthSessions.localDate, today)));
+    .where(and(gte(strengthSessions.localDate, liftsFrom), lte(strengthSessions.localDate, today)));
 
   const metrics = await db
     .select()

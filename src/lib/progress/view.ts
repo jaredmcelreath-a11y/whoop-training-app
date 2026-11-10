@@ -62,3 +62,29 @@ export function scanSplitText(d: ScanDelta | null, scanCount: number): string {
   const share = d.leanSharePct === null ? "" : ` (${Math.round(d.leanSharePct)}% lean)`;
   return `Since ${shortDate(d.from.scannedOn)}: ${parts.join(", ")}${share}. ${SCAN_CAVEAT}`;
 }
+
+/** A whole number with thousands separators: 7400 → "7,400". */
+export const thousands = (n: number) => Math.round(n).toLocaleString("en-US");
+
+/**
+ * What an exercise's Progress chart plots per week: total weight moved (reps × weight) when any
+ * set had a weight, else total reps (bodyweight work). `text` describes the latest week.
+ */
+export function liftChart(l: {
+  name: string;
+  weekly: readonly { weekStart: string; sets: number; volumeLb: number | null; totalReps: number }[];
+}): { points: { date: string; value: number }[]; unit: "lb" | "reps"; text: string } {
+  const weighted = l.weekly.some((w) => w.volumeLb !== null);
+  const points = l.weekly.flatMap((w) => {
+    const v = weighted ? w.volumeLb : w.totalReps;
+    return v === null ? [] : [{ date: w.weekStart, value: v }];
+  });
+  const last = l.weekly[l.weekly.length - 1];
+  const sets = last ? `${last.sets} ${last.sets === 1 ? "set" : "sets"}` : "";
+  const text = !last
+    ? `${l.name}: no sets`
+    : weighted && last.volumeLb !== null
+      ? `${l.name}: ${thousands(last.volumeLb)} lb moved over ${sets}`
+      : `${l.name}: ${thousands(last.totalReps)} reps over ${sets}`;
+  return { points, unit: weighted ? "lb" : "reps", text };
+}

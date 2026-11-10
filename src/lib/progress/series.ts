@@ -133,10 +133,17 @@ export function weeklyAdherence(rows: AdherenceRow[], today: string): AdherenceW
 }
 
 export type LiftSet = { localDate: string; exerciseId: string; exerciseName: string; reps: number; weightLb: number | null };
-export type LiftWeek = { weekStart: string; topWeightLb: number | null; topReps: number; sets: number };
+/**
+ * One exercise's week. volumeLb is the total weight moved (reps × weight over its weighted sets,
+ * null when no set had a weight); totalReps counts every set's reps.
+ */
+export type LiftWeek = { weekStart: string; topWeightLb: number | null; topReps: number; sets: number; volumeLb: number | null; totalReps: number };
 export type LiftSeries = { exerciseId: string; name: string; weekly: LiftWeek[] };
 
-/** Per-exercise weekly top set (heaviest weight, most reps at it), most recently trained exercise first. */
+/**
+ * Per-exercise weekly totals (weight moved, reps, sets) and top set (heaviest weight, most reps
+ * at it), most recently trained exercise first.
+ */
 export function liftSeries(sets: LiftSet[]): LiftSeries[] {
   const byEx = new Map<string, { name: string; last: string; weeks: Map<string, LiftSet[]> }>();
   for (const s of sets) {
@@ -157,7 +164,15 @@ export function liftSeries(sets: LiftSet[]): LiftSeries[] {
           const weights = list.map((s) => s.weightLb).filter((w): w is number => w !== null);
           const top = weights.length ? Math.max(...weights) : null;
           const pool = top === null ? list : list.filter((s) => s.weightLb === top);
-          return { weekStart: ws, topWeightLb: top, topReps: Math.max(...pool.map((s) => s.reps)), sets: list.length };
+          const weighted = list.filter((s) => s.weightLb !== null);
+          return {
+            weekStart: ws,
+            topWeightLb: top,
+            topReps: Math.max(...pool.map((s) => s.reps)),
+            sets: list.length,
+            volumeLb: weighted.length ? weighted.reduce((t, s) => t + s.reps * (s.weightLb as number), 0) : null,
+            totalReps: list.reduce((t, s) => t + s.reps, 0),
+          };
         }),
     }));
 }

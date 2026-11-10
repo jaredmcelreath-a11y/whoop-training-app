@@ -39,7 +39,7 @@ const CURRENT: PlanSettings = {
   poolLengthM: 22.86,
   wakeTime: null,
   painSide: null,
-  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null, painMonitoring: true,
+  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null, painMonitoring: true, liftsSince: null,
 };
 
 function form(entries: Record<string, string>): FormData {

@@ -20,7 +20,7 @@ const SETTINGS: PlanSettings = {
   poolLengthM: 25,
   wakeTime: null,
   painSide: null,
-  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null, painMonitoring: true,
+  poolUnit: "yd", startSwimSecPer100Yd: null, startRunSecPerMi: null, startBikeMph: null, goalSec: null, painMonitoring: true, liftsSince: null,
 };
 
 const WEEK = "2026-11-16"; // a Monday
